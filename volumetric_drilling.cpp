@@ -78,6 +78,15 @@ bool g_flagMarkVolumeForUpdate = false;
 
 afComm* g_commPtr;
 
+// drill mesh
+cMultiMesh* drillObj;
+
+// drill rotation matrix
+cMatrix3d toolRotMat;
+
+// drill coordinates
+double drillX, drillY, drillZ;
+
 enum HapticStates
 {
     HAPTIC_IDLE,
@@ -148,6 +157,28 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_commPtr = new afComm();
     g_commPtr->afCreateCommInstance(afType::RIGID_BODY, "VolumetricDrill", "/ambf/env/", 50 , 1000, 0.5);
 
+    // Initializing tool's rotation matrix as an identity matrix
+    toolRotMat.identity();
+    toolRotMat = camera->getLocalRot() * toolRotMat;
+
+    // importing drill model
+    drillObj = new cMultiMesh();
+    cLoadFileOBJ(drillObj, "../../../volumetric_drilling/resources/volumes/drill_mesh/drillMesh.obj");
+    a_afWorld->addSceneObjectToWorld(drillObj);
+
+    // Initial drill position and rotation
+    cVector3d dir = camera->getLocalPos() - cVector3d(0, 0, 0);
+    dir.normalize();
+    dir = 1 * dir;
+
+    drillX = dir.x();
+    drillY = dir.y();
+    drillZ = dir.z();
+
+    drillObj->setLocalPos(drillX, drillY, drillZ);
+    drillObj->setLocalRot(toolRotMat);
+    drillObj->scale(16);
+
     // create a haptic device handler
     g_deviceHandler = new cHapticDeviceHandler();
 
@@ -160,6 +191,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_toolCursor = new cToolCursor(a_afWorld->getChaiWorld());
 
     a_afWorld->addSceneObjectToWorld(g_toolCursor);
+
+    g_toolCursor->setLocalRot(toolRotMat);
 
     g_toolCursor->setHapticDevice(g_hapticDevice);
 
@@ -298,7 +331,10 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // read user switch
     int userSwitches = g_toolCursor->getUserSwitches();
 
-    if (g_toolCursor->isInContact(g_volObject) && (userSwitches == 2))
+    g_toolCursor->setLocalPos(drillObj->getLocalPos());
+    g_toolCursor->setDeviceLocalPos(0,0,0);
+
+    if (g_toolCursor->isInContact(g_volObject) /*&& (userSwitches == 2)*/)
     {
         // retrieve contact event
         //        std::cerr << "Num of collision events " << tool->m_hapticPoint->getNumCollisionEvents() << std::endl;
