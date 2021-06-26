@@ -8,6 +8,7 @@ Lets call the absolute location of this package as **<volumetric_plugin_path>**.
 Clone and build `ambf-2.0` branch.
 ```bash
 git clone https://github.com/WPI-AIM/ambf.git
+cd ambf
 git checkout -b ambf-2.0 origin/ambf-2.0
 git pull
 ```
@@ -15,6 +16,7 @@ Build and source ambf as per the instructions on AMBFs Github page.
 
 ## 2. Clone and build this plugin
 ``` bash
+git clone https://github.com/adnanmunawar/volumetric_drilling.git
 cd <volumetric_plugin_path>
 mkdir build
 cd build
