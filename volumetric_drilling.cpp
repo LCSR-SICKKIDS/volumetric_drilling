@@ -48,7 +48,15 @@ using namespace std;
 
 cVoxelObject* g_volObject;
 
-cToolCursor* g_toolCursor;
+cToolCursor* tool0;
+cToolCursor* tool1;
+cToolCursor* tool2;
+cToolCursor* tool3;
+cToolCursor* tool4;
+cToolCursor* tool5;
+cToolCursor* tool6;
+cToolCursor* tool7;
+cToolCursor* followSphere;
 
 int g_renderingMode = 0;
 
@@ -81,11 +89,40 @@ afComm* g_commPtr;
 // drill mesh
 cMultiMesh* drillObj;
 
-// drill rotation matrix
+// tool's rotation matrix
 cMatrix3d toolRotMat;
 
-// drill coordinates
+// rate of drill movement
+double drillRate = 0.0019f;
+
+// tool coordinates
 double drillX, drillY, drillZ;
+
+// camera to render the world
+afCameraPtr camera;
+
+// list of sphere tools
+vector<cToolCursor*> toolList;
+
+// warning pop-up panel
+cPanel* warningPopup;
+
+// text for warning pop-up
+cLabel* warningText;
+
+// current and maximum distance between proxy and goal spheres
+double currError = 0;
+double maxError = 0;
+
+// for storing index of follow sphere
+int followSphereIdx = 0;
+
+// toggles whether the drill mesh should move slowly towards the followSphere
+// or make a sudden jump
+bool suddenJump = true;
+
+// index of current drill size
+int drillSizeIdx = 0;
 
 enum HapticStates
 {
@@ -95,12 +132,41 @@ enum HapticStates
 
 HapticStates state = HAPTIC_IDLE;
 
+
+//------------------------------------------------------------------------------
+// DECLARED FUNCTIONS
+//------------------------------------------------------------------------------
+
+// Initialize sphere tools
+cToolCursor* sphereToolInit(cToolCursor*, double, const afWorldPtr, int);
+
+// update coordinates of a position of the tool from keyboard input
+void toolPosCoordinatesUpdate(cVector3d dir);
+
+// tool's rotational motion
+void toolRotMotion(cVector3d, double);
+
+// update position of shaft spheres
+void shaftSpheresPosUpdate(void);
+
+// check for shaft collision
+void checkShaftCollision(void);
+
+// update drill position
+void drillPosUpdate(void);
+
+// toggles size of the drill burr
+void changeDrillSize(void);
+
+//------------------------------------------------------------------------------
+
+
 void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
 
     m_worldPtr = a_afWorld;
 
     // Get first camera
-    afCameraPtr camera = m_worldPtr->getCameras()[0];
+    camera = m_worldPtr->getCameras()[0];
     afImageResolutionAttribs imageAttrbs;
     imageAttrbs.m_width = 640;
     imageAttrbs.m_height = 480;
@@ -177,7 +243,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
 
     drillObj->setLocalPos(drillX, drillY, drillZ);
     drillObj->setLocalRot(toolRotMat);
-    drillObj->scale(16);
+
 
     // create a haptic device handler
     g_deviceHandler = new cHapticDeviceHandler();
@@ -188,30 +254,23 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     // retrieve information about the current haptic device
     cHapticDeviceInfo hapticDeviceInfo = g_hapticDevice->getSpecifications();
 
-    g_toolCursor = new cToolCursor(a_afWorld->getChaiWorld());
+    // Initializing sphere tools
+    tool0 = sphereToolInit(tool0, 0.020, a_afWorld, 0);
+    tool1 = sphereToolInit(tool1, 0.013, a_afWorld, 1);
+    tool2 = sphereToolInit(tool2, 0.015, a_afWorld, 2);
+    tool3 = sphereToolInit(tool3, 0.017, a_afWorld, 3);
+    tool4 = sphereToolInit(tool4, 0.019, a_afWorld, 4);
+    tool5 = sphereToolInit(tool5, 0.021, a_afWorld, 5);
+    tool6 = sphereToolInit(tool6, 0.023, a_afWorld, 6);
+    tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
 
-    a_afWorld->addSceneObjectToWorld(g_toolCursor);
-
-    g_toolCursor->setLocalRot(toolRotMat);
-
-    g_toolCursor->setHapticDevice(g_hapticDevice);
 
     // if the haptic device has a gripper, enable it as a user switch
     g_hapticDevice->setEnableGripperUserSwitch(true);
 
-    g_toolCursor->setRadius(0.04);
-
-    // map the physical workspace of the haptic device to a larger virtual workspace.
-
-    g_toolCursor->setWorkspaceRadius(0.7);
-
-    g_toolCursor->setWaitForSmallForce(true);
-
-    g_toolCursor->start();
-
     // read the scale factor between the physical workspace of the haptic
     // device and the virtual workspace defined for the tool
-    double workspaceScaleFactor = g_toolCursor->getWorkspaceScaleFactor();
+    double workspaceScaleFactor = tool0->getWorkspaceScaleFactor();
 
     // stiffness properties
     maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
@@ -305,9 +364,29 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
         cerr << "INFO! CUSTOM SHARED PATH NOT DEFINED. USING DEFAULT ISO SURFACE COLOR SHADERS FOR VOLUMETRIC RENDERING" << endl;
         g_volObject->setRenderingModeIsosurfaceColors();
     }
+
+    // create a font
+    cFontPtr font = NEW_CFONTCALIBRI20();
+
+//     A warning pop-up that shows up while drilling at critical region
+//    warningPopup = new cPanel();
+//    warningPopup->set(camera->m_width/2, camera->m_height/5);
+//    warningPopup->setColor(cColorf(0.6,0,0));
+//    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
+//    camera->getFrontLayer()->addChild(warningPopup);
+
+//    warningPopup->setShowPanel(false);
+
+    // Warning text
+//    warningText = new cLabel(font);
+//    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
+//    warningText->m_fontColor.setWhite();
+//    warningText->setFontScale(1.5);
+//    warningText->setText("WARNING! Critical Region Detected");
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
+
     // update region of voxels to be updated
     if (g_flagMarkVolumeForUpdate)
     {
@@ -325,21 +404,30 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     m_worldPtr->getChaiWorld()->computeGlobalPositions(true);
 
-    // update position and orientation of tool
-    g_toolCursor->updateFromDevice();
+    // update position of shaft spheres
+    shaftSpheresPosUpdate();
+
+    // check for shaft collision
+    checkShaftCollision();
+
+    // update position of drill mesh
+    drillPosUpdate();
+
+    // update position of drill burr/tip sphere
+    tool0->setLocalPos(drillObj->getLocalPos());
+    tool0->setDeviceLocalPos(0,0,0);
+    tool0->updateFromDevice();
+
 
     // read user switch
-    int userSwitches = g_toolCursor->getUserSwitches();
+    int userSwitches = tool0->getUserSwitches();
 
-    g_toolCursor->setLocalPos(drillObj->getLocalPos());
-    g_toolCursor->setDeviceLocalPos(0,0,0);
-
-    if (g_toolCursor->isInContact(g_volObject) /*&& (userSwitches == 2)*/)
+    if (tool0->isInContact(g_volObject) /*&& (userSwitches == 2)*/)
     {
         // retrieve contact event
         //        std::cerr << "Num of collision events " << tool->m_hapticPoint->getNumCollisionEvents() << std::endl;
-        for (int e = 0 ; e < g_toolCursor->m_hapticPoint->getNumCollisionEvents() ; e++){
-            cCollisionEvent* contact = g_toolCursor->m_hapticPoint->getCollisionEvent(e);
+        for (int e = 0 ; e < tool0->m_hapticPoint->getNumCollisionEvents() ; e++){
+            cCollisionEvent* contact = tool0->m_hapticPoint->getCollisionEvent(e);
 
             cMatrix3d R_t_w;
             //            tool->getHapticDevice()->getRotation(R_t_w);
@@ -367,216 +455,213 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         //            int iz = contact->m_voxelIndexZ;
     }
 
-    // compute interaction forces
-    g_toolCursor->computeInteractionForces();
-
-    // check if device remains stuck inside voxel object
-    cVector3d force = g_toolCursor->getDeviceGlobalForce();
-    if (g_flagStart)
+    for(auto tool : toolList)
     {
-        if (force.length() != 0.0)
+        // compute interaction forces
+        tool->computeInteractionForces();
+
+        // check if device remains stuck inside voxel object
+        cVector3d force = tool->getDeviceGlobalForce();
+
+        if (g_flagStart)
         {
-            g_toolCursor->initialize();
-            counter = 0;
+            if (force.length() != 0.0)
+            {
+
+                tool->initialize();
+                counter = 0;
+            }
+            else
+            {
+                counter++;
+                if (counter > 10)
+                    g_flagStart = false;
+            }
         }
         else
         {
-            counter++;
-            if (counter > 10)
-                g_flagStart = false;
+            if (force.length() > 10.0)
+            {
+                g_flagStart = true;
+            }
         }
-    }
-    else
-    {
-        if (force.length() > 10.0)
+
+
+        /////////////////////////////////////////////////////////////////////////
+        // MANIPULATION
+        /////////////////////////////////////////////////////////////////////////
+
+        // compute transformation from world to tool (haptic device)
+        cTransform world_T_tool = tool->getDeviceGlobalTransform();
+
+        // get status of user switch
+        bool button = tool->getUserSwitch(0);
+
+        //
+        // STATE 1:
+        // Idle mode - user presses the user switch
+        //
+        if ((state == HAPTIC_IDLE) && (button == true))
         {
-            g_flagStart = true;
+            // check if at least one contact has occurred
+            if (tool->m_hapticPoint->getNumCollisionEvents() > 0)
+            {
+                // get contact event
+                cCollisionEvent* collisionEvent = tool->m_hapticPoint->getCollisionEvent(0);
+
+                // get object from contact event
+                g_selectedObject = collisionEvent->m_object;
+            }
+            else
+            {
+                g_selectedObject = g_volObject;
+            }
+
+            // get transformation from object
+            cTransform world_T_object = g_selectedObject->getGlobalTransform();
+
+            // compute inverse transformation from contact point to object
+            cTransform tool_T_world = world_T_tool;
+            tool_T_world.invert();
+
+            // store current transformation tool
+            g_tool_T_object = tool_T_world * world_T_object;
+
+            // update state
+            state = HAPTIC_SELECTION;
         }
-    }
 
 
-    /////////////////////////////////////////////////////////////////////////
-    // MANIPULATION
-    /////////////////////////////////////////////////////////////////////////
-
-    // compute transformation from world to tool (haptic device)
-    cTransform world_T_tool = g_toolCursor->getDeviceGlobalTransform();
-
-    // get status of user switch
-    bool button = g_toolCursor->getUserSwitch(0);
-
-    //
-    // STATE 1:
-    // Idle mode - user presses the user switch
-    //
-    if ((state == HAPTIC_IDLE) && (button == true))
-    {
-        // check if at least one contact has occurred
-        if (g_toolCursor->m_hapticPoint->getNumCollisionEvents() > 0)
+            //
+            // STATE 2:
+            // Selection mode - operator maintains user switch enabled and moves object
+            //
+        else if ((state == HAPTIC_SELECTION) && (button == true))
         {
-            // get contact event
-            cCollisionEvent* collisionEvent = g_toolCursor->m_hapticPoint->getCollisionEvent(0);
+            // compute new transformation of object in global coordinates
+            cTransform world_T_object = world_T_tool * g_tool_T_object;
 
-            // get object from contact event
-            g_selectedObject = collisionEvent->m_object;
+            // compute new transformation of object in local coordinates
+            cTransform parent_T_world = g_selectedObject->getParent()->getLocalTransform();
+            parent_T_world.invert();
+            cTransform parent_T_object = parent_T_world * world_T_object;
+
+            // assign new local transformation to object
+            g_selectedObject->setLocalTransform(parent_T_object);
+
+            // set zero forces when manipulating objects
+            tool->setDeviceGlobalForce(0.0, 0.0, 0.0);
+
+            tool->initialize();
         }
+
+            //
+            // STATE 3:
+            // Finalize Selection mode - operator releases user switch.
+            //
         else
         {
-            g_selectedObject = g_volObject;
+            state = HAPTIC_IDLE;
         }
 
-        // get transformation from object
-        cTransform world_T_object = g_selectedObject->getGlobalTransform();
 
-        // compute inverse transformation from contact point to object
-        cTransform tool_T_world = world_T_tool;
-        tool_T_world.invert();
+        cVector3d localPos = tool->getDeviceLocalPos();
+        cQuaternion localRot;
+        localRot.fromRotMat(tool->getDeviceLocalRot());
 
-        // store current transformation tool
-        g_tool_T_object = tool_T_world * world_T_object;
+        g_commPtr->m_afRigidBodyCommPtr->cur_position(localPos.x(), localPos.y(), localPos.z());
+        g_commPtr->m_afRigidBodyCommPtr->cur_orientation(localRot.x, localRot.y, localRot.z, localRot.w);
+        g_commPtr->m_afRigidBodyCommPtr->cur_force(tool->getDeviceLocalForce().x(), tool->getDeviceLocalForce().y(), tool->getDeviceLocalForce().z());
+        g_commPtr->m_afRigidBodyCommPtr->cur_torque(tool->getDeviceLocalTorque().x(), tool->getDeviceLocalTorque().y(), tool->getDeviceLocalTorque().z());
 
-        // update state
-        state = HAPTIC_SELECTION;
+
+        /////////////////////////////////////////////////////////////////////////
+        // FINALIZE
+        /////////////////////////////////////////////////////////////////////////
+
+        // send forces to haptic device
+        //    tool->applyToDevice();
     }
 
-
-    //
-    // STATE 2:
-    // Selection mode - operator maintains user switch enabled and moves object
-    //
-    else if ((state == HAPTIC_SELECTION) && (button == true))
-    {
-        // compute new transformation of object in global coordinates
-        cTransform world_T_object = world_T_tool * g_tool_T_object;
-
-        // compute new transformation of object in local coordinates
-        cTransform parent_T_world = g_selectedObject->getParent()->getLocalTransform();
-        parent_T_world.invert();
-        cTransform parent_T_object = parent_T_world * world_T_object;
-
-        // assign new local transformation to object
-        g_selectedObject->setLocalTransform(parent_T_object);
-
-        // set zero forces when manipulating objects
-        g_toolCursor->setDeviceGlobalForce(0.0, 0.0, 0.0);
-
-        g_toolCursor->initialize();
-    }
-
-    //
-    // STATE 3:
-    // Finalize Selection mode - operator releases user switch.
-    //
-    else
-    {
-        state = HAPTIC_IDLE;
-    }
-
-
-    cVector3d localPos = g_toolCursor->getDeviceLocalPos();
-    cQuaternion localRot;
-    localRot.fromRotMat(g_toolCursor->getDeviceLocalRot());
-
-    g_commPtr->m_afRigidBodyCommPtr->cur_position(localPos.x(), localPos.y(), localPos.z());
-    g_commPtr->m_afRigidBodyCommPtr->cur_orientation(localRot.x, localRot.y, localRot.z, localRot.w);
-    g_commPtr->m_afRigidBodyCommPtr->cur_force(g_toolCursor->getDeviceLocalForce().x(), g_toolCursor->getDeviceLocalForce().y(), g_toolCursor->getDeviceLocalForce().z());
-    g_commPtr->m_afRigidBodyCommPtr->cur_torque(g_toolCursor->getDeviceLocalTorque().x(), g_toolCursor->getDeviceLocalTorque().y(), g_toolCursor->getDeviceLocalTorque().z());
-
-
-    /////////////////////////////////////////////////////////////////////////
-    // FINALIZE
-    /////////////////////////////////////////////////////////////////////////
-
-    // send forces to haptic device
-    //    tool->applyToDevice();
 }
 
-void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods){
+void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
     // option - reduce size along X axis
-    if (a_key == GLFW_KEY_4)
-    {
+    if (a_key == GLFW_KEY_4) {
         double value = cClamp((g_volObject->m_maxCorner.x() - 0.005), 0.01, 0.5);
         g_volObject->m_maxCorner.x(value);
         g_volObject->m_minCorner.x(-value);
-        g_volObject->m_maxTextureCoord.x(0.5+value);
-        g_volObject->m_minTextureCoord.x(0.5-value);
+        g_volObject->m_maxTextureCoord.x(0.5 + value);
+        g_volObject->m_minTextureCoord.x(0.5 - value);
         cout << "> Reduce size along X axis.                            \r";
     }
 
-    // option - increase size along X axis
-    else if (a_key == GLFW_KEY_5)
-    {
+        // option - increase size along X axis
+    else if (a_key == GLFW_KEY_5) {
         double value = cClamp((g_volObject->m_maxCorner.x() + 0.005), 0.01, 0.5);
         g_volObject->m_maxCorner.x(value);
         g_volObject->m_minCorner.x(-value);
-        g_volObject->m_maxTextureCoord.x(0.5+value);
-        g_volObject->m_minTextureCoord.x(0.5-value);
+        g_volObject->m_maxTextureCoord.x(0.5 + value);
+        g_volObject->m_minTextureCoord.x(0.5 - value);
         cout << "> Increase size along X axis.                            \r";
     }
 
-    // option - reduce size along Y axis
-    else if (a_key == GLFW_KEY_6)
-    {
+        // option - reduce size along Y axis
+    else if (a_key == GLFW_KEY_6) {
         double value = cClamp((g_volObject->m_maxCorner.y() - 0.005), 0.01, 0.5);
         g_volObject->m_maxCorner.y(value);
         g_volObject->m_minCorner.y(-value);
-        g_volObject->m_maxTextureCoord.y(0.5+value);
-        g_volObject->m_minTextureCoord.y(0.5-value);
+        g_volObject->m_maxTextureCoord.y(0.5 + value);
+        g_volObject->m_minTextureCoord.y(0.5 - value);
         cout << "> Reduce size along Y axis.                            \r";
     }
 
-    // option - increase size along Y axis
-    else if (a_key == GLFW_KEY_7)
-    {
+        // option - increase size along Y axis
+    else if (a_key == GLFW_KEY_7) {
         double value = cClamp((g_volObject->m_maxCorner.y() + 0.005), 0.01, 0.5);
         g_volObject->m_maxCorner.y(value);
         g_volObject->m_minCorner.y(-value);
-        g_volObject->m_maxTextureCoord.y(0.5+value);
-        g_volObject->m_minTextureCoord.y(0.5-value);
+        g_volObject->m_maxTextureCoord.y(0.5 + value);
+        g_volObject->m_minTextureCoord.y(0.5 - value);
         cout << "> Increase size along Y axis.                            \r";
     }
 
-    // option - reduce size along Z axis
-    else if (a_key == GLFW_KEY_8)
-    {
+        // option - reduce size along Z axis
+    else if (a_key == GLFW_KEY_8) {
         double value = cClamp((g_volObject->m_maxCorner.z() - 0.005), 0.01, 0.5);
         g_volObject->m_maxCorner.z(value);
         g_volObject->m_minCorner.z(-value);
-        g_volObject->m_maxTextureCoord.z(0.5+value);
-        g_volObject->m_minTextureCoord.z(0.5-value);
+        g_volObject->m_maxTextureCoord.z(0.5 + value);
+        g_volObject->m_minTextureCoord.z(0.5 - value);
         cout << "> Reduce size along Z axis.                            \r";
     }
 
-    // option - increase size along Z axis
-    else if (a_key == GLFW_KEY_9)
-    {
+        // option - increase size along Z axis
+    else if (a_key == GLFW_KEY_9) {
         double value = cClamp((g_volObject->m_maxCorner.z() + 0.005), 0.01, 0.5);
         g_volObject->m_maxCorner.z(value);
         g_volObject->m_minCorner.z(-value);
-        g_volObject->m_maxTextureCoord.z(0.5+value);
-        g_volObject->m_minTextureCoord.z(0.5-value);
+        g_volObject->m_maxTextureCoord.z(0.5 + value);
+        g_volObject->m_minTextureCoord.z(0.5 - value);
         cout << "> Increase size along Z axis.                            \r";
     }
-    // option - decrease quality of graphic rendering
-    else if (a_key == GLFW_KEY_L)
-    {
+        // option - decrease quality of graphic rendering
+    else if (a_key == GLFW_KEY_L) {
         double value = g_volObject->getQuality();
         g_volObject->setQuality(value - 0.01);
         cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
     }
 
-    // option - increase quality of graphic rendering
-    else if (a_key == GLFW_KEY_U)
-    {
+        // option - increase quality of graphic rendering
+    else if (a_key == GLFW_KEY_U) {
         double value = g_volObject->getQuality();
         g_volObject->setQuality(value + 0.01);
         cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
     }
 
-    // option - polygonize model and save to file
-    else if (a_key == GLFW_KEY_P)
-    {
-        cMultiMesh* surface = new cMultiMesh;
+        // option - polygonize model and save to file
+    else if (a_key == GLFW_KEY_P) {
+        cMultiMesh *surface = new cMultiMesh;
         g_volObject->polygonize(surface, 0.01, 0.01, 0.01);
         double SCALE = 0.1;
         double METERS_TO_MILLIMETERS = 1000.0;
@@ -586,104 +671,369 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         cout << "> Volume has been polygonized and saved to disk                            \r";
         delete surface;
     }
-    // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_UP)
-    {
+        // option - toggle vertical mirroring
+    else if (a_key == GLFW_KEY_UP) {
         double value = g_volObject->getOpacityThreshold();
         g_volObject->setOpacityThreshold(value + 0.01);
-        cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1) << "                            \n";
+        cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+             << "                            \n";
     }
 
-    // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_DOWN)
-    {
+        // option - toggle vertical mirroring
+    else if (a_key == GLFW_KEY_DOWN) {
         double value = g_volObject->getOpacityThreshold();
         g_volObject->setOpacityThreshold(value - 0.01);
-        cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1) << "                            \n";
+        cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+             << "                            \n";
     }
 
-    // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_RIGHT)
-    {
+        // option - toggle vertical mirroring
+    else if (a_key == GLFW_KEY_RIGHT) {
         double value = g_volObject->getIsosurfaceValue();
         g_volObject->setIsosurfaceValue(value + 0.01);
-        cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1) << "                            \n";
+        cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
+             << "                            \n";
     }
 
-    // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_LEFT)
-    {
+        // option - toggle vertical mirroring
+    else if (a_key == GLFW_KEY_LEFT) {
         double value = g_volObject->getIsosurfaceValue();
         g_volObject->setIsosurfaceValue(value - 0.01);
-        cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1) << "                            \n";
+        cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
+             << "                            \n";
     }
 
-    // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_ENTER)
-    {
+        // option - toggle vertical mirroring
+    else if (a_key == GLFW_KEY_ENTER) {
         g_renderingMode++;
-        if (g_renderingMode >7){
+        if (g_renderingMode > 7) {
             g_renderingMode = 0;
         }
         switch (g_renderingMode) {
-        case 0:
-            g_volObject->setRenderingModeBasic();
-            std::cerr << "setRenderingModeBasic" << std::endl;
-            break;
-        case 1:
-            g_volObject->setRenderingModeVoxelColors();
-            std::cerr << "setRenderingModeVoxelColors" << std::endl;
-            break;
-        case 2:
-            g_volObject->setRenderingModeVoxelColorMap();
-            std::cerr << "setRenderingModeVoxelColorMap" << std::endl;
-            break;
-        case 3:
-            g_volObject->setRenderingModeIsosurfaceColors();
-            std::cerr << "setRenderingModeIsosurfaceColors" << std::endl;
-            break;
-        case 4:
-            g_volObject->setRenderingModeIsosurfaceMaterial();
-            std::cerr << "setRenderingModeIsosurfaceMaterial" << std::endl;
-            break;
-        case 5:
-            g_volObject->setRenderingModeIsosurfaceColorMap();
-            std::cerr << "setRenderingModeIsosurfaceColorMap" << std::endl;
-            break;
-        case 6:
-            g_volObject->setRenderingModeDVRColorMap();
-            std::cerr << "setRenderingModeDVRColorMap" << std::endl;
-            break;
-        case 7:
-            g_volObject->setRenderingModeCustom();
-            std::cerr << "setRenderingModeCustom" << std::endl;
-            break;
-        default:
-            break;
+            case 0:
+                g_volObject->setRenderingModeBasic();
+                std::cerr << "setRenderingModeBasic" << std::endl;
+                break;
+            case 1:
+                g_volObject->setRenderingModeVoxelColors();
+                std::cerr << "setRenderingModeVoxelColors" << std::endl;
+                break;
+            case 2:
+                g_volObject->setRenderingModeVoxelColorMap();
+                std::cerr << "setRenderingModeVoxelColorMap" << std::endl;
+                break;
+            case 3:
+                g_volObject->setRenderingModeIsosurfaceColors();
+                std::cerr << "setRenderingModeIsosurfaceColors" << std::endl;
+                break;
+            case 4:
+                g_volObject->setRenderingModeIsosurfaceMaterial();
+                std::cerr << "setRenderingModeIsosurfaceMaterial" << std::endl;
+                break;
+            case 5:
+                g_volObject->setRenderingModeIsosurfaceColorMap();
+                std::cerr << "setRenderingModeIsosurfaceColorMap" << std::endl;
+                break;
+            case 6:
+                g_volObject->setRenderingModeDVRColorMap();
+                std::cerr << "setRenderingModeDVRColorMap" << std::endl;
+                break;
+            case 7:
+                g_volObject->setRenderingModeCustom();
+                std::cerr << "setRenderingModeCustom" << std::endl;
+                break;
+            default:
+                break;
         }
-    }
-    else if (a_key == GLFW_KEY_PAGE_UP){
+    } else if (a_key == GLFW_KEY_PAGE_UP) {
         g_opticalDensity += 0.1;
         g_volObject->setOpticalDensity(g_opticalDensity);
         cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
-    }
-
-    else if (a_key == GLFW_KEY_PAGE_DOWN){
+    } else if (a_key == GLFW_KEY_PAGE_DOWN) {
         g_opticalDensity -= 0.1;
         g_volObject->setOpticalDensity(g_opticalDensity);
         cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
-    }
-
-    else if (a_key == GLFW_KEY_HOME){
+    } else if (a_key == GLFW_KEY_HOME) {
         float val = g_volObject->getOpacityThreshold();
         g_volObject->setOpacityThreshold(val + 0.1);
-        cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1) << "                            \n";
-    }
-
-    else if (a_key == GLFW_KEY_END){
+        cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+             << "                            \n";
+    } else if (a_key == GLFW_KEY_END) {
         float val = g_volObject->getOpacityThreshold();
         g_volObject->setOpacityThreshold(val - 0.1);
-        cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1) << "                            \n";
+        cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+             << "                            \n";
+    }
+
+     // controls linear motion of tool
+    else if (a_key == GLFW_KEY_W) {
+
+        cVector3d dir = camera->getUpVector();
+        toolPosCoordinatesUpdate(dir);
+
+    }
+
+    else if (a_key == GLFW_KEY_D) {
+
+        cVector3d dir = camera->getRightVector();
+        toolPosCoordinatesUpdate(dir);
+
+    }
+
+    else if (a_key == GLFW_KEY_S) {
+
+        cVector3d dir = camera->getUpVector();
+        toolPosCoordinatesUpdate(-dir);
+
+    }
+
+    else if (a_key == GLFW_KEY_A) {
+
+        cVector3d dir = camera->getRightVector();
+        toolPosCoordinatesUpdate(-dir);
+
+    }
+
+    else if (a_key == GLFW_KEY_K) {
+
+        cVector3d dir = camera->getLookVector();
+        toolPosCoordinatesUpdate(-dir);
+
+    }
+
+    else if (a_key == GLFW_KEY_I) {
+
+        cVector3d dir = camera->getLookVector();
+        toolPosCoordinatesUpdate(dir);
+    }
+
+    // controls rotational motion of tool
+    else if(a_key == GLFW_KEY_KP_5) {
+
+        cVector3d rotDir(0,1,0);
+        double angle = 1;
+
+        toolRotMotion(rotDir, angle);
+    }
+
+    else if(a_key == GLFW_KEY_KP_8) {
+
+        cVector3d rotDir(0,1,0);
+        double angle = -1;
+
+        toolRotMotion(rotDir, angle);
+    }
+
+    else if(a_key == GLFW_KEY_KP_4) {
+
+        cVector3d rotDir(0,0,1);
+        double angle = -1;
+
+        toolRotMotion(rotDir, angle);
+    }
+
+    else if(a_key == GLFW_KEY_KP_6) {
+
+        cVector3d rotDir(0,0,1);
+        double angle = 1;
+
+        toolRotMotion(rotDir, angle);
+    }
+
+    // toggles the functionality of sudden jumping of drill mesh towards the followSphere
+    else if(a_key == GLFW_KEY_X){
+
+        if(suddenJump)
+        {
+            suddenJump = false;
+        }
+
+        else
+        {
+            suddenJump = true;
+        }
+    }
+
+    // toggles the visibility of drill mesh in the scene
+    else if (a_key == GLFW_KEY_B){
+
+        if(drillObj->getShowEnabled())
+        {
+            drillObj->setShowEnabled(false);
+        }
+
+        else
+        {
+            drillObj->setShowEnabled(true);
+        }
+    }
+
+    // toggles size of drill burr
+    else if (a_key == GLFW_KEY_C){
+
+        changeDrillSize();
+    }
+
+}
+
+cToolCursor* sphereToolInit(cToolCursor* newTool, double radius, const afWorldPtr a_afWorld, int id){
+
+    newTool = new cToolCursor(a_afWorld->getChaiWorld());
+
+    if(id == 0 || id == 1)
+    {
+        a_afWorld->addSceneObjectToWorld(newTool);
+        newTool->setLocalRot(toolRotMat);
+    }
+
+    else
+    {
+        tool1->addChild(newTool);
+    }
+
+    newTool->setLocalPos(drillX, drillY, drillZ);
+
+    newTool->setDeviceLocalPos(0,1,0);
+
+    newTool->setHapticDevice(g_hapticDevice);
+
+    newTool->setRadius(radius);
+
+    // map the physical workspace of the haptic device to a larger virtual workspace.
+
+    newTool->setWorkspaceRadius(0.7);
+
+    newTool->setWaitForSmallForce(true);
+
+    // visibility of shaft's proxy and goal spheres in the scene
+    if(id != 0)
+    {
+        newTool->setShowContactPoints(false, false);
+    }
+
+    newTool->start();
+
+    toolList.push_back(newTool);
+
+    return newTool;
+}
+
+void toolPosCoordinatesUpdate(cVector3d dir){
+
+    drillX += dir.x() * drillRate;
+    drillZ += dir.z() * drillRate;
+    drillY += dir.y() * drillRate;
+
+}
+
+void toolRotMotion(cVector3d rotDir, double angle){
+
+    toolList[0]->rotateAboutLocalAxisDeg(rotDir,angle);
+    toolList[1]->rotateAboutLocalAxisDeg(rotDir,angle);
+
+    if(cDistance(followSphere->m_hapticPoint->getGlobalPosProxy(), followSphere->m_hapticPoint->getGlobalPosGoal()) <= 0.005)
+    {
+        drillObj->rotateAboutLocalAxisDeg(rotDir, angle);
+    }
+
+}
+
+void shaftSpheresPosUpdate(){
+
+    tool1->setLocalPos(drillX, drillY, drillZ);
+    tool1->setDeviceLocalPos(0,0,0);
+    tool1->updateFromDevice();
+
+    for(int i=2; i<toolList.size(); i++)
+    {
+        toolList[i]->setLocalPos(0.026 * (i-1), 0, 0);
+        toolList[i]->setDeviceLocalPos(0,0,0);
+        toolList[i]->updateFromDevice();
+    }
+}
+
+void checkShaftCollision(){
+
+    for(int i=1; i<toolList.size(); i++)
+    {
+
+        currError = cDistance(toolList[i]->m_hapticPoint->getGlobalPosProxy(), toolList[i]->m_hapticPoint->getGlobalPosGoal());
+
+        if(currError > maxError)
+        {
+            maxError = currError;
+            followSphere = toolList[i];
+            followSphereIdx = i-1;
+        }
+
+        if(i == toolList.size()-1 && maxError == 0)
+        {
+            followSphere = tool1;
+            followSphereIdx = 0;
+
+            tool0->setLocalRot(drillObj->getLocalRot());
+            tool1->setLocalRot(drillObj->getLocalRot());
+        }
+    }
+
+    maxError = 0;
+}
+
+void drillPosUpdate(){
+
+    if(cDistance(followSphere->m_hapticPoint->getGlobalPosProxy(), followSphere->m_hapticPoint->getGlobalPosGoal()) <= 0.02)
+    {
+        // direction of positive x-axis of drill mesh
+        cVector3d xDir = drillObj->getLocalRot().getCol0();
+
+        cVector3d newDrillPos;
+
+        // drill mesh will make a sudden jump towards the followSphere
+        if(!suddenJump)
+        {
+            newDrillPos = ((followSphere->m_hapticPoint->getGlobalPosProxy() - xDir * 0.028) -
+                           (xDir * 0.026 * followSphereIdx) - drillObj->getLocalPos());
+        }
+
+        // drill mesh slowly moves towards the followSphere
+        else
+        {
+            newDrillPos = ((followSphere->m_hapticPoint->getGlobalPosProxy() - xDir * 0.028) -
+                           (xDir * 0.026 * followSphereIdx) - drillObj->getLocalPos()) * 0.04;
+        }
+
+        drillObj->translate(newDrillPos);
+    }
+}
+
+void changeDrillSize(){
+
+    drillSizeIdx++;
+
+    if(drillSizeIdx > 2)
+    {
+        drillSizeIdx = 0;
+    }
+
+    switch(drillSizeIdx)
+    {
+        case 0:
+            tool0->setRadius(0.02);
+            cout << "Drill Size changed to 2 mm" << endl;
+            break;
+
+        case 1:
+            tool0->setRadius(0.04);
+            cout << "Drill Size changed to 4 mm" << endl;
+            break;
+
+        case 2:
+            tool0->setRadius(0.06);
+            cout << "Drill Size changed to 6 mm" << endl;
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -701,6 +1051,10 @@ void afVolmetricDrillingPlugin::reset(){
 
 bool afVolmetricDrillingPlugin::close()
 {
-    g_toolCursor->stop();
+    for(auto tool : toolList)
+    {
+        tool->stop();
+    }
+
     delete g_deviceHandler;
 }

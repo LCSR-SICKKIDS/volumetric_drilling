@@ -1,5 +1,5 @@
 # Blender MTL File: 'drillMesh.blend'
-# Material Count: 4
+# Material Count: 5
 
 newmtl black
 Ns 323.999994
@@ -11,11 +11,21 @@ Ni 1.000000
 d 1.000000
 illum 2
 
-newmtl golden
+newmtl collision_shape_material
 Ns 323.999994
 Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.775000 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl golden
+Ns 738.198645
+Ka 1.000000 1.000000 1.000000
 Kd 0.800000 0.619847 0.019031
-Ks 0.811321 0.811321 0.811321
+Ks 1.000000 1.000000 1.000000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
