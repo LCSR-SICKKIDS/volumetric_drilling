@@ -178,6 +178,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
 
     string images_path;
     string shaders_path;
+    string drill_path;
     string prefix;
     int count;
 
@@ -188,6 +189,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
             ("info", "Show help info")
             ("images_path", p_opt::value<string>(), "Path to Images. E.g. ~/volumetric_drilling/resources/volumes/ear3")
             ("shaders_path", p_opt::value<string>(), "Path to Shaders. E.g. ~/volumetric_drilling/resources/shaders")
+            ("drill_path", p_opt::value<string>(), "Path to Drill Mesh. E.g. ~/volumetric_drilling/resources/volumes/drill_mesh/drillMesh.obj")
             ("prefix", p_opt::value<string>(), "Prefix of image name. E.g. plane00")
             ("count", p_opt::value<int>()->default_value(500), "Image Count. Number of images to load. E.g. ");
 
@@ -214,6 +216,10 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
         shaders_path = var_map["shaders_path"].as<string>();
     }
 
+    if (var_map.count("drill_path")){
+        drill_path = var_map["drill_path"].as<string>();
+    }
+
     count = var_map["count"].as<int>();
 
     //    g_mutexVoxel = new mutex();
@@ -229,7 +235,10 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
 
     // importing drill model
     drillObj = new cMultiMesh();
-    cLoadFileOBJ(drillObj, "../../../volumetric_drilling/resources/volumes/drill_mesh/drillMesh.obj");
+    bool loaded = cLoadFileOBJ(drillObj, drill_path);
+    if (!loaded){
+        cerr << "ERROR! Failed to Load Drill Mesh " << drill_path << endl;
+    }
     a_afWorld->addSceneObjectToWorld(drillObj);
 
     // Initial drill position and rotation
@@ -565,9 +574,9 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         }
 
 
-        cVector3d localPos = tool->getDeviceLocalPos();
+        cVector3d localPos = drillObj->getLocalPos();
         cQuaternion localRot;
-        localRot.fromRotMat(tool->getDeviceLocalRot());
+        localRot.fromRotMat(drillObj->getLocalRot());
 
         g_commPtr->m_afRigidBodyCommPtr->cur_position(localPos.x(), localPos.y(), localPos.z());
         g_commPtr->m_afRigidBodyCommPtr->cur_orientation(localRot.x, localRot.y, localRot.z, localRot.w);

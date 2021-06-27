@@ -37,6 +37,5 @@ If you want to run in a different terminal, make sure to set the plugin path aga
 
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator -l 100 --plugins libvolumetric_drilling.so --images_path <volumetric_plugin_path>/resources/volumes/ear3/ --prefix plane00 --count 500 --shaders_path <volumetric_plugin_path>/resources/shaders/
+./ambf_simulator -l 100 --plugins libvolumetric_drilling.so --images_path <volumetric_plugin_path>/resources/volumes/ear3/ --prefix plane00 --count 500 --shaders_path <volumetric_plugin_path>/resources/shaders/ --drill_path <volumetric_plugin_path>/resources/volumes/drill_mesh/drillMesh.obj
 ```
-
