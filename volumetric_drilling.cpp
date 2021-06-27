@@ -358,6 +358,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     // set optical density factor
     g_volObject->setOpticalDensity(g_opticalDensity);
 
+    g_volObject->m_name = "MASTOIDECTOMY_VOLUME";
+
     // set graphic rendering mode
     if (shaders_path.empty() == false){
         cerr << "INFO! USING CUSTOM SHADERS FOR VOLUMETRIC RENDERING" << endl;
