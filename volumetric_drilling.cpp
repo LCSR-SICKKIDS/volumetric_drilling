@@ -106,9 +106,11 @@ vector<cToolCursor*> toolList;
 
 // warning pop-up panel
 cPanel* warningPopup;
-
-// text for warning pop-up
 cLabel* warningText;
+
+// panel to display current drill size
+cPanel* drillSizePanel;
+cLabel* drillSizeText;
 
 // current and maximum distance between proxy and goal spheres
 double currError = 0;
@@ -123,6 +125,15 @@ bool suddenJump = true;
 
 // index of current drill size
 int drillSizeIdx = 0;
+
+// current drill size
+int currDrillSize = 2;
+
+// color property of bone
+cColorb boneColor(255, 249, 219, 255);
+
+// get color of voxels at (x,y,z)
+cColorb storedColor(0x00, 0x00, 0x00, 0x00);
 
 enum HapticStates
 {
@@ -379,21 +390,37 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     // create a font
     cFontPtr font = NEW_CFONTCALIBRI20();
 
-//     A warning pop-up that shows up while drilling at critical region
-//    warningPopup = new cPanel();
-//    warningPopup->set(camera->m_width/2, camera->m_height/5);
-//    warningPopup->setColor(cColorf(0.6,0,0));
-//    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
-//    camera->getFrontLayer()->addChild(warningPopup);
+    // A warning pop-up that shows up while drilling at critical region
+    warningPopup = new cPanel();
+    warningPopup->set(camera->m_width/2, camera->m_height/5);
+    warningPopup->setColor(cColorf(0.6,0,0));
+    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
+    camera->getFrontLayer()->addChild(warningPopup);
+    warningPopup->setShowPanel(false);
 
-//    warningPopup->setShowPanel(false);
+    warningText = new cLabel(font);
+    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
+    warningText->m_fontColor.setWhite();
+    warningText->setFontScale(1.5);
+    warningText->setText("WARNING! Critical Region Detected");
+    camera->getFrontLayer()->addChild(warningText);
+    warningText->setShowEnabled(false);
 
-    // Warning text
-//    warningText = new cLabel(font);
-//    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
-//    warningText->m_fontColor.setWhite();
-//    warningText->setFontScale(1.5);
-//    warningText->setText("WARNING! Critical Region Detected");
+    // A panel to display current drill size
+    drillSizePanel = new cPanel();
+    drillSizePanel->setSize(170, 50);
+    drillSizePanel->setCornerRadius(10, 10, 10, 10);
+    drillSizePanel->setLocalPos(40,60);
+    drillSizePanel->setColor(cColorf(1, 1, 1));
+    drillSizePanel->setTransparencyLevel(0.8);
+    camera->getFrontLayer()->addChild(drillSizePanel);
+
+    drillSizeText = new cLabel(font);
+    drillSizeText->setLocalPos(50,70);
+    drillSizeText->m_fontColor.setBlack();
+    drillSizeText->setFontScale(1.5);
+    drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
+    camera->getFrontLayer()->addChild(drillSizeText);
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
@@ -435,6 +462,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     if (tool0->isInContact(g_volObject) /*&& (userSwitches == 2)*/)
     {
+
         // retrieve contact event
         //        std::cerr << "Num of collision events " << tool->m_hapticPoint->getNumCollisionEvents() << std::endl;
         for (int e = 0 ; e < tool0->m_hapticPoint->getNumCollisionEvents() ; e++){
@@ -448,7 +476,18 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
             cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
             for (int rI = 0 ; rI < 1 ; rI++){
                 cVector3d ray = orig + rI * dir;
+
+                g_volObject->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), storedColor);
+
+                //if the tool comes in contact with the critical region, instantiate the warning message
+                if(storedColor != boneColor && storedColor != g_zeroColor)
+                {
+                    warningPopup->setShowPanel(true);
+                    warningText->setShowEnabled(true);
+                }
+
                 g_volObject->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
+//                cout << (float)g_zeroColor.m_color[0] << " " << (float)g_zeroColor.m_color[1] << " "<<(float)g_zeroColor.m_color[2] << " " <<(float)g_zeroColor.m_color[3] <<endl;
 
                 g_mutexVoxel.lock();
                 g_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
@@ -465,6 +504,14 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         //            int iy = contact->m_voxelIndexY;
         //            int iz = contact->m_voxelIndexZ;
     }
+
+    // remove warning panel
+    else
+    {
+        warningPopup->setShowPanel(false);
+        warningText->setShowEnabled(false);
+    }
+
 
     for(auto tool : toolList)
     {
@@ -1031,16 +1078,22 @@ void changeDrillSize(){
         case 0:
             tool0->setRadius(0.02);
             cout << "Drill Size changed to 2 mm" << endl;
+            currDrillSize = 2;
+            drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
             break;
 
         case 1:
             tool0->setRadius(0.04);
             cout << "Drill Size changed to 4 mm" << endl;
+            currDrillSize = 4;
+            drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
             break;
 
         case 2:
             tool0->setRadius(0.06);
             cout << "Drill Size changed to 6 mm" << endl;
+            currDrillSize = 6;
+            drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
             break;
 
         default:
