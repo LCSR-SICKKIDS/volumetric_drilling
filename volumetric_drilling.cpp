@@ -250,6 +250,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     if (!loaded){
         cerr << "ERROR! Failed to Load Drill Mesh " << drill_path << endl;
     }
+    drillObj->m_name = "MASTOIDECTOMY_DRILL";
     a_afWorld->addSceneObjectToWorld(drillObj);
 
     // Initial drill position and rotation
@@ -283,6 +284,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     tool5 = sphereToolInit(tool5, 0.021, a_afWorld, 5);
     tool6 = sphereToolInit(tool6, 0.023, a_afWorld, 6);
     tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
+
+    tool0->m_name = "MASTOIDECTOMY_DRILL";
 
 
     // if the haptic device has a gripper, enable it as a user switch
@@ -391,36 +394,36 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     cFontPtr font = NEW_CFONTCALIBRI20();
 
     // A warning pop-up that shows up while drilling at critical region
-    warningPopup = new cPanel();
-    warningPopup->set(camera->m_width/2, camera->m_height/5);
-    warningPopup->setColor(cColorf(0.6,0,0));
-    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
-    camera->getFrontLayer()->addChild(warningPopup);
-    warningPopup->setShowPanel(false);
+//    warningPopup = new cPanel();
+//    warningPopup->set(camera->m_width/2, camera->m_height/5);
+//    warningPopup->setColor(cColorf(0.6,0,0));
+//    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
+//    camera->getFrontLayer()->addChild(warningPopup);
+//    warningPopup->setShowPanel(false);
 
-    warningText = new cLabel(font);
-    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
-    warningText->m_fontColor.setWhite();
-    warningText->setFontScale(1.5);
-    warningText->setText("WARNING! Critical Region Detected");
-    camera->getFrontLayer()->addChild(warningText);
-    warningText->setShowEnabled(false);
+//    warningText = new cLabel(font);
+//    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
+//    warningText->m_fontColor.setWhite();
+//    warningText->setFontScale(1.5);
+//    warningText->setText("WARNING! Critical Region Detected");
+//    camera->getFrontLayer()->addChild(warningText);
+//    warningText->setShowEnabled(false);
 
-    // A panel to display current drill size
-    drillSizePanel = new cPanel();
-    drillSizePanel->setSize(170, 50);
-    drillSizePanel->setCornerRadius(10, 10, 10, 10);
-    drillSizePanel->setLocalPos(40,60);
-    drillSizePanel->setColor(cColorf(1, 1, 1));
-    drillSizePanel->setTransparencyLevel(0.8);
-    camera->getFrontLayer()->addChild(drillSizePanel);
+//    // A panel to display current drill size
+//    drillSizePanel = new cPanel();
+//    drillSizePanel->setSize(170, 50);
+//    drillSizePanel->setCornerRadius(10, 10, 10, 10);
+//    drillSizePanel->setLocalPos(40,60);
+//    drillSizePanel->setColor(cColorf(1, 1, 1));
+//    drillSizePanel->setTransparencyLevel(0.8);
+//    camera->getFrontLayer()->addChild(drillSizePanel);
 
-    drillSizeText = new cLabel(font);
-    drillSizeText->setLocalPos(50,70);
-    drillSizeText->m_fontColor.setBlack();
-    drillSizeText->setFontScale(1.5);
-    drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
-    camera->getFrontLayer()->addChild(drillSizeText);
+//    drillSizeText = new cLabel(font);
+//    drillSizeText->setLocalPos(50,70);
+//    drillSizeText->m_fontColor.setBlack();
+//    drillSizeText->setFontScale(1.5);
+//    drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
+//    camera->getFrontLayer()->addChild(drillSizeText);
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
@@ -508,8 +511,8 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // remove warning panel
     else
     {
-        warningPopup->setShowPanel(false);
-        warningText->setShowEnabled(false);
+//        warningPopup->setShowPanel(false);
+//        warningText->setShowEnabled(false);
     }
 
 
