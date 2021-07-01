@@ -286,6 +286,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
 
     tool0->m_name = "MASTOIDECTOMY_DRILL";
+    tool0->setShowEnabled(false);
 
 
     // if the haptic device has a gripper, enable it as a user switch
