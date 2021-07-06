@@ -872,7 +872,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
     }
 
     // controls rotational motion of tool
-    else if(a_key == GLFW_KEY_G) {
+    else if(a_key == GLFW_KEY_KP_5) {
 
         cVector3d rotDir(0,1,0);
         double angle = 1;
@@ -880,7 +880,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         toolRotMotion(rotDir, angle);
     }
 
-    else if(a_key == GLFW_KEY_T) {
+    else if(a_key == GLFW_KEY_KP_8) {
 
         cVector3d rotDir(0,1,0);
         double angle = -1;
@@ -888,7 +888,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         toolRotMotion(rotDir, angle);
     }
 
-    else if(a_key == GLFW_KEY_F) {
+    else if(a_key == GLFW_KEY_KP_4) {
 
         cVector3d rotDir(0,0,1);
         double angle = -1;
@@ -896,7 +896,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         toolRotMotion(rotDir, angle);
     }
 
-    else if(a_key == GLFW_KEY_H) {
+    else if(a_key == GLFW_KEY_KP_6) {
 
         cVector3d rotDir(0,0,1);
         double angle = 1;
