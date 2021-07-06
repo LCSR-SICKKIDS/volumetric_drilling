@@ -309,7 +309,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_volObject->setLocalPos(0.0, 0.0, 0.0);
 
     // rotate object
-    g_volObject->rotateExtrinsicEulerAnglesDeg(90, 30, -90, C_EULER_ORDER_YXZ);
+    // g_volObject->rotateExtrinsicEulerAnglesDeg(90, 30, -90, C_EULER_ORDER_YXZ);
+    g_volObject->rotateExtrinsicEulerAnglesDeg(111.8, 30, -100, C_EULER_ORDER_YXZ);
 
     // set the dimensions by assigning the position of the min and max corners
     g_volObject->m_minCorner.set(-0.5,-0.5,-0.5);
@@ -334,6 +335,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_volObject->setQuality(0.5);
 
     g_volObject->setTransparencyLevel(1.0);
+
 
     // create multi image
     cMultiImagePtr image = cMultiImage::create();
@@ -870,7 +872,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
     }
 
     // controls rotational motion of tool
-    else if(a_key == GLFW_KEY_KP_5) {
+    else if(a_key == GLFW_KEY_G) {
 
         cVector3d rotDir(0,1,0);
         double angle = 1;
@@ -878,7 +880,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         toolRotMotion(rotDir, angle);
     }
 
-    else if(a_key == GLFW_KEY_KP_8) {
+    else if(a_key == GLFW_KEY_T) {
 
         cVector3d rotDir(0,1,0);
         double angle = -1;
@@ -886,7 +888,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         toolRotMotion(rotDir, angle);
     }
 
-    else if(a_key == GLFW_KEY_KP_4) {
+    else if(a_key == GLFW_KEY_F) {
 
         cVector3d rotDir(0,0,1);
         double angle = -1;
@@ -894,7 +896,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         toolRotMotion(rotDir, angle);
     }
 
-    else if(a_key == GLFW_KEY_KP_6) {
+    else if(a_key == GLFW_KEY_H) {
 
         cVector3d rotDir(0,0,1);
         double angle = 1;
