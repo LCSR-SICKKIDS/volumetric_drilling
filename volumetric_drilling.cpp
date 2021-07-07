@@ -93,7 +93,7 @@ cMultiMesh* drillObj;
 cMatrix3d toolRotMat;
 
 // rate of drill movement
-double drillRate = 0.0019f;
+double drillRate = 0.020f;
 
 // tool coordinates
 double drillX, drillY, drillZ;
@@ -483,11 +483,11 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
                 g_volObject->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), storedColor);
 
                 //if the tool comes in contact with the critical region, instantiate the warning message
-                if(storedColor != boneColor && storedColor != g_zeroColor)
-                {
-                    warningPopup->setShowPanel(true);
-                    warningText->setShowEnabled(true);
-                }
+//                if(storedColor != boneColor && storedColor != g_zeroColor)
+//                {
+//                    warningPopup->setShowPanel(true);
+//                    warningText->setShowEnabled(true);
+//                }
 
                 g_volObject->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
 //                cout << (float)g_zeroColor.m_color[0] << " " << (float)g_zeroColor.m_color[1] << " "<<(float)g_zeroColor.m_color[2] << " " <<(float)g_zeroColor.m_color[3] <<endl;
@@ -647,130 +647,177 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 }
 
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
-    // option - reduce size along X axis
-    if (a_key == GLFW_KEY_4) {
-        double value = cClamp((g_volObject->m_maxCorner.x() - 0.005), 0.01, 0.5);
-        g_volObject->m_maxCorner.x(value);
-        g_volObject->m_minCorner.x(-value);
-        g_volObject->m_maxTextureCoord.x(0.5 + value);
-        g_volObject->m_minTextureCoord.x(0.5 - value);
-        cout << "> Reduce size along X axis.                            \r";
+    if (a_mods == GLFW_MOD_CONTROL){
+
+
+        // controls linear motion of tool
+        if (a_key == GLFW_KEY_W) {
+
+            cVector3d dir = camera->getUpVector();
+            toolPosCoordinatesUpdate(dir);
+
+        }
+
+        else if (a_key == GLFW_KEY_D) {
+
+            cVector3d dir = camera->getRightVector();
+            toolPosCoordinatesUpdate(dir);
+
+        }
+
+        else if (a_key == GLFW_KEY_S) {
+
+            cVector3d dir = camera->getUpVector();
+            toolPosCoordinatesUpdate(-dir);
+
+        }
+
+        else if (a_key == GLFW_KEY_A) {
+
+            cVector3d dir = camera->getRightVector();
+            toolPosCoordinatesUpdate(-dir);
+
+        }
+
+        else if (a_key == GLFW_KEY_K) {
+
+            cVector3d dir = camera->getLookVector();
+            toolPosCoordinatesUpdate(-dir);
+
+        }
+
+        else if (a_key == GLFW_KEY_I) {
+
+            cVector3d dir = camera->getLookVector();
+            toolPosCoordinatesUpdate(dir);
+        }
     }
+    else{
+
+        // option - reduce size along X axis
+        if (a_key == GLFW_KEY_4) {
+            double value = cClamp((g_volObject->m_maxCorner.x() - 0.005), 0.01, 0.5);
+            g_volObject->m_maxCorner.x(value);
+            g_volObject->m_minCorner.x(-value);
+            g_volObject->m_maxTextureCoord.x(0.5 + value);
+            g_volObject->m_minTextureCoord.x(0.5 - value);
+            cout << "> Reduce size along X axis.                            \r";
+        }
 
         // option - increase size along X axis
-    else if (a_key == GLFW_KEY_5) {
-        double value = cClamp((g_volObject->m_maxCorner.x() + 0.005), 0.01, 0.5);
-        g_volObject->m_maxCorner.x(value);
-        g_volObject->m_minCorner.x(-value);
-        g_volObject->m_maxTextureCoord.x(0.5 + value);
-        g_volObject->m_minTextureCoord.x(0.5 - value);
-        cout << "> Increase size along X axis.                            \r";
-    }
+        else if (a_key == GLFW_KEY_5) {
+            double value = cClamp((g_volObject->m_maxCorner.x() + 0.005), 0.01, 0.5);
+            g_volObject->m_maxCorner.x(value);
+            g_volObject->m_minCorner.x(-value);
+            g_volObject->m_maxTextureCoord.x(0.5 + value);
+            g_volObject->m_minTextureCoord.x(0.5 - value);
+            cout << "> Increase size along X axis.                            \r";
+        }
 
         // option - reduce size along Y axis
-    else if (a_key == GLFW_KEY_6) {
-        double value = cClamp((g_volObject->m_maxCorner.y() - 0.005), 0.01, 0.5);
-        g_volObject->m_maxCorner.y(value);
-        g_volObject->m_minCorner.y(-value);
-        g_volObject->m_maxTextureCoord.y(0.5 + value);
-        g_volObject->m_minTextureCoord.y(0.5 - value);
-        cout << "> Reduce size along Y axis.                            \r";
-    }
+        else if (a_key == GLFW_KEY_6) {
+            double value = cClamp((g_volObject->m_maxCorner.y() - 0.005), 0.01, 0.5);
+            g_volObject->m_maxCorner.y(value);
+            g_volObject->m_minCorner.y(-value);
+            g_volObject->m_maxTextureCoord.y(0.5 + value);
+            g_volObject->m_minTextureCoord.y(0.5 - value);
+            cout << "> Reduce size along Y axis.                            \r";
+        }
 
         // option - increase size along Y axis
-    else if (a_key == GLFW_KEY_7) {
-        double value = cClamp((g_volObject->m_maxCorner.y() + 0.005), 0.01, 0.5);
-        g_volObject->m_maxCorner.y(value);
-        g_volObject->m_minCorner.y(-value);
-        g_volObject->m_maxTextureCoord.y(0.5 + value);
-        g_volObject->m_minTextureCoord.y(0.5 - value);
-        cout << "> Increase size along Y axis.                            \r";
-    }
+        else if (a_key == GLFW_KEY_7) {
+            double value = cClamp((g_volObject->m_maxCorner.y() + 0.005), 0.01, 0.5);
+            g_volObject->m_maxCorner.y(value);
+            g_volObject->m_minCorner.y(-value);
+            g_volObject->m_maxTextureCoord.y(0.5 + value);
+            g_volObject->m_minTextureCoord.y(0.5 - value);
+            cout << "> Increase size along Y axis.                            \r";
+        }
 
         // option - reduce size along Z axis
-    else if (a_key == GLFW_KEY_8) {
-        double value = cClamp((g_volObject->m_maxCorner.z() - 0.005), 0.01, 0.5);
-        g_volObject->m_maxCorner.z(value);
-        g_volObject->m_minCorner.z(-value);
-        g_volObject->m_maxTextureCoord.z(0.5 + value);
-        g_volObject->m_minTextureCoord.z(0.5 - value);
-        cout << "> Reduce size along Z axis.                            \r";
-    }
+        else if (a_key == GLFW_KEY_8) {
+            double value = cClamp((g_volObject->m_maxCorner.z() - 0.005), 0.01, 0.5);
+            g_volObject->m_maxCorner.z(value);
+            g_volObject->m_minCorner.z(-value);
+            g_volObject->m_maxTextureCoord.z(0.5 + value);
+            g_volObject->m_minTextureCoord.z(0.5 - value);
+            cout << "> Reduce size along Z axis.                            \r";
+        }
 
         // option - increase size along Z axis
-    else if (a_key == GLFW_KEY_9) {
-        double value = cClamp((g_volObject->m_maxCorner.z() + 0.005), 0.01, 0.5);
-        g_volObject->m_maxCorner.z(value);
-        g_volObject->m_minCorner.z(-value);
-        g_volObject->m_maxTextureCoord.z(0.5 + value);
-        g_volObject->m_minTextureCoord.z(0.5 - value);
-        cout << "> Increase size along Z axis.                            \r";
-    }
+        else if (a_key == GLFW_KEY_9) {
+            double value = cClamp((g_volObject->m_maxCorner.z() + 0.005), 0.01, 0.5);
+            g_volObject->m_maxCorner.z(value);
+            g_volObject->m_minCorner.z(-value);
+            g_volObject->m_maxTextureCoord.z(0.5 + value);
+            g_volObject->m_minTextureCoord.z(0.5 - value);
+            cout << "> Increase size along Z axis.                            \r";
+        }
         // option - decrease quality of graphic rendering
-    else if (a_key == GLFW_KEY_L) {
-        double value = g_volObject->getQuality();
-        g_volObject->setQuality(value - 0.01);
-        cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
-    }
+        else if (a_key == GLFW_KEY_L) {
+            double value = g_volObject->getQuality();
+            g_volObject->setQuality(value - 0.01);
+            cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
+        }
 
         // option - increase quality of graphic rendering
-    else if (a_key == GLFW_KEY_U) {
-        double value = g_volObject->getQuality();
-        g_volObject->setQuality(value + 0.01);
-        cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
-    }
+        else if (a_key == GLFW_KEY_U) {
+            double value = g_volObject->getQuality();
+            g_volObject->setQuality(value + 0.01);
+            cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
+        }
 
         // option - polygonize model and save to file
-    else if (a_key == GLFW_KEY_P) {
-        cMultiMesh *surface = new cMultiMesh;
-        g_volObject->polygonize(surface, 0.01, 0.01, 0.01);
-        double SCALE = 0.1;
-        double METERS_TO_MILLIMETERS = 1000.0;
-        surface->scale(SCALE * METERS_TO_MILLIMETERS);
-        surface->setUseVertexColors(true);
-        surface->saveToFile("volume.obj");
-        cout << "> Volume has been polygonized and saved to disk                            \r";
-        delete surface;
-    }
-        // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_UP) {
-        double value = g_volObject->getOpacityThreshold();
-        g_volObject->setOpacityThreshold(value + 0.01);
-        cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
-             << "                            \n";
-    }
-
-        // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_DOWN) {
-        double value = g_volObject->getOpacityThreshold();
-        g_volObject->setOpacityThreshold(value - 0.01);
-        cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
-             << "                            \n";
-    }
-
-        // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_RIGHT) {
-        double value = g_volObject->getIsosurfaceValue();
-        g_volObject->setIsosurfaceValue(value + 0.01);
-        cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
-             << "                            \n";
-    }
-
-        // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_LEFT) {
-        double value = g_volObject->getIsosurfaceValue();
-        g_volObject->setIsosurfaceValue(value - 0.01);
-        cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
-             << "                            \n";
-    }
-
-        // option - toggle vertical mirroring
-    else if (a_key == GLFW_KEY_ENTER) {
-        g_renderingMode++;
-        if (g_renderingMode > 7) {
-            g_renderingMode = 0;
+        else if (a_key == GLFW_KEY_P) {
+            cMultiMesh *surface = new cMultiMesh;
+            g_volObject->polygonize(surface, 0.01, 0.01, 0.01);
+            double SCALE = 0.1;
+            double METERS_TO_MILLIMETERS = 1000.0;
+            surface->scale(SCALE * METERS_TO_MILLIMETERS);
+            surface->setUseVertexColors(true);
+            surface->saveToFile("volume.obj");
+            cout << "> Volume has been polygonized and saved to disk                            \r";
+            delete surface;
         }
-        switch (g_renderingMode) {
+        // option - toggle vertical mirroring
+        else if (a_key == GLFW_KEY_UP) {
+            double value = g_volObject->getOpacityThreshold();
+            g_volObject->setOpacityThreshold(value + 0.01);
+            cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+                 << "                            \n";
+        }
+
+        // option - toggle vertical mirroring
+        else if (a_key == GLFW_KEY_DOWN) {
+            double value = g_volObject->getOpacityThreshold();
+            g_volObject->setOpacityThreshold(value - 0.01);
+            cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+                 << "                            \n";
+        }
+
+        // option - toggle vertical mirroring
+        else if (a_key == GLFW_KEY_RIGHT) {
+            double value = g_volObject->getIsosurfaceValue();
+            g_volObject->setIsosurfaceValue(value + 0.01);
+            cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
+                 << "                            \n";
+        }
+
+        // option - toggle vertical mirroring
+        else if (a_key == GLFW_KEY_LEFT) {
+            double value = g_volObject->getIsosurfaceValue();
+            g_volObject->setIsosurfaceValue(value - 0.01);
+            cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
+                 << "                            \n";
+        }
+
+        // option - toggle vertical mirroring
+        else if (a_key == GLFW_KEY_ENTER) {
+            g_renderingMode++;
+            if (g_renderingMode > 7) {
+                g_renderingMode = 0;
+            }
+            switch (g_renderingMode) {
             case 0:
                 g_volObject->setRenderingModeBasic();
                 std::cerr << "setRenderingModeBasic" << std::endl;
@@ -805,134 +852,93 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
                 break;
             default:
                 break;
-        }
-    } else if (a_key == GLFW_KEY_PAGE_UP) {
-        g_opticalDensity += 0.1;
-        g_volObject->setOpticalDensity(g_opticalDensity);
-        cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
-    } else if (a_key == GLFW_KEY_PAGE_DOWN) {
-        g_opticalDensity -= 0.1;
-        g_volObject->setOpticalDensity(g_opticalDensity);
-        cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
-    } else if (a_key == GLFW_KEY_HOME) {
-        float val = g_volObject->getOpacityThreshold();
-        g_volObject->setOpacityThreshold(val + 0.1);
-        cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
-             << "                            \n";
-    } else if (a_key == GLFW_KEY_END) {
-        float val = g_volObject->getOpacityThreshold();
-        g_volObject->setOpacityThreshold(val - 0.1);
-        cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
-             << "                            \n";
-    }
-
-     // controls linear motion of tool
-    else if (a_key == GLFW_KEY_W) {
-
-        cVector3d dir = camera->getUpVector();
-        toolPosCoordinatesUpdate(dir);
-
-    }
-
-    else if (a_key == GLFW_KEY_D) {
-
-        cVector3d dir = camera->getRightVector();
-        toolPosCoordinatesUpdate(dir);
-
-    }
-
-    else if (a_key == GLFW_KEY_S) {
-
-        cVector3d dir = camera->getUpVector();
-        toolPosCoordinatesUpdate(-dir);
-
-    }
-
-    else if (a_key == GLFW_KEY_A) {
-
-        cVector3d dir = camera->getRightVector();
-        toolPosCoordinatesUpdate(-dir);
-
-    }
-
-    else if (a_key == GLFW_KEY_K) {
-
-        cVector3d dir = camera->getLookVector();
-        toolPosCoordinatesUpdate(-dir);
-
-    }
-
-    else if (a_key == GLFW_KEY_I) {
-
-        cVector3d dir = camera->getLookVector();
-        toolPosCoordinatesUpdate(dir);
-    }
-
-    // controls rotational motion of tool
-    else if(a_key == GLFW_KEY_KP_5) {
-
-        cVector3d rotDir(0,1,0);
-        double angle = 1;
-
-        toolRotMotion(rotDir, angle);
-    }
-
-    else if(a_key == GLFW_KEY_KP_8) {
-
-        cVector3d rotDir(0,1,0);
-        double angle = -1;
-
-        toolRotMotion(rotDir, angle);
-    }
-
-    else if(a_key == GLFW_KEY_KP_4) {
-
-        cVector3d rotDir(0,0,1);
-        double angle = -1;
-
-        toolRotMotion(rotDir, angle);
-    }
-
-    else if(a_key == GLFW_KEY_KP_6) {
-
-        cVector3d rotDir(0,0,1);
-        double angle = 1;
-
-        toolRotMotion(rotDir, angle);
-    }
-
-    // toggles the functionality of sudden jumping of drill mesh towards the followSphere
-    else if(a_key == GLFW_KEY_X){
-
-        if(suddenJump)
-        {
-            suddenJump = false;
+            }
+        } else if (a_key == GLFW_KEY_PAGE_UP) {
+            g_opticalDensity += 0.1;
+            g_volObject->setOpticalDensity(g_opticalDensity);
+            cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
+        } else if (a_key == GLFW_KEY_PAGE_DOWN) {
+            g_opticalDensity -= 0.1;
+            g_volObject->setOpticalDensity(g_opticalDensity);
+            cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
+        } else if (a_key == GLFW_KEY_HOME) {
+            float val = g_volObject->getOpacityThreshold();
+            g_volObject->setOpacityThreshold(val + 0.1);
+            cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+                 << "                            \n";
+        } else if (a_key == GLFW_KEY_END) {
+            float val = g_volObject->getOpacityThreshold();
+            g_volObject->setOpacityThreshold(val - 0.1);
+            cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+                 << "                            \n";
         }
 
-        else
-        {
-            suddenJump = true;
-        }
-    }
+        // controls rotational motion of tool
+        else if(a_key == GLFW_KEY_KP_5) {
 
-    // toggles the visibility of drill mesh in the scene
-    else if (a_key == GLFW_KEY_B){
+            cVector3d rotDir(0,1,0);
+            double angle = 1;
 
-        if(drillObj->getShowEnabled())
-        {
-            drillObj->setShowEnabled(false);
+            toolRotMotion(rotDir, angle);
         }
 
-        else
-        {
-            drillObj->setShowEnabled(true);
+        else if(a_key == GLFW_KEY_KP_8) {
+
+            cVector3d rotDir(0,1,0);
+            double angle = -1;
+
+            toolRotMotion(rotDir, angle);
         }
-    }
 
-    // toggles size of drill burr
-    else if (a_key == GLFW_KEY_C){
+        else if(a_key == GLFW_KEY_KP_4) {
 
-        changeDrillSize();
+            cVector3d rotDir(0,0,1);
+            double angle = -1;
+
+            toolRotMotion(rotDir, angle);
+        }
+
+        else if(a_key == GLFW_KEY_KP_6) {
+
+            cVector3d rotDir(0,0,1);
+            double angle = 1;
+
+            toolRotMotion(rotDir, angle);
+        }
+
+        // toggles the functionality of sudden jumping of drill mesh towards the followSphere
+        else if(a_key == GLFW_KEY_X){
+
+            if(suddenJump)
+            {
+                suddenJump = false;
+            }
+
+            else
+            {
+                suddenJump = true;
+            }
+        }
+
+        // toggles the visibility of drill mesh in the scene
+        else if (a_key == GLFW_KEY_B){
+
+            if(drillObj->getShowEnabled())
+            {
+                drillObj->setShowEnabled(false);
+            }
+
+            else
+            {
+                drillObj->setShowEnabled(true);
+            }
+        }
+
+        // toggles size of drill burr
+        else if (a_key == GLFW_KEY_C){
+
+            changeDrillSize();
+        }
     }
 
 }
