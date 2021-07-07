@@ -286,6 +286,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
 
     tool0->m_name = "MASTOIDECTOMY_DRILL";
+    tool0->setShowEnabled(false);
 
 
     // if the haptic device has a gripper, enable it as a user switch
@@ -308,7 +309,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_volObject->setLocalPos(0.0, 0.0, 0.0);
 
     // rotate object
-    g_volObject->rotateExtrinsicEulerAnglesDeg(90, 30, -90, C_EULER_ORDER_YXZ);
+    // g_volObject->rotateExtrinsicEulerAnglesDeg(90, 30, -90, C_EULER_ORDER_YXZ);
+    g_volObject->rotateExtrinsicEulerAnglesDeg(111.8, 30, -100, C_EULER_ORDER_YXZ);
 
     // set the dimensions by assigning the position of the min and max corners
     g_volObject->m_minCorner.set(-0.5,-0.5,-0.5);
@@ -333,6 +335,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_volObject->setQuality(0.5);
 
     g_volObject->setTransparencyLevel(1.0);
+
 
     // create multi image
     cMultiImagePtr image = cMultiImage::create();
