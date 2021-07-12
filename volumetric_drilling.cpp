@@ -233,7 +233,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
 
     tool0->m_name = "MASTOIDECTOMY_DRILL";
-    tool0->setShowEnabled(true);
+    tool0->m_hapticPoint->setShow(false, true);
+    tool0->m_hapticPoint->m_sphereGoal->m_material->setRedCrimson();
 
     // if the haptic device has a gripper, enable it as a user switch
     g_hapticDevice->setEnableGripperUserSwitch(true);
@@ -259,7 +260,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     warningText = new cLabel(font);
     warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
     warningText->m_fontColor.setWhite();
-    warningText->setFontScale(1.5);
+    warningText->setFontScale(2.0);
     warningText->setText("WARNING! Critical Region Detected");
     camera->getFrontLayer()->addChild(warningText);
     warningText->setShowEnabled(false);
@@ -338,11 +339,11 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
                 g_volObject->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), storedColor);
 
                 //if the tool comes in contact with the critical region, instantiate the warning message
-//                if(storedColor != boneColor && storedColor != g_zeroColor)
-//                {
-//                    warningPopup->setShowPanel(true);
-//                    warningText->setShowEnabled(true);
-//                }
+                if(storedColor != boneColor && storedColor != g_zeroColor)
+                {
+                    warningPopup->setShowPanel(true);
+                    warningText->setShowEnabled(true);
+                }
 
                 g_volObject->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
 //                cout << (float)g_zeroColor.m_color[0] << " " << (float)g_zeroColor.m_color[1] << " "<<(float)g_zeroColor.m_color[2] << " " <<(float)g_zeroColor.m_color[3] <<endl;
@@ -366,8 +367,8 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // remove warning panel
     else
     {
-//        warningPopup->setShowPanel(false);
-//        warningText->setShowEnabled(false);
+        warningPopup->setShowPanel(false);
+        warningText->setShowEnabled(false);
     }
 
 

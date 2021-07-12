@@ -48,7 +48,7 @@ VOLUME MASTOIDECTOMY_VOLUME:
   scale: 1.0
   dimensions: {x: 1.0, y: 1.0, z: 1.0}
   images:
-    path: ../resources/volumes/ear3/
+    path: ../resources/volumes/ear3_171/
     prefix: plane00
     format: png
     count: 512
