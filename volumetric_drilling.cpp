@@ -84,10 +84,7 @@ cGenericHapticDevicePtr g_hapticDevice;
 
 bool g_flagMarkVolumeForUpdate = false;
 
-afComm* g_commPtr;
-
-// drill mesh
-cMultiMesh* drillObj;
+afRigidBodyPtr g_drillRigidBody;
 
 // tool's rotation matrix
 cMatrix3d toolRotMat;
@@ -178,80 +175,29 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
 
     // Get first camera
     camera = m_worldPtr->getCameras()[0];
-    afImageResolutionAttribs imageAttrbs;
-    imageAttrbs.m_width = 640;
-    imageAttrbs.m_height = 480;
-    afNoiseModelAttribs noiseAttribs;
-    afShaderAttributes depthShaderAttribs;
-    depthShaderAttribs.m_shaderDefined = false;
-//    camera->enableImagePublishing(&imageAttrbs);
-//    camera->enableDepthPublishing(&imageAttrbs, &noiseAttribs, &depthShaderAttribs);
 
-    string images_path;
-    string shaders_path;
-    string drill_path;
-    string prefix;
-    int count;
-
-    namespace p_opt = boost::program_options;
-
-    p_opt::options_description cmd_opts("Volumetric Drilling Plugin Command Line Options");
-    cmd_opts.add_options()
-            ("info", "Show help info")
-            ("images_path", p_opt::value<string>(), "Path to Images. E.g. ~/volumetric_drilling/resources/volumes/ear3")
-            ("shaders_path", p_opt::value<string>(), "Path to Shaders. E.g. ~/volumetric_drilling/resources/shaders")
-            ("drill_path", p_opt::value<string>(), "Path to Drill Mesh. E.g. ~/volumetric_drilling/resources/volumes/drill_mesh/drillMesh.obj")
-            ("prefix", p_opt::value<string>(), "Prefix of image name. E.g. plane00")
-            ("count", p_opt::value<int>()->default_value(500), "Image Count. Number of images to load. E.g. ");
-
-    p_opt::variables_map var_map;
-    p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).allow_unregistered().run(), var_map);
-    p_opt::notify(var_map);
-
-    if(var_map.count("info")){
-        cerr << cmd_opts << endl;
-        return;
-    }
-
-    if (var_map.count("images_path") == 0 || var_map.count("prefix") == 0){
-        cerr << cmd_opts << std::endl;
-        cerr << "INFO! FOR " << getFilename()  << " PLEASE SPECIFY IMAGES PATH AND PREFIX. SEE EXAMPLE USAGE ABOVE." << endl;
-        return;
-    }
-    else{
-        images_path = var_map["images_path"].as<string>();
-        prefix = var_map["prefix"].as<string>();
-    }
-
-    if (var_map.count("shaders_path")){
-        shaders_path = var_map["shaders_path"].as<string>();
-    }
-
-    if (var_map.count("drill_path")){
-        drill_path = var_map["drill_path"].as<string>();
-    }
-
-    count = var_map["count"].as<int>();
-
-    //    g_mutexVoxel = new mutex();
-    double g_opticalDensity = 1.2;
     double maxStiffness = 10.0;
-
-    g_commPtr = new afComm();
-    g_commPtr->afCreateCommInstance(afType::RIGID_BODY, "VolumetricDrill", "/ambf/env/", 50 , 1000, 0.5);
 
     // Initializing tool's rotation matrix as an identity matrix
     toolRotMat.identity();
     toolRotMat = camera->getLocalRot() * toolRotMat;
 
     // importing drill model
-    drillObj = new cMultiMesh();
-    bool loaded = cLoadFileOBJ(drillObj, drill_path);
-    if (!loaded){
-        cerr << "ERROR! Failed to Load Drill Mesh " << drill_path << endl;
+    g_drillRigidBody = m_worldPtr->getRigidBody("MASTOIDECTOMY_DRILL");
+    if (!g_drillRigidBody){
+        cerr << "ERROR! FAILED TO FIND DRILL RIGID BODY NAMED MASTOIDECTOMY_DRILL" << endl;
+        return;
     }
-    drillObj->m_name = "MASTOIDECTOMY_DRILL";
-    a_afWorld->addSceneObjectToWorld(drillObj);
+
+    afVolumePtr volume;
+    volume = m_worldPtr->getVolume("MASTOIDECTOMY_VOLUME");
+    if (!volume){
+        cerr << "ERROR! FAILED TO FIND DRILL VOLUME NAMED MASTOIDECTOMY_DRILL" << endl;
+        return;
+    }
+    else{
+        g_volObject = volume->getInternalVolume();
+    }
 
     // Initial drill position and rotation
     cVector3d dir = camera->getLocalPos() - cVector3d(0, 0, 0);
@@ -262,9 +208,10 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     drillY = dir.y();
     drillZ = dir.z();
 
-    drillObj->setLocalPos(drillX, drillY, drillZ);
-    drillObj->setLocalRot(toolRotMat);
-
+    cTransform trans;
+    trans.setLocalPos(dir);
+    trans.setLocalRot(toolRotMat);
+    g_drillRigidBody->setLocalTransform(trans);
 
     // create a haptic device handler
     g_deviceHandler = new cHapticDeviceHandler();
@@ -286,8 +233,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
 
     tool0->m_name = "MASTOIDECTOMY_DRILL";
-    tool0->setShowEnabled(false);
-
+    tool0->setShowEnabled(true);
 
     // if the haptic device has a gripper, enable it as a user switch
     g_hapticDevice->setEnableGripperUserSwitch(true);
@@ -299,134 +245,40 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     // stiffness properties
     maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
 
-    // create a volumetric model
-    g_volObject = new cVoxelObject();
-
-    // add object to world
-    a_afWorld->addSceneObjectToWorld(g_volObject);
-
-    // position object
-    g_volObject->setLocalPos(0.0, 0.0, 0.0);
-
-    // rotate object
-    // g_volObject->rotateExtrinsicEulerAnglesDeg(90, 30, -90, C_EULER_ORDER_YXZ);
-    g_volObject->rotateExtrinsicEulerAnglesDeg(111.8, 30, -100, C_EULER_ORDER_YXZ);
-
-    // set the dimensions by assigning the position of the min and max corners
-    g_volObject->m_minCorner.set(-0.5,-0.5,-0.5);
-    g_volObject->m_maxCorner.set( 0.5, 0.5, 0.5);
-
-    // set the texture coordinate at each corner.
-    g_volObject->m_minTextureCoord.set(0.0, 0.0, 0.0);
-    g_volObject->m_maxTextureCoord.set(1.0, 1.0, 1.0);
-
-    // set haptic properties
-    g_volObject->m_material->setStiffness(0.2 * maxStiffness);
-    g_volObject->m_material->setStaticFriction(0.0);
-    g_volObject->m_material->setDynamicFriction(0.0);
-
-    // enable materials
-    g_volObject->setUseMaterial(true);
-
-    // set material
-    g_volObject->m_material->setWhite();
-
-    // set quality of graphic rendering
-    g_volObject->setQuality(0.5);
-
-    g_volObject->setTransparencyLevel(1.0);
-
-
-    // create multi image
-    cMultiImagePtr image = cMultiImage::create();
-
-    string images_path_and_prefix = images_path + "/" + prefix;
-
-    cerr << "Loading prefix " << images_path_and_prefix << endl;
-
-    int filesloaded = image->loadFromFiles(images_path_and_prefix, "png", count);
-    if (filesloaded == 0) {
-        cout << "Error - Failed to load volume data " << images_path_and_prefix << ".png." << endl;
-        close();
-        return;
-    }
-
-    // create texture
-    cTexture3dPtr texture = cTexture3d::create();
-
-    // assign volumetric image to texture
-    texture->setImage(image);
-
-    // assign texture to voxel object
-    g_volObject->setTexture(texture);
-
-    // create texture
-    texture = cTexture3d::create();
-
-    // assign volumetric image to texture
-    texture->setImage(image);
-
-    // assign texture to voxel object
-    g_volObject->setTexture(texture);
-
-    // initially select an isosurface corresponding to the bone/heart level
-    g_volObject->setIsosurfaceValue(0.45);
-
-    // set optical density factor
-    g_volObject->setOpticalDensity(g_opticalDensity);
-
-    g_volObject->m_name = "MASTOIDECTOMY_VOLUME";
-
-    // set graphic rendering mode
-    if (shaders_path.empty() == false){
-        cerr << "INFO! USING CUSTOM SHADERS FOR VOLUMETRIC RENDERING" << endl;
-        cerr << "INFO! CUSTOM SHADERS PATH: " <<  shaders_path << endl;
-        string vert_shader = afUtils::loadFileContents(shaders_path + "/shader.vs");
-        string frag_shader = afUtils::loadFileContents(shaders_path + "/shader.fs");
-        //    cerr << "VERTEX SHADER: " << "\n\t" << vert_shader << endl;
-        //    cerr << "FRAGMT SHADER: " << "\n\t"<< frag_shader << endl;
-        g_volObject->setCustomShaders(vert_shader, frag_shader);
-        //    cerr << __LINE__ << endl;
-    }
-    else{
-        cerr << "INFO! CUSTOM SHARED PATH NOT DEFINED. USING DEFAULT ISO SURFACE COLOR SHADERS FOR VOLUMETRIC RENDERING" << endl;
-        g_volObject->setRenderingModeIsosurfaceColors();
-    }
-
     // create a font
     cFontPtr font = NEW_CFONTCALIBRI20();
 
     // A warning pop-up that shows up while drilling at critical region
-//    warningPopup = new cPanel();
-//    warningPopup->set(camera->m_width/2, camera->m_height/5);
-//    warningPopup->setColor(cColorf(0.6,0,0));
-//    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
-//    camera->getFrontLayer()->addChild(warningPopup);
-//    warningPopup->setShowPanel(false);
+    warningPopup = new cPanel();
+    warningPopup->set(camera->m_width/2, camera->m_height/5);
+    warningPopup->setColor(cColorf(0.6,0,0));
+    warningPopup->setLocalPos(camera->m_width*0.3, camera->m_height*0.6, 0);
+    camera->getFrontLayer()->addChild(warningPopup);
+    warningPopup->setShowPanel(false);
 
-//    warningText = new cLabel(font);
-//    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
-//    warningText->m_fontColor.setWhite();
-//    warningText->setFontScale(1.5);
-//    warningText->setText("WARNING! Critical Region Detected");
-//    camera->getFrontLayer()->addChild(warningText);
-//    warningText->setShowEnabled(false);
+    warningText = new cLabel(font);
+    warningText->setLocalPos(0.35 * camera->m_width, 0.67 * camera->m_height, 0.5);
+    warningText->m_fontColor.setWhite();
+    warningText->setFontScale(1.5);
+    warningText->setText("WARNING! Critical Region Detected");
+    camera->getFrontLayer()->addChild(warningText);
+    warningText->setShowEnabled(false);
 
-//    // A panel to display current drill size
-//    drillSizePanel = new cPanel();
-//    drillSizePanel->setSize(170, 50);
-//    drillSizePanel->setCornerRadius(10, 10, 10, 10);
-//    drillSizePanel->setLocalPos(40,60);
-//    drillSizePanel->setColor(cColorf(1, 1, 1));
-//    drillSizePanel->setTransparencyLevel(0.8);
-//    camera->getFrontLayer()->addChild(drillSizePanel);
+    // A panel to display current drill size
+    drillSizePanel = new cPanel();
+    drillSizePanel->setSize(170, 50);
+    drillSizePanel->setCornerRadius(10, 10, 10, 10);
+    drillSizePanel->setLocalPos(40,60);
+    drillSizePanel->setColor(cColorf(1, 1, 1));
+    drillSizePanel->setTransparencyLevel(0.8);
+    camera->getFrontLayer()->addChild(drillSizePanel);
 
-//    drillSizeText = new cLabel(font);
-//    drillSizeText->setLocalPos(50,70);
-//    drillSizeText->m_fontColor.setBlack();
-//    drillSizeText->setFontScale(1.5);
-//    drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
-//    camera->getFrontLayer()->addChild(drillSizeText);
+    drillSizeText = new cLabel(font);
+    drillSizeText->setLocalPos(50,70);
+    drillSizeText->m_fontColor.setBlack();
+    drillSizeText->setFontScale(1.5);
+    drillSizeText->setText("Drill Size: " + cStr(currDrillSize) + " mm");
+    camera->getFrontLayer()->addChild(drillSizeText);
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
@@ -458,7 +310,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     drillPosUpdate();
 
     // update position of drill burr/tip sphere
-    tool0->setLocalPos(drillObj->getLocalPos());
+    tool0->setLocalPos(g_drillRigidBody->getLocalPos());
     tool0->setDeviceLocalPos(0,0,0);
     tool0->updateFromDevice();
 
@@ -629,15 +481,9 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         }
 
 
-        cVector3d localPos = drillObj->getLocalPos();
+        cVector3d localPos = g_drillRigidBody->getLocalPos();
         cQuaternion localRot;
-        localRot.fromRotMat(drillObj->getLocalRot());
-
-        g_commPtr->m_afRigidBodyCommPtr->cur_position(localPos.x(), localPos.y(), localPos.z());
-        g_commPtr->m_afRigidBodyCommPtr->cur_orientation(localRot.x, localRot.y, localRot.z, localRot.w);
-        g_commPtr->m_afRigidBodyCommPtr->cur_force(tool->getDeviceLocalForce().x(), tool->getDeviceLocalForce().y(), tool->getDeviceLocalForce().z());
-        g_commPtr->m_afRigidBodyCommPtr->cur_torque(tool->getDeviceLocalTorque().x(), tool->getDeviceLocalTorque().y(), tool->getDeviceLocalTorque().z());
-
+        localRot.fromRotMat(g_drillRigidBody->getLocalRot());
 
         /////////////////////////////////////////////////////////////////////////
         // FINALIZE
@@ -658,7 +504,6 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
             cVector3d dir = camera->getUpVector();
             toolPosCoordinatesUpdate(dir);
-
         }
 
         else if (a_key == GLFW_KEY_D) {
@@ -693,6 +538,19 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
             cVector3d dir = camera->getLookVector();
             toolPosCoordinatesUpdate(dir);
+        }
+
+        // option - polygonize model and save to file
+        else if (a_key == GLFW_KEY_P) {
+            cMultiMesh *surface = new cMultiMesh;
+            g_volObject->polygonize(surface, 0.01, 0.01, 0.01);
+            double SCALE = 0.1;
+            double METERS_TO_MILLIMETERS = 1000.0;
+            surface->scale(SCALE * METERS_TO_MILLIMETERS);
+            surface->setUseVertexColors(true);
+            surface->saveToFile("volume.obj");
+            cout << "> Volume has been polygonized and saved to disk                            \r";
+            delete surface;
         }
     }
     else{
@@ -770,18 +628,6 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
         }
 
-        // option - polygonize model and save to file
-        else if (a_key == GLFW_KEY_P) {
-            cMultiMesh *surface = new cMultiMesh;
-            g_volObject->polygonize(surface, 0.01, 0.01, 0.01);
-            double SCALE = 0.1;
-            double METERS_TO_MILLIMETERS = 1000.0;
-            surface->scale(SCALE * METERS_TO_MILLIMETERS);
-            surface->setUseVertexColors(true);
-            surface->saveToFile("volume.obj");
-            cout << "> Volume has been polygonized and saved to disk                            \r";
-            delete surface;
-        }
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_UP) {
             double value = g_volObject->getOpacityThreshold();
@@ -926,14 +772,14 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         // toggles the visibility of drill mesh in the scene
         else if (a_key == GLFW_KEY_B){
 
-            if(drillObj->getShowEnabled())
+            if(g_drillRigidBody->m_visualMesh->getShowEnabled())
             {
-                drillObj->setShowEnabled(false);
+                g_drillRigidBody->m_visualMesh->setShowEnabled(false);
             }
 
             else
             {
-                drillObj->setShowEnabled(true);
+                g_drillRigidBody->m_visualMesh->setShowEnabled(true);
             }
         }
 
@@ -1003,7 +849,9 @@ void toolRotMotion(cVector3d rotDir, double angle){
 
     if(cDistance(followSphere->m_hapticPoint->getGlobalPosProxy(), followSphere->m_hapticPoint->getGlobalPosGoal()) <= 0.005)
     {
-        drillObj->rotateAboutLocalAxisDeg(rotDir, angle);
+        cTransform trans = g_drillRigidBody->getLocalTransform();
+        trans.setLocalRot(toolList[0]->getLocalRot());
+        g_drillRigidBody->setLocalTransform(trans);
     }
 
 }
@@ -1041,8 +889,8 @@ void checkShaftCollision(){
             followSphere = tool1;
             followSphereIdx = 0;
 
-            tool0->setLocalRot(drillObj->getLocalRot());
-            tool1->setLocalRot(drillObj->getLocalRot());
+            tool0->setLocalRot(g_drillRigidBody->getLocalRot());
+            tool1->setLocalRot(g_drillRigidBody->getLocalRot());
         }
     }
 
@@ -1054,7 +902,7 @@ void drillPosUpdate(){
     if(cDistance(followSphere->m_hapticPoint->getGlobalPosProxy(), followSphere->m_hapticPoint->getGlobalPosGoal()) <= 0.02)
     {
         // direction of positive x-axis of drill mesh
-        cVector3d xDir = drillObj->getLocalRot().getCol0();
+        cVector3d xDir = g_drillRigidBody->getLocalRot().getCol0();
 
         cVector3d newDrillPos;
 
@@ -1062,17 +910,21 @@ void drillPosUpdate(){
         if(!suddenJump)
         {
             newDrillPos = ((followSphere->m_hapticPoint->getGlobalPosProxy() - xDir * 0.028) -
-                           (xDir * 0.026 * followSphereIdx) - drillObj->getLocalPos());
+                           (xDir * 0.026 * followSphereIdx) - g_drillRigidBody->getLocalPos());
         }
 
         // drill mesh slowly moves towards the followSphere
         else
         {
             newDrillPos = ((followSphere->m_hapticPoint->getGlobalPosProxy() - xDir * 0.028) -
-                           (xDir * 0.026 * followSphereIdx) - drillObj->getLocalPos()) * 0.04;
+                           (xDir * 0.026 * followSphereIdx) - g_drillRigidBody->getLocalPos()) * 0.04;
         }
 
-        drillObj->translate(newDrillPos);
+        cTransform trans = g_drillRigidBody->getLocalTransform();
+        trans.setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
+
+//        g_drillRigidBody->setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
+        g_drillRigidBody->setLocalTransform(trans);
     }
 }
 

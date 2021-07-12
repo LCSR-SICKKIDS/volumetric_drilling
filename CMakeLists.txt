@@ -51,7 +51,9 @@ include_directories(${AMBF_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${GLFW_INCLUDE_DIRS})
 
-message("Boost_LIBRARIES INCLUDE= " ${Boost_LIBRARIES})
+#message("AMBF_INCLUDE_DIRS-> " ${AMBF_INCLUDE_DIRS})
+
+add_definitions(${AMBF_DEFINITIONS})
 
 add_library(volumetric_drilling SHARED volumetric_drilling.cpp volumetric_drilling.h)
 target_link_libraries (volumetric_drilling ${Boost_LIBRARIES} ambf_framework chai3d)
