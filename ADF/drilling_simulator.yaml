@@ -44,7 +44,7 @@ VOLUME MASTOIDECTOMY_VOLUME:
   name: MASTOIDECTOMY_VOLUME
   location:
     position: {x: 0.0, y: 0, z: 0}
-    orientation: {r: 0, p: 0, y: 0}
+    orientation: {r: 1.57079, p: 1.2, y: 0}
   scale: 1.0
   dimensions: {x: 1.0, y: 1.0, z: 1.0}
   images:

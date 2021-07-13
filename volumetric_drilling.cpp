@@ -233,8 +233,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     tool7 = sphereToolInit(tool7, 0.025, a_afWorld, 7);
 
     tool0->m_name = "MASTOIDECTOMY_DRILL";
-    tool0->m_hapticPoint->setShow(false, true);
-    tool0->m_hapticPoint->m_sphereGoal->m_material->setRedCrimson();
+    tool0->m_hapticPoint->setShow(true, false);
+    tool0->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
 
     // if the haptic device has a gripper, enable it as a user switch
     g_hapticDevice->setEnableGripperUserSwitch(true);
