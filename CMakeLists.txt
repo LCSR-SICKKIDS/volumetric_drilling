@@ -41,15 +41,19 @@ cmake_minimum_required (VERSION 3.1)
 project (volumetric_plugin)
 
 find_package(AMBF)
+find_package(GLFW)
 
-find_package(Boost COMPONENTS program_options)
+find_package(Boost COMPONENTS program_options filesystem)
 
 add_definitions(-DC_ENABLE_AMBF_COMM_SUPPORT)
 
 include_directories(${AMBF_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${GLFW_INCLUDE_DIRS})
 
-message("Boost_LIBRARIES INCLUDE= " ${Boost_LIBRARIES})
+#message("AMBF_INCLUDE_DIRS-> " ${AMBF_INCLUDE_DIRS})
+
+add_definitions(${AMBF_DEFINITIONS})
 
 add_library(volumetric_drilling SHARED volumetric_drilling.cpp volumetric_drilling.h)
 target_link_libraries (volumetric_drilling ${Boost_LIBRARIES} ambf_framework chai3d)

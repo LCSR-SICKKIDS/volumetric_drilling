@@ -37,6 +37,9 @@ If you want to run in a different terminal, make sure to set the plugin path aga
 
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator -l 100 --plugins libvolumetric_drilling.so --images_path <volumetric_plugin_path>/resources/volumes/ear3/ --prefix plane00 --count 500 --shaders_path <volumetric_plugin_path>/resources/shaders/
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0
 ```
+That plugin description is set in the `launch.yaml` file above.
 
+# Changing Scene Parameters
+All the relevant ADF scene objects are in the ADF folder, you can change anything using the ADF files in there.
