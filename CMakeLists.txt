@@ -43,7 +43,7 @@ project (volumetric_plugin)
 find_package(AMBF)
 find_package(GLFW)
 
-find_package(Boost COMPONENTS program_options)
+find_package(Boost COMPONENTS program_options filesystem)
 
 add_definitions(-DC_ENABLE_AMBF_COMM_SUPPORT)
 
