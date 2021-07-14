@@ -231,7 +231,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
 
     // create a font
-    cFontPtr font = NEW_CFONTCALIBRI20();
+    cFontPtr font = NEW_CFONTCALIBRI40();
 
     // A warning pop-up that shows up while drilling at critical region
     g_warningPopup = new cPanel();
@@ -244,7 +244,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_warningText = new cLabel(font);
     g_warningText->setLocalPos(0.31 * camera->m_width, 0.67 * camera->m_height, 0.5);
     g_warningText->m_fontColor.setWhite();
-    g_warningText->setFontScale(2.0);
+    g_warningText->setFontScale(1.0);
     g_warningText->setText("WARNING! Critical Region Detected");
     camera->getFrontLayer()->addChild(g_warningText);
     g_warningText->setShowEnabled(false);
@@ -261,7 +261,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_drillSizeText = new cLabel(font);
     g_drillSizeText->setLocalPos(50,70);
     g_drillSizeText->m_fontColor.setBlack();
-    g_drillSizeText->setFontScale(1.5);
+    g_drillSizeText->setFontScale(.75);
     g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
     camera->getFrontLayer()->addChild(g_drillSizeText);
 }
