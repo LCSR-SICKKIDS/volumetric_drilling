@@ -51,14 +51,6 @@ using namespace std;
 
 cVoxelObject* g_volObject;
 
-cToolCursor* g_tool0;
-cToolCursor* g_tool1;
-cToolCursor* g_tool2;
-cToolCursor* g_tool3;
-cToolCursor* g_tool4;
-cToolCursor* g_tool5;
-cToolCursor* g_tool6;
-cToolCursor* g_tool7;
 cToolCursor* g_targetToolCursor;
 
 int g_renderingMode = 0;
@@ -104,7 +96,7 @@ double g_drillZ = 0.5;
 afCameraPtr camera;
 
 // list of tool cursors
-vector<cToolCursor*> g_toolCursorList{g_tool0, g_tool1, g_tool2, g_tool3, g_tool4, g_tool5, g_tool6, g_tool7};
+vector<cToolCursor*> g_toolCursorList(8);
 
 // radius of tool cursors
 vector<double> g_toolCursorRadius{0.02, 0.013, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025};
@@ -314,45 +306,28 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     {
 
         // retrieve contact event
-        //        std::cerr << "Num of collision events " << tool->m_hapticPoint->getNumCollisionEvents() << std::endl;
-        for (int e = 0 ; e < g_toolCursorList[0]->m_hapticPoint->getNumCollisionEvents() ; e++){
-            cCollisionEvent* contact = g_toolCursorList[0]->m_hapticPoint->getCollisionEvent(e);
+        cCollisionEvent* contact = g_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
 
-            cMatrix3d R_t_w;
-            //            tool->getHapticDevice()->getRotation(R_t_w);
-            cVector3d Px(1, 0, 0);
-            cVector3d dir = R_t_w * Px;
+        cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
+        cVector3d ray = orig;
 
-            cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
-            for (int rI = 0 ; rI < 1 ; rI++){
-                cVector3d ray = orig + rI * dir;
+        g_volObject->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_storedColor);
 
-                g_volObject->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_storedColor);
-
-                //if the tool comes in contact with the critical region, instantiate the warning message
-                if(g_storedColor != g_boneColor && g_storedColor != g_zeroColor)
-                {
-                    g_warningPopup->setShowPanel(true);
-                    g_warningText->setShowEnabled(true);
-                }
-
-                g_volObject->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
-//                cout << (float)g_zeroColor.m_color[0] << " " << (float)g_zeroColor.m_color[1] << " "<<(float)g_zeroColor.m_color[2] << " " <<(float)g_zeroColor.m_color[3] <<endl;
-
-                g_mutexVoxel.lock();
-                g_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
-                g_mutexVoxel.unlock();
-            }
-            //                object->m_texture->m_image->setVoxelColor(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ, color);
-            // mark voxel for update
-
+        //if the tool comes in contact with the critical region, instantiate the warning message
+        if(g_storedColor != g_boneColor && g_storedColor != g_zeroColor)
+        {
+            g_warningPopup->setShowPanel(true);
+            g_warningText->setShowEnabled(true);
         }
 
-        g_flagMarkVolumeForUpdate = true;
+        g_volObject->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
 
-        //            int ix = contact->m_voxelIndexX;
-        //            int iy = contact->m_voxelIndexY;
-        //            int iz = contact->m_voxelIndexZ;
+        g_mutexVoxel.lock();
+        g_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
+        g_mutexVoxel.unlock();
+        // mark voxel for update
+
+        g_flagMarkVolumeForUpdate = true;
     }
 
     // remove warning panel
