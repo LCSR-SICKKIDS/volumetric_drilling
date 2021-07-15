@@ -1,14 +1,14 @@
 # AMBF Version: (0.1)
-bodies: [BODY MASTOIDECTOMY_DRILL]
+bodies: [BODY mastoidectomy_drill, BODY camera_frame]
 joints: []
-volumes: [VOLUME MASTOIDECTOMY_VOLUME]
+volumes: [VOLUME mastoidectomy_volume]
 high resolution path: ./meshes/high_res/
 low resolution path: ./meshes/low_res/
 ignore inter-collision: true
 namespace: /ambf/env/
 
-BODY MASTOIDECTOMY_DRILL:
-  name: MASTOIDECTOMY_DRILL
+BODY mastoidectomy_drill:
+  name: mastoidectomy_drill
   mesh: drillMesh.obj
   mass: 0.0
   inertia:
@@ -40,10 +40,10 @@ BODY MASTOIDECTOMY_DRILL:
   publish joint names: false
   publish joint positions: false
 
-VOLUME MASTOIDECTOMY_VOLUME:
-  name: MASTOIDECTOMY_VOLUME
+VOLUME mastoidectomy_volume:
+  name: mastoidectomy_volume
   location:
-    position: {x: -1.0, y: 0, z: 0}
+    position: {x: -0.5, y: 0, z: 0}
     orientation: {r: 1.57079, p: 1.2, y: 0}
   scale: 1.0
   dimensions: {x: 1.0, y: 1.0, z: 1.0}
@@ -57,3 +57,29 @@ VOLUME MASTOIDECTOMY_VOLUME:
     path: ./shaders/volume/
     vertex: shader.vs
     fragment: shader.fs
+
+BODY camera_frame:
+  name: camera_frame
+  mesh: ''
+  collision mesh type: ''
+  mass: 0.0
+  inertia:
+    ix: 0.0
+    iy: 0.0
+    iz: 0.0
+  collision margin: 0.001
+  scale: 1.0
+  location:
+    position:
+      x: 2.0
+      y: 0.0
+      z: 1.0
+    orientation:
+      r: 0.0
+      p: -0.45
+      y: 0.0
+  passive: false
+  color: random
+  publish children names: false
+  publish joint names: false
+  publish joint positions: false

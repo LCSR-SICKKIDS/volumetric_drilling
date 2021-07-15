@@ -185,7 +185,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     g_toolRotMat = g_mainCamera->getLocalRot() * g_toolRotMat;
 
     // importing drill model
-    g_drillRigidBody = m_worldPtr->getRigidBody("MASTOIDECTOMY_DRILL");
+    g_drillRigidBody = m_worldPtr->getRigidBody("mastoidectomy_drill");
     if (!g_drillRigidBody){
         cerr << "ERROR! FAILED TO FIND DRILL RIGID BODY NAMED MASTOIDECTOMY_DRILL" << endl;
         return;
@@ -200,7 +200,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     }
 
     afVolumePtr volume;
-    volume = m_worldPtr->getVolume("MASTOIDECTOMY_VOLUME");
+    volume = m_worldPtr->getVolume("mastoidectomy_volume");
     if (!volume){
         cerr << "ERROR! FAILED TO FIND DRILL VOLUME NAMED MASTOIDECTOMY_DRILL" << endl;
         return;
@@ -290,7 +290,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 //        g_toolCursorList[i]->setLocalRot(g_mainCamera->getLocalRot());
 //    }
 
-    // updates position of shaft tool cursors
+    //Updates position of shaft tool cursors
 //    cTransform T_d = g_toolCursorList[0]->getDeviceLocalTransform();
 //    T_d.setLocalRot(g_mainCamera->getLocalRot() * T_d.getLocalRot());
 //    shaftToolCursorsPosUpdate(T_d);
@@ -495,7 +495,7 @@ void toolCursorInit(const afWorldPtr a_afWorld){
             g_toolCursorList[i]->start();
             g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
 
-            g_toolCursorList[i]->m_name = "MASTOIDECTOMY_DRILL";
+            g_toolCursorList[i]->m_name = "mastoidectomy_drill";
             g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
             g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
             g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setBlueAquamarine();
