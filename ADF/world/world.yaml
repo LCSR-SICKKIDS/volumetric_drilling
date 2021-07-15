@@ -42,8 +42,8 @@ light3:
 camera1:
   namespace: cameras/
   name: default_camera
-  location: {x: 4.0, y: 0.0, z: 0.40}
-  look at: {x: -1.0, y: 0.0, z: -0.2}
+  location: {x: 2.0, y: 0.0, z: 1.0}
+  look at: {x:  0.0, y: 0.0, z: 0.0}
   # up: {x: 0.0, y: 0.4, z: 1.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
   clipping plane: {near: 0.01, far: 50.0}
