@@ -295,6 +295,10 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 //    T_d.setLocalRot(g_mainCamera->getLocalRot() * T_d.getLocalRot());
 //    shaftToolCursorsPosUpdate(T_d);
 
+
+    // updates position of drill burr/tip tool cursor
+    g_toolCursorList[0]->updateFromDevice();
+
     shaftToolCursorsPosUpdate(g_toolCursorList[0]->getDeviceLocalTransform());
 
     // check for shaft collision
@@ -303,10 +307,6 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // updates position of drill mesh
     drillPosUpdate();
 
-    // updates position of drill burr/tip tool cursor
-    g_toolCursorList[0]->updateFromDevice();
-    cTransform tran = g_toolCursorList[0]->getDeviceLocalTransform();
-    tran.setLocalPos(g_toolCursorList[0]->m_hapticPoint->getLocalPosProxy());
 
      // read user switch
     int userSwitches = g_toolCursorList[0]->getUserSwitches();
@@ -469,6 +469,219 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 //            tool->applyToDevice();
     }
 
+}
+
+///
+/// \brief This method initializes the tool cursors.
+/// \param a_afWorld    A world that contains all objects of the virtual environment
+/// \return
+///
+void toolCursorInit(const afWorldPtr a_afWorld){
+
+    for(int i=0; i<g_toolCursorList.size(); i++)
+    {
+        g_toolCursorList[i] = new cToolCursor(a_afWorld->getChaiWorld());
+
+        a_afWorld->addSceneObjectToWorld(g_toolCursorList[i]);
+
+        if(i == 0)
+        {
+            g_toolCursorList[i]->setHapticDevice(g_hapticDevice);
+
+            // map the physical workspace of the haptic device to a larger virtual workspace.
+
+            g_toolCursorList[i]->setWorkspaceRadius(1.0);
+            g_toolCursorList[i]->setWaitForSmallForce(true);
+            g_toolCursorList[i]->start();
+            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
+
+            g_toolCursorList[i]->m_name = "MASTOIDECTOMY_DRILL";
+            g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
+            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
+            g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setBlueAquamarine();
+
+            // if the haptic device has a gripper, enable it as a user switch
+            g_hapticDevice->setEnableGripperUserSwitch(true);
+        }
+        else
+        {
+            g_toolCursorList[i]->setShowContactPoints(g_showGoalProxySpheres, g_showGoalProxySpheres);
+            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
+            g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
+        }
+
+        g_toolCursorList[i]->setRadius(g_toolCursorRadius[i]);
+     }
+
+    // Initialize the start pose of the tool cursors
+    cTransform T_d = g_drillRigidBody->getLocalTransform();
+    g_toolCursorList[0]->setDeviceLocalTransform(T_d);
+    shaftToolCursorsPosUpdate(T_d);
+    for (int i = 0 ;  i < g_toolCursorList.size() ; i++){
+        g_toolCursorList[i]->initialize();
+    }
+}
+
+
+///
+/// \brief incrementDevicePos
+/// \param a_vel
+///
+void incrementDevicePos(cVector3d a_vel){
+    cVector3d P = g_toolCursorList[0]->getDeviceLocalPos() + a_vel;
+    g_toolCursorList[0]->setDeviceLocalPos(P);
+}
+
+
+///
+/// \brief incrementDeviceRot
+/// \param a_rot
+///
+void incrementDeviceRot(cVector3d a_rot){
+    cMatrix3d R_cmd;
+    R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
+    cMatrix3d R = g_toolCursorList[0]->getDeviceLocalRot() * R_cmd;
+    g_toolCursorList[0]->setDeviceLocalRot(R);
+}
+
+///
+/// \brief This method updates the position of the shaft tool cursors
+/// which eventually updates the position of the whole tool.
+///
+void shaftToolCursorsPosUpdate(cTransform a_devicePose){
+    cVector3d n_x = a_devicePose.getLocalRot().getCol0() * g_dX;
+    for (int i = 1 ; i < g_toolCursorList.size() ; i++){
+        cVector3d P = a_devicePose.getLocalPos() + n_x * i;
+        g_toolCursorList[i]->setDeviceLocalPos(P);
+        g_toolCursorList[i]->setDeviceLocalRot(a_devicePose.getLocalRot());
+    }
+}
+
+///
+/// \brief This method checks for collision between the tool shaft and the volume.
+/// The error between the proxy and goal position of each of the shaft tool cursors is constantly
+/// computed. The shaft tool cursor having the maximum error is set as g_targetToolCursor. Further, the
+/// position of the drill mesh is set such that it follows the proxy position of the g_targetToolCursor.
+/// If there's no collision, the drill mesh follows the proxy position of the shaft tool cursor which is
+/// closest to the tip tool cursor.
+///
+void checkShaftCollision(){
+
+    g_maxError = 0;
+    g_targetToolCursor = g_toolCursorList[0];
+    g_targetToolCursorIdx = 0;
+    for(int i=0; i<g_toolCursorList.size(); i++)
+    {
+
+        g_currError = cDistance(g_toolCursorList[i]->m_hapticPoint->getGlobalPosProxy(), g_toolCursorList[i]->m_hapticPoint->getGlobalPosGoal());
+
+        if(abs(g_currError) > abs(g_maxError + 0.00001))
+        {
+            g_maxError = g_currError;
+            g_targetToolCursor = g_toolCursorList[i];
+            g_targetToolCursorIdx = i;
+        }
+    }
+}
+
+
+///
+/// \brief This method updates the position of the drill mesh.
+/// After obtaining g_targetToolCursor, the drill mesh adjust it's position and rotation
+/// such that it follows the proxy position of the g_targetToolCursor.
+///
+void drillPosUpdate(){
+
+    if(g_targetToolCursorIdx == 0){
+        cTransform T_tip;
+        T_tip.setLocalPos(g_toolCursorList[0]->m_hapticPoint->m_sphereProxy->getLocalPos());
+        T_tip.setLocalRot(g_toolCursorList[0]->getDeviceLocalRot());
+        g_drillRigidBody->setLocalTransform(T_tip);
+    }
+    else if(cDistance(g_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), g_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
+    {
+        // direction of positive x-axis of drill mesh
+        cVector3d xDir = g_drillRigidBody->getLocalRot().getCol0();
+
+        cVector3d newDrillPos;
+        cMatrix3d newDrillRot;
+
+        // drill mesh will make a sudden jump towards the followSphere
+        if(!g_suddenJump)
+        {
+            newDrillPos = (g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx);
+        }
+
+        // drill mesh slowly moves towards the followSphere
+        else
+        {
+            newDrillPos = g_drillRigidBody->getLocalPos() + ((g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx) - g_drillRigidBody->getLocalPos()) * 0.04;
+        }
+
+        cVector3d L = g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
+
+//        cerr << "Colliding Cursor " << g_targetToolCursorIdx << " Error " << L.str(2) << endl;
+//        if ( L.length() < 0.01){
+//            newDrillRot = g_toolCursorList[0]->getDeviceLocalRot();
+//        }
+//        else{
+//            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
+//        }
+
+        newDrillRot = g_toolCursorList[0]->getDeviceLocalRot();
+
+        cTransform trans;
+        trans.setLocalPos(newDrillPos);
+        trans.setLocalRot(newDrillRot);
+
+//        g_drillRigidBody->setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
+        g_drillRigidBody->setLocalTransform(trans);
+    }
+}
+
+
+///
+/// \brief This method changes the size of the tip tool cursor.
+/// Currently, the size of the tip tool cursor can be set to 2mm, 4mm, and 6mm.
+///
+void changeDrillSize(){
+
+    g_drillSizeIdx++;
+
+    if(g_drillSizeIdx > 2)
+    {
+        g_drillSizeIdx = 0;
+    }
+
+    switch(g_drillSizeIdx)
+    {
+        case 0:
+            g_toolCursorList[0]->setRadius(0.02);
+            g_burrMesh->setRadius(0.02);
+            cout << "Drill Size changed to 2 mm" << endl;
+            g_currDrillSize = 2;
+            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
+            break;
+
+        case 1:
+            g_toolCursorList[0]->setRadius(0.04);
+            g_burrMesh->setRadius(0.04);
+            cout << "Drill Size changed to 4 mm" << endl;
+            g_currDrillSize = 4;
+            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
+            break;
+
+        case 2:
+            g_toolCursorList[0]->setRadius(0.06);
+            g_burrMesh->setRadius(0.06);
+            cout << "Drill Size changed to 6 mm" << endl;
+            g_currDrillSize = 6;
+            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
+            break;
+
+        default:
+            break;
+    }
 }
 
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
@@ -748,6 +961,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         else if (a_key == GLFW_KEY_B){
             g_showDrill = !g_showDrill;
             g_drillRigidBody->m_visualMesh->setShowEnabled(g_showDrill);
+            g_burrMesh->setShowEnabled(g_showDrill);
 
         }
 
@@ -759,212 +973,6 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
 }
 
-
-///
-/// \brief This method initializes the tool cursors.
-/// \param a_afWorld    A world that contains all objects of the virtual environment
-/// \return
-///
-void toolCursorInit(const afWorldPtr a_afWorld){
-
-    for(int i=0; i<g_toolCursorList.size(); i++)
-    {
-        g_toolCursorList[i] = new cToolCursor(a_afWorld->getChaiWorld());
-
-        a_afWorld->addSceneObjectToWorld(g_toolCursorList[i]);
-
-        if(i == 0)
-        {
-            g_toolCursorList[i]->setHapticDevice(g_hapticDevice);
-
-            // map the physical workspace of the haptic device to a larger virtual workspace.
-
-            g_toolCursorList[i]->setWorkspaceRadius(1.0);
-            g_toolCursorList[i]->setWaitForSmallForce(true);
-            g_toolCursorList[i]->start();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
-
-            g_toolCursorList[i]->m_name = "MASTOIDECTOMY_DRILL";
-            g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setBlueAquamarine();
-
-            // if the haptic device has a gripper, enable it as a user switch
-            g_hapticDevice->setEnableGripperUserSwitch(true);
-        }
-        else
-        {
-            g_toolCursorList[i]->setShowContactPoints(g_showGoalProxySpheres, g_showGoalProxySpheres);
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
-        }
-
-        g_toolCursorList[i]->setRadius(g_toolCursorRadius[i]);
-
-     }
-}
-
-
-///
-/// \brief incrementDevicePos
-/// \param a_vel
-///
-void incrementDevicePos(cVector3d a_vel){
-    cVector3d P = g_toolCursorList[0]->getDeviceLocalPos() + a_vel;
-    g_toolCursorList[0]->setDeviceLocalPos(P);
-}
-
-
-///
-/// \brief incrementDeviceRot
-/// \param a_rot
-///
-void incrementDeviceRot(cVector3d a_rot){
-    cMatrix3d R_cmd;
-    R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
-    cMatrix3d R = g_toolCursorList[0]->getDeviceLocalRot() * R_cmd;
-    g_toolCursorList[0]->setDeviceLocalRot(R);
-}
-
-///
-/// \brief This method updates the position of the shaft tool cursors
-/// which eventually updates the position of the whole tool.
-///
-void shaftToolCursorsPosUpdate(cTransform a_devicePose){
-    cVector3d n_x = a_devicePose.getLocalRot().getCol0() * g_dX;
-    for (int i = 1 ; i < g_toolCursorList.size() ; i++){
-        cVector3d P = a_devicePose.getLocalPos() + n_x * i;
-        g_toolCursorList[i]->setDeviceLocalPos(P);
-        g_toolCursorList[i]->setDeviceLocalRot(a_devicePose.getLocalRot());
-    }
-}
-
-///
-/// \brief This method checks for collision between the tool shaft and the volume.
-/// The error between the proxy and goal position of each of the shaft tool cursors is constantly
-/// computed. The shaft tool cursor having the maximum error is set as g_targetToolCursor. Further, the
-/// position of the drill mesh is set such that it follows the proxy position of the g_targetToolCursor.
-/// If there's no collision, the drill mesh follows the proxy position of the shaft tool cursor which is
-/// closest to the tip tool cursor.
-///
-void checkShaftCollision(){
-
-    g_maxError = 0;
-    g_targetToolCursor = g_toolCursorList[0];
-    g_targetToolCursorIdx = 0;
-    for(int i=0; i<g_toolCursorList.size(); i++)
-    {
-
-        g_currError = cDistance(g_toolCursorList[i]->m_hapticPoint->getGlobalPosProxy(), g_toolCursorList[i]->m_hapticPoint->getGlobalPosGoal());
-
-        if(abs(g_currError) > abs(g_maxError + 0.00001))
-        {
-            g_maxError = g_currError;
-            g_targetToolCursor = g_toolCursorList[i];
-            g_targetToolCursorIdx = i;
-        }
-    }
-}
-
-
-///
-/// \brief This method updates the position of the drill mesh.
-/// After obtaining g_targetToolCursor, the drill mesh adjust it's position and rotation
-/// such that it follows the proxy position of the g_targetToolCursor.
-///
-void drillPosUpdate(){
-
-    if(g_targetToolCursorIdx == 0){
-        cTransform T_tip;
-        T_tip.setLocalPos(g_toolCursorList[0]->m_hapticPoint->m_sphereProxy->getLocalPos());
-        T_tip.setLocalRot(g_toolCursorList[0]->getDeviceLocalRot());
-        g_drillRigidBody->setLocalTransform(T_tip);
-    }
-    else if(cDistance(g_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), g_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
-    {
-        // direction of positive x-axis of drill mesh
-        cVector3d xDir = g_drillRigidBody->getLocalRot().getCol0();
-
-        cVector3d newDrillPos;
-        cMatrix3d newDrillRot;
-
-        // drill mesh will make a sudden jump towards the followSphere
-        if(!g_suddenJump)
-        {
-            newDrillPos = (g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx);
-        }
-
-        // drill mesh slowly moves towards the followSphere
-        else
-        {
-            newDrillPos = g_drillRigidBody->getLocalPos() + ((g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx) - g_drillRigidBody->getLocalPos()) * 0.04;
-        }
-
-        cVector3d L = g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
-
-//        cerr << "Colliding Cursor " << g_targetToolCursorIdx << " Error " << L.str(2) << endl;
-//        if ( L.length() < 0.01){
-//            newDrillRot = g_toolCursorList[0]->getDeviceLocalRot();
-//        }
-//        else{
-//            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
-//        }
-
-        newDrillRot = g_toolCursorList[0]->getDeviceLocalRot();
-
-        cTransform trans;
-        trans.setLocalPos(newDrillPos);
-        trans.setLocalRot(newDrillRot);
-
-//        g_drillRigidBody->setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
-        g_drillRigidBody->setLocalTransform(trans);
-    }
-}
-
-
-///
-/// \brief This method changes the size of the tip tool cursor.
-/// Currently, the size of the tip tool cursor can be set to 2mm, 4mm, and 6mm.
-///
-void changeDrillSize(){
-
-    g_drillSizeIdx++;
-
-    if(g_drillSizeIdx > 2)
-    {
-        g_drillSizeIdx = 0;
-    }
-
-    switch(g_drillSizeIdx)
-    {
-        case 0:
-            g_toolCursorList[0]->setRadius(0.02);
-            g_burrMesh->setRadius(0.02);
-            cout << "Drill Size changed to 2 mm" << endl;
-            g_currDrillSize = 2;
-            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
-            break;
-
-        case 1:
-            g_toolCursorList[0]->setRadius(0.04);
-            g_burrMesh->setRadius(0.04);
-            cout << "Drill Size changed to 4 mm" << endl;
-            g_currDrillSize = 4;
-            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
-            break;
-
-        case 2:
-            g_toolCursorList[0]->setRadius(0.06);
-            g_burrMesh->setRadius(0.06);
-            cout << "Drill Size changed to 6 mm" << endl;
-            g_currDrillSize = 6;
-            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
-            break;
-
-        default:
-            break;
-    }
-}
 
 void afVolmetricDrillingPlugin::mouseBtnsUpdate(GLFWwindow *a_window, int a_button, int a_action, int a_modes){
 
