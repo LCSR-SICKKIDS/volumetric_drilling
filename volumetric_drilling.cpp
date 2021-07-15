@@ -81,6 +81,8 @@ bool g_flagMarkVolumeForUpdate = false;
 
 afRigidBodyPtr g_drillRigidBody;
 
+cShapeSphere* g_burrMesh;
+
 // tool's rotation matrix
 cMatrix3d g_toolRotMat;
 
@@ -92,6 +94,10 @@ double g_dX = 0.03;
 
 // camera to render the world
 afCameraPtr g_mainCamera;
+
+bool g_showDrill = true;
+
+bool g_showGoalProxySpheres = false;
 
 // list of tool cursors
 vector<cToolCursor*> g_toolCursorList(8);
@@ -183,6 +189,14 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     if (!g_drillRigidBody){
         cerr << "ERROR! FAILED TO FIND DRILL RIGID BODY NAMED MASTOIDECTOMY_DRILL" << endl;
         return;
+    }
+    else{
+        g_burrMesh = new cShapeSphere(0.02);
+        g_burrMesh->setRadius(0.02);
+        g_burrMesh->m_material->setGrayDark();
+        g_burrMesh->setShowEnabled(true);
+        g_drillRigidBody->addChildSceneObject(g_burrMesh, cTransform());
+        m_worldPtr->addSceneObjectToWorld(g_burrMesh);
     }
 
     afVolumePtr volume;
@@ -502,6 +516,13 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             incrementDevicePos(dir);
         }
 
+        else if (a_key == GLFW_KEY_C) {
+            g_showGoalProxySpheres = !g_showGoalProxySpheres;
+            for (int i = 0 ; i < g_toolCursorList.size() ; i++){
+                g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
+            }
+        }
+
         // option - polygonize model and save to file
         else if (a_key == GLFW_KEY_P) {
             cMultiMesh *surface = new cMultiMesh;
@@ -725,21 +746,13 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
         // toggles the visibility of drill mesh in the scene
         else if (a_key == GLFW_KEY_B){
+            g_showDrill = !g_showDrill;
+            g_drillRigidBody->m_visualMesh->setShowEnabled(g_showDrill);
 
-            if(g_drillRigidBody->m_visualMesh->getShowEnabled())
-            {
-                g_drillRigidBody->m_visualMesh->setShowEnabled(false);
-            }
-
-            else
-            {
-                g_drillRigidBody->m_visualMesh->setShowEnabled(true);
-            }
         }
 
         // toggles size of drill burr/tip tool cursor
         else if (a_key == GLFW_KEY_C){
-
             changeDrillSize();
         }
     }
@@ -769,10 +782,10 @@ void toolCursorInit(const afWorldPtr a_afWorld){
             g_toolCursorList[i]->setWorkspaceRadius(1.0);
             g_toolCursorList[i]->setWaitForSmallForce(true);
             g_toolCursorList[i]->start();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(true);
+            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
 
             g_toolCursorList[i]->m_name = "MASTOIDECTOMY_DRILL";
-            g_toolCursorList[i]->m_hapticPoint->setShow(true, true);
+            g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
             g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
             g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setBlueAquamarine();
 
@@ -781,7 +794,7 @@ void toolCursorInit(const afWorldPtr a_afWorld){
         }
         else
         {
-            g_toolCursorList[i]->setShowContactPoints(true, true);
+            g_toolCursorList[i]->setShowContactPoints(g_showGoalProxySpheres, g_showGoalProxySpheres);
             g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
             g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
         }
@@ -926,6 +939,7 @@ void changeDrillSize(){
     {
         case 0:
             g_toolCursorList[0]->setRadius(0.02);
+            g_burrMesh->setRadius(0.02);
             cout << "Drill Size changed to 2 mm" << endl;
             g_currDrillSize = 2;
             g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
@@ -933,6 +947,7 @@ void changeDrillSize(){
 
         case 1:
             g_toolCursorList[0]->setRadius(0.04);
+            g_burrMesh->setRadius(0.04);
             cout << "Drill Size changed to 4 mm" << endl;
             g_currDrillSize = 4;
             g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
@@ -940,6 +955,7 @@ void changeDrillSize(){
 
         case 2:
             g_toolCursorList[0]->setRadius(0.06);
+            g_burrMesh->setRadius(0.06);
             cout << "Drill Size changed to 6 mm" << endl;
             g_currDrillSize = 6;
             g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
