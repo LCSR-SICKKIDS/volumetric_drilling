@@ -861,7 +861,13 @@ void checkShaftCollision(){
 ///
 void drillPosUpdate(){
 
-    if(cDistance(g_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), g_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
+    if(g_targetToolCursorIdx == 0){
+        cTransform T_tip;
+        T_tip.setLocalPos(g_toolCursorList[0]->m_hapticPoint->m_sphereProxy->getLocalPos());
+        T_tip.setLocalRot(g_toolCursorList[0]->getDeviceLocalRot());
+        g_drillRigidBody->setLocalTransform(T_tip);
+    }
+    else if(cDistance(g_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), g_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
     {
         // direction of positive x-axis of drill mesh
         cVector3d xDir = g_drillRigidBody->getLocalRot().getCol0();
