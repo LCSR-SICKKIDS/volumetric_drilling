@@ -49,7 +49,7 @@
 
 using namespace std;
 
-cVoxelObject* g_volObject;
+cVoxelObject* g_voxelObj;
 
 cToolCursor* g_targetToolCursor;
 
@@ -80,6 +80,8 @@ cGenericHapticDevicePtr g_hapticDevice;
 bool g_flagMarkVolumeForUpdate = false;
 
 afRigidBodyPtr g_drillRigidBody;
+
+afVolumePtr g_volumeObject;
 
 cShapeSphere* g_burrMesh;
 
@@ -199,14 +201,13 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
         m_worldPtr->addSceneObjectToWorld(g_burrMesh);
     }
 
-    afVolumePtr volume;
-    volume = m_worldPtr->getVolume("mastoidectomy_volume");
-    if (!volume){
+    g_volumeObject = m_worldPtr->getVolume("mastoidectomy_volume");
+    if (!g_volumeObject){
         cerr << "ERROR! FAILED TO FIND DRILL VOLUME NAMED MASTOIDECTOMY_DRILL" << endl;
         return;
     }
     else{
-        g_volObject = volume->getInternalVolume();
+        g_voxelObj = g_volumeObject->getInternalVolume();
     }
 
     // create a haptic device handler
@@ -227,6 +228,12 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
 
     // stiffness properties
     maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
+
+    // Set voxels surface contact properties
+    g_voxelObj->m_material->setStiffness(0.2 * maxStiffness);
+    g_voxelObj->m_material->setDamping(0.0);
+    g_voxelObj->m_material->setDynamicFriction(0.0);
+    g_voxelObj->setUseMaterial(true);
 
     // create a font
     cFontPtr font = NEW_CFONTCALIBRI40();
@@ -274,7 +281,7 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
         cVector3d max = g_volumeUpdate.m_max;
         g_volumeUpdate.setEmpty();
         g_mutexVoxel.unlock();
-        ((cTexture3d*)g_volObject->m_texture.get())->markForPartialUpdate(min, max);
+        ((cTexture3d*)g_voxelObj->m_texture.get())->markForPartialUpdate(min, max);
         g_flagMarkVolumeForUpdate = false;
     }
 }
@@ -311,7 +318,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
      // read user switch
     int userSwitches = g_toolCursorList[0]->getUserSwitches();
 
-    if (g_toolCursorList[0]->isInContact(g_volObject) && g_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
+    if (g_toolCursorList[0]->isInContact(g_voxelObj) && g_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
 
         // retrieve contact event
@@ -320,7 +327,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
         cVector3d ray = orig;
 
-        g_volObject->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_storedColor);
+        g_voxelObj->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_storedColor);
 
         //if the tool comes in contact with the critical region, instantiate the warning message
         if(g_storedColor != g_boneColor && g_storedColor != g_zeroColor)
@@ -329,7 +336,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
             g_warningText->setShowEnabled(true);
         }
 
-        g_volObject->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
+        g_voxelObj->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
 
         g_mutexVoxel.lock();
         g_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
@@ -346,128 +353,123 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         g_warningText->setShowEnabled(false);
     }
 
-
-    for(auto tool : g_toolCursorList)
-    {
-        // compute interaction forces
-        tool->computeInteractionForces();
-
-        // check if device remains stuck inside voxel object
-        cVector3d force = tool->getDeviceGlobalForce();
-
-        if (g_flagStart)
-        {
-            if (force.length() != 0.0)
-            {
-
-                tool->initialize();
-                counter = 0;
-            }
-            else
-            {
-                counter++;
-                if (counter > 10)
-                    g_flagStart = false;
-            }
-        }
-        else
-        {
-            if (force.length() > 10.0)
-            {
-                g_flagStart = true;
-            }
-        }
-
-
-        /////////////////////////////////////////////////////////////////////////
-        // MANIPULATION
-        /////////////////////////////////////////////////////////////////////////
-
-        // compute transformation from world to tool (haptic device)
-        cTransform world_T_tool = tool->getDeviceGlobalTransform();
-
-        // get status of user switch
-        bool button = tool->getUserSwitch(0);
-
-        //
-        // STATE 1:
-        // Idle mode - user presses the user switch
-        //
-        if ((state == HAPTIC_IDLE) && (button == true))
-        {
-            // check if at least one contact has occurred
-            if (tool->m_hapticPoint->getNumCollisionEvents() > 0)
-            {
-                // get contact event
-                cCollisionEvent* collisionEvent = tool->m_hapticPoint->getCollisionEvent(0);
-
-                // get object from contact event
-                g_selectedObject = collisionEvent->m_object;
-            }
-            else
-            {
-                g_selectedObject = g_volObject;
-            }
-
-            // get transformation from object
-            cTransform world_T_object = g_selectedObject->getGlobalTransform();
-
-            // compute inverse transformation from contact point to object
-            cTransform tool_T_world = world_T_tool;
-            tool_T_world.invert();
-
-            // store current transformation tool
-            g_tool_T_object = tool_T_world * world_T_object;
-
-            // update state
-            state = HAPTIC_SELECTION;
-        }
-
-
-            //
-            // STATE 2:
-            // Selection mode - operator maintains user switch enabled and moves object
-            //
-        else if ((state == HAPTIC_SELECTION) && (button == true))
-        {
-            // compute new transformation of object in global coordinates
-            cTransform world_T_object = world_T_tool * g_tool_T_object;
-
-            // compute new transformation of object in local coordinates
-            cTransform parent_T_world = g_selectedObject->getParent()->getLocalTransform();
-            parent_T_world.invert();
-            cTransform parent_T_object = parent_T_world * world_T_object;
-
-            // assign new local transformation to object
-            g_selectedObject->setLocalTransform(parent_T_object);
-
-            // set zero forces when manipulating objects
-            tool->setDeviceGlobalForce(0.0, 0.0, 0.0);
-
-            tool->initialize();
-        }
-
-            //
-            // STATE 3:
-            // Finalize Selection mode - operator releases user switch.
-            //
-        else
-        {
-            state = HAPTIC_IDLE;
-        }
-
-
-        cVector3d localPos = g_drillRigidBody->getLocalPos();
-        cQuaternion localRot;
-        localRot.fromRotMat(g_drillRigidBody->getLocalRot());
-
-        /////////////////////////////////////////////////////////////////////////
-        // FINALIZE
-        /////////////////////////////////////////////////////////////////////////
-
-        // send forces to haptic device
-//            tool->applyToDevice();
+    // compute interaction forces
+    for(int i = 0 ; i < g_toolCursorList.size() ; i++){
+        g_toolCursorList[i]->computeInteractionForces();
     }
+
+    // check if device remains stuck inside voxel object
+    cVector3d force = g_targetToolCursor->getDeviceGlobalForce();
+    g_toolCursorList[0]->setDeviceLocalForce(force);
+
+    if (g_flagStart)
+    {
+        if (force.length() != 0.0)
+        {
+
+            g_toolCursorList[0]->initialize();
+            counter = 0;
+        }
+        else
+        {
+            counter++;
+            if (counter > 10)
+                g_flagStart = false;
+        }
+    }
+    else
+    {
+        if (force.length() > 10.0)
+        {
+            g_flagStart = true;
+        }
+    }
+
+
+    /////////////////////////////////////////////////////////////////////////
+    // MANIPULATION
+    /////////////////////////////////////////////////////////////////////////
+
+    // compute transformation from world to tool (haptic device)
+    cTransform world_T_tool = g_toolCursorList[0]->getDeviceGlobalTransform();
+
+    // get status of user switch
+    bool button = g_toolCursorList[0]->getUserSwitch(0);
+    //
+    // STATE 1:
+    // Idle mode - user presses the user switch
+    //
+    if ((state == HAPTIC_IDLE) && (button == true))
+    {
+        // check if at least one contact has occurred
+        if (g_toolCursorList[0]->m_hapticPoint->getNumCollisionEvents() > 0)
+        {
+            // get contact event
+            cCollisionEvent* collisionEvent = g_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
+
+            // get object from contact event
+            g_selectedObject = collisionEvent->m_object;
+        }
+        else
+        {
+            g_selectedObject = g_voxelObj;
+        }
+
+        // get transformation from object
+        cTransform world_T_object = g_selectedObject->getGlobalTransform();
+
+        // compute inverse transformation from contact point to object
+        cTransform tool_T_world = world_T_tool;
+        tool_T_world.invert();
+
+        // store current transformation tool
+        g_tool_T_object = tool_T_world * world_T_object;
+
+        // update state
+        state = HAPTIC_SELECTION;
+    }
+
+
+    //
+    // STATE 2:
+    // Selection mode - operator maintains user switch enabled and moves object
+    //
+    else if ((state == HAPTIC_SELECTION) && (button == true))
+    {
+        // compute new transformation of object in global coordinates
+        cTransform world_T_object = world_T_tool * g_tool_T_object;
+
+        // compute new transformation of object in local coordinates
+        cTransform parent_T_world = g_selectedObject->getParent()->getLocalTransform();
+        parent_T_world.invert();
+        cTransform parent_T_object = parent_T_world * world_T_object;
+
+        // assign new local transformation to object
+        if (g_selectedObject == g_voxelObj){
+            g_volumeObject->setLocalTransform(parent_T_object);
+        }
+
+        // set zero forces when manipulating objects
+        g_toolCursorList[0]->setDeviceGlobalForce(0.0, 0.0, 0.0);
+
+        g_toolCursorList[0]->initialize();
+    }
+
+    //
+    // STATE 3:
+    // Finalize Selection mode - operator releases user switch.
+    //
+    else
+    {
+        state = HAPTIC_IDLE;
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // FINALIZE
+    /////////////////////////////////////////////////////////////////////////
+
+    // send forces to haptic device
+    g_toolCursorList[0]->applyToDevice();
 
 }
 
@@ -739,7 +741,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         // option - polygonize model and save to file
         else if (a_key == GLFW_KEY_P) {
             cMultiMesh *surface = new cMultiMesh;
-            g_volObject->polygonize(surface, 0.01, 0.01, 0.01);
+            g_voxelObj->polygonize(surface, 0.01, 0.01, 0.01);
             double SCALE = 0.1;
             double METERS_TO_MILLIMETERS = 1000.0;
             surface->scale(SCALE * METERS_TO_MILLIMETERS);
@@ -753,106 +755,106 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
         // option - reduce size along X axis
         if (a_key == GLFW_KEY_4) {
-            double value = cClamp((g_volObject->m_maxCorner.x() - 0.005), 0.01, 0.5);
-            g_volObject->m_maxCorner.x(value);
-            g_volObject->m_minCorner.x(-value);
-            g_volObject->m_maxTextureCoord.x(0.5 + value);
-            g_volObject->m_minTextureCoord.x(0.5 - value);
+            double value = cClamp((g_voxelObj->m_maxCorner.x() - 0.005), 0.01, 0.5);
+            g_voxelObj->m_maxCorner.x(value);
+            g_voxelObj->m_minCorner.x(-value);
+            g_voxelObj->m_maxTextureCoord.x(0.5 + value);
+            g_voxelObj->m_minTextureCoord.x(0.5 - value);
             cout << "> Reduce size along X axis.                            \r";
         }
 
         // option - increase size along X axis
         else if (a_key == GLFW_KEY_5) {
-            double value = cClamp((g_volObject->m_maxCorner.x() + 0.005), 0.01, 0.5);
-            g_volObject->m_maxCorner.x(value);
-            g_volObject->m_minCorner.x(-value);
-            g_volObject->m_maxTextureCoord.x(0.5 + value);
-            g_volObject->m_minTextureCoord.x(0.5 - value);
+            double value = cClamp((g_voxelObj->m_maxCorner.x() + 0.005), 0.01, 0.5);
+            g_voxelObj->m_maxCorner.x(value);
+            g_voxelObj->m_minCorner.x(-value);
+            g_voxelObj->m_maxTextureCoord.x(0.5 + value);
+            g_voxelObj->m_minTextureCoord.x(0.5 - value);
             cout << "> Increase size along X axis.                            \r";
         }
 
         // option - reduce size along Y axis
         else if (a_key == GLFW_KEY_6) {
-            double value = cClamp((g_volObject->m_maxCorner.y() - 0.005), 0.01, 0.5);
-            g_volObject->m_maxCorner.y(value);
-            g_volObject->m_minCorner.y(-value);
-            g_volObject->m_maxTextureCoord.y(0.5 + value);
-            g_volObject->m_minTextureCoord.y(0.5 - value);
+            double value = cClamp((g_voxelObj->m_maxCorner.y() - 0.005), 0.01, 0.5);
+            g_voxelObj->m_maxCorner.y(value);
+            g_voxelObj->m_minCorner.y(-value);
+            g_voxelObj->m_maxTextureCoord.y(0.5 + value);
+            g_voxelObj->m_minTextureCoord.y(0.5 - value);
             cout << "> Reduce size along Y axis.                            \r";
         }
 
         // option - increase size along Y axis
         else if (a_key == GLFW_KEY_7) {
-            double value = cClamp((g_volObject->m_maxCorner.y() + 0.005), 0.01, 0.5);
-            g_volObject->m_maxCorner.y(value);
-            g_volObject->m_minCorner.y(-value);
-            g_volObject->m_maxTextureCoord.y(0.5 + value);
-            g_volObject->m_minTextureCoord.y(0.5 - value);
+            double value = cClamp((g_voxelObj->m_maxCorner.y() + 0.005), 0.01, 0.5);
+            g_voxelObj->m_maxCorner.y(value);
+            g_voxelObj->m_minCorner.y(-value);
+            g_voxelObj->m_maxTextureCoord.y(0.5 + value);
+            g_voxelObj->m_minTextureCoord.y(0.5 - value);
             cout << "> Increase size along Y axis.                            \r";
         }
 
         // option - reduce size along Z axis
         else if (a_key == GLFW_KEY_8) {
-            double value = cClamp((g_volObject->m_maxCorner.z() - 0.005), 0.01, 0.5);
-            g_volObject->m_maxCorner.z(value);
-            g_volObject->m_minCorner.z(-value);
-            g_volObject->m_maxTextureCoord.z(0.5 + value);
-            g_volObject->m_minTextureCoord.z(0.5 - value);
+            double value = cClamp((g_voxelObj->m_maxCorner.z() - 0.005), 0.01, 0.5);
+            g_voxelObj->m_maxCorner.z(value);
+            g_voxelObj->m_minCorner.z(-value);
+            g_voxelObj->m_maxTextureCoord.z(0.5 + value);
+            g_voxelObj->m_minTextureCoord.z(0.5 - value);
             cout << "> Reduce size along Z axis.                            \r";
         }
 
         // option - increase size along Z axis
         else if (a_key == GLFW_KEY_9) {
-            double value = cClamp((g_volObject->m_maxCorner.z() + 0.005), 0.01, 0.5);
-            g_volObject->m_maxCorner.z(value);
-            g_volObject->m_minCorner.z(-value);
-            g_volObject->m_maxTextureCoord.z(0.5 + value);
-            g_volObject->m_minTextureCoord.z(0.5 - value);
+            double value = cClamp((g_voxelObj->m_maxCorner.z() + 0.005), 0.01, 0.5);
+            g_voxelObj->m_maxCorner.z(value);
+            g_voxelObj->m_minCorner.z(-value);
+            g_voxelObj->m_maxTextureCoord.z(0.5 + value);
+            g_voxelObj->m_minTextureCoord.z(0.5 - value);
             cout << "> Increase size along Z axis.                            \r";
         }
         // option - decrease quality of graphic rendering
         else if (a_key == GLFW_KEY_L) {
-            double value = g_volObject->getQuality();
-            g_volObject->setQuality(value - 0.01);
-            cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
+            double value = g_voxelObj->getQuality();
+            g_voxelObj->setQuality(value - 0.01);
+            cout << "> Quality set to " << cStr(g_voxelObj->getQuality(), 1) << "                            \r";
         }
 
         // option - increase quality of graphic rendering
         else if (a_key == GLFW_KEY_U) {
-            double value = g_volObject->getQuality();
-            g_volObject->setQuality(value + 0.01);
-            cout << "> Quality set to " << cStr(g_volObject->getQuality(), 1) << "                            \r";
+            double value = g_voxelObj->getQuality();
+            g_voxelObj->setQuality(value + 0.01);
+            cout << "> Quality set to " << cStr(g_voxelObj->getQuality(), 1) << "                            \r";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_UP) {
-            double value = g_volObject->getOpacityThreshold();
-            g_volObject->setOpacityThreshold(value + 0.01);
-            cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+            double value = g_voxelObj->getOpacityThreshold();
+            g_voxelObj->setOpacityThreshold(value + 0.01);
+            cout << "> Opacity Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_DOWN) {
-            double value = g_volObject->getOpacityThreshold();
-            g_volObject->setOpacityThreshold(value - 0.01);
-            cout << "> Opacity Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+            double value = g_voxelObj->getOpacityThreshold();
+            g_voxelObj->setOpacityThreshold(value - 0.01);
+            cout << "> Opacity Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_RIGHT) {
-            double value = g_volObject->getIsosurfaceValue();
-            g_volObject->setIsosurfaceValue(value + 0.01);
-            cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
+            double value = g_voxelObj->getIsosurfaceValue();
+            g_voxelObj->setIsosurfaceValue(value + 0.01);
+            cout << "> Isosurface Threshold set to " << cStr(g_voxelObj->getIsosurfaceValue(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_LEFT) {
-            double value = g_volObject->getIsosurfaceValue();
-            g_volObject->setIsosurfaceValue(value - 0.01);
-            cout << "> Isosurface Threshold set to " << cStr(g_volObject->getIsosurfaceValue(), 1)
+            double value = g_voxelObj->getIsosurfaceValue();
+            g_voxelObj->setIsosurfaceValue(value - 0.01);
+            cout << "> Isosurface Threshold set to " << cStr(g_voxelObj->getIsosurfaceValue(), 1)
                  << "                            \n";
         }
 
@@ -864,35 +866,35 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             }
             switch (g_renderingMode) {
             case 0:
-                g_volObject->setRenderingModeBasic();
+                g_voxelObj->setRenderingModeBasic();
                 std::cerr << "setRenderingModeBasic" << std::endl;
                 break;
             case 1:
-                g_volObject->setRenderingModeVoxelColors();
+                g_voxelObj->setRenderingModeVoxelColors();
                 std::cerr << "setRenderingModeVoxelColors" << std::endl;
                 break;
             case 2:
-                g_volObject->setRenderingModeVoxelColorMap();
+                g_voxelObj->setRenderingModeVoxelColorMap();
                 std::cerr << "setRenderingModeVoxelColorMap" << std::endl;
                 break;
             case 3:
-                g_volObject->setRenderingModeIsosurfaceColors();
+                g_voxelObj->setRenderingModeIsosurfaceColors();
                 std::cerr << "setRenderingModeIsosurfaceColors" << std::endl;
                 break;
             case 4:
-                g_volObject->setRenderingModeIsosurfaceMaterial();
+                g_voxelObj->setRenderingModeIsosurfaceMaterial();
                 std::cerr << "setRenderingModeIsosurfaceMaterial" << std::endl;
                 break;
             case 5:
-                g_volObject->setRenderingModeIsosurfaceColorMap();
+                g_voxelObj->setRenderingModeIsosurfaceColorMap();
                 std::cerr << "setRenderingModeIsosurfaceColorMap" << std::endl;
                 break;
             case 6:
-                g_volObject->setRenderingModeDVRColorMap();
+                g_voxelObj->setRenderingModeDVRColorMap();
                 std::cerr << "setRenderingModeDVRColorMap" << std::endl;
                 break;
             case 7:
-                g_volObject->setRenderingModeCustom();
+                g_voxelObj->setRenderingModeCustom();
                 std::cerr << "setRenderingModeCustom" << std::endl;
                 break;
             default:
@@ -900,21 +902,21 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             }
         } else if (a_key == GLFW_KEY_PAGE_UP) {
             g_opticalDensity += 0.1;
-            g_volObject->setOpticalDensity(g_opticalDensity);
+            g_voxelObj->setOpticalDensity(g_opticalDensity);
             cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
         } else if (a_key == GLFW_KEY_PAGE_DOWN) {
             g_opticalDensity -= 0.1;
-            g_volObject->setOpticalDensity(g_opticalDensity);
+            g_voxelObj->setOpticalDensity(g_opticalDensity);
             cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
         } else if (a_key == GLFW_KEY_HOME) {
-            float val = g_volObject->getOpacityThreshold();
-            g_volObject->setOpacityThreshold(val + 0.1);
-            cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+            float val = g_voxelObj->getOpacityThreshold();
+            g_voxelObj->setOpacityThreshold(val + 0.1);
+            cout << "> Optical Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         } else if (a_key == GLFW_KEY_END) {
-            float val = g_volObject->getOpacityThreshold();
-            g_volObject->setOpacityThreshold(val - 0.1);
-            cout << "> Optical Threshold set to " << cStr(g_volObject->getOpacityThreshold(), 1)
+            float val = g_voxelObj->getOpacityThreshold();
+            g_voxelObj->setOpacityThreshold(val - 0.1);
+            cout << "> Optical Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         }
 
