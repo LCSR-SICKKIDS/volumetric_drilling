@@ -26,14 +26,12 @@ make
 If everything went smoothly, we are good to go.
 
 ## 3. Add this plugin to ambf plugins path
-Only needed once per terminal. In the terminal that you are going to be running ambf_simulator in, type the following command:
+Only needed once per terminal. In the terminal that you run `ambf_simulator` in, type the following command:
 
 ``` bash
 export AMBF_PLUGIN_PATH=<volumetric_plugin_path>/build/
 ```
 If you want to run in a different terminal, make sure to set the plugin path again in that terminal. You can alternatively add the above command to you `.bashrc` file.
-
-That plugin description is set in the `launch.yaml` file so it loads automatically if the launch file loaded into AMBF.
 
 # Launching the plugin with ambf_simulator:
 
