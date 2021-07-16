@@ -290,23 +290,12 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     m_worldPtr->getChaiWorld()->computeGlobalPositions(true);
 
-
-//    g_toolCursorList[0]->setLocalRot(g_mainCamera->getLocalRot());
-
-//    for (int i = 0 ; i < g_toolCursorList.size() ; i++){
-//        g_toolCursorList[i]->setLocalRot(g_mainCamera->getLocalRot());
-//    }
-
-    //Updates position of shaft tool cursors
-//    cTransform T_d = g_toolCursorList[0]->getDeviceLocalTransform();
-//    T_d.setLocalRot(g_mainCamera->getLocalRot() * T_d.getLocalRot());
-//    shaftToolCursorsPosUpdate(T_d);
-
-
     // updates position of drill burr/tip tool cursor
     g_toolCursorList[0]->updateFromDevice();
 
-    shaftToolCursorsPosUpdate(g_toolCursorList[0]->getDeviceLocalTransform());
+    g_toolCursorList[0]->setLocalRot(g_mainCamera->getLocalRot());
+
+    shaftToolCursorsPosUpdate(g_toolCursorList[0]->getDeviceGlobalTransform());
 
     // check for shaft collision
     checkShaftCollision();
@@ -530,8 +519,8 @@ void toolCursorInit(const afWorldPtr a_afWorld){
 /// \param a_vel
 ///
 void incrementDevicePos(cVector3d a_vel){
-    cVector3d P = g_toolCursorList[0]->getDeviceLocalPos() + a_vel;
-    g_toolCursorList[0]->setDeviceLocalPos(P);
+    cVector3d P = g_toolCursorList[0]->getDeviceGlobalPos() + a_vel;
+    g_toolCursorList[0]->setDeviceGlobalPos(P);
 }
 
 
@@ -542,8 +531,8 @@ void incrementDevicePos(cVector3d a_vel){
 void incrementDeviceRot(cVector3d a_rot){
     cMatrix3d R_cmd;
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
-    cMatrix3d R = g_toolCursorList[0]->getDeviceLocalRot() * R_cmd;
-    g_toolCursorList[0]->setDeviceLocalRot(R);
+    cMatrix3d R = g_toolCursorList[0]->getDeviceGlobalRot() * R_cmd;
+    g_toolCursorList[0]->setDeviceGlobalRot(R);
 }
 
 ///
@@ -596,8 +585,8 @@ void drillPosUpdate(){
 
     if(g_targetToolCursorIdx == 0){
         cTransform T_tip;
-        T_tip.setLocalPos(g_toolCursorList[0]->m_hapticPoint->m_sphereProxy->getLocalPos());
-        T_tip.setLocalRot(g_toolCursorList[0]->getDeviceLocalRot());
+        T_tip.setLocalPos(g_toolCursorList[0]->m_hapticPoint->getGlobalPosProxy());
+        T_tip.setLocalRot(g_toolCursorList[0]->getDeviceGlobalRot());
         g_drillRigidBody->setLocalTransform(T_tip);
     }
     else if(cDistance(g_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), g_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
@@ -620,7 +609,7 @@ void drillPosUpdate(){
             newDrillPos = g_drillRigidBody->getLocalPos() + ((g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx) - g_drillRigidBody->getLocalPos()) * 0.04;
         }
 
-        cVector3d L = g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
+//        cVector3d L = g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
 
 //        cerr << "Colliding Cursor " << g_targetToolCursorIdx << " Error " << L.str(2) << endl;
 //        if ( L.length() < 0.01){
@@ -630,7 +619,7 @@ void drillPosUpdate(){
 //            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
 //        }
 
-        newDrillRot = g_toolCursorList[0]->getDeviceLocalRot();
+        newDrillRot = g_toolCursorList[0]->getDeviceGlobalRot();
 
         cTransform trans;
         trans.setLocalPos(newDrillPos);
