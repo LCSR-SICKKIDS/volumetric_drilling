@@ -102,7 +102,7 @@ bool g_showDrill = true;
 bool g_showGoalProxySpheres = false;
 
 // list of tool cursors
-vector<cToolCursor*> g_toolCursorList(8);
+vector<cToolCursor*> g_toolCursorList;
 
 // radius of tool cursors
 vector<double> g_toolCursorRadius{0.02, 0.013, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025};
@@ -174,6 +174,31 @@ void changeDrillSize(void);
 
 
 void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
+
+    namespace p_opt = boost::program_options;
+    p_opt::options_description cmd_opts("drilling_simulator Command Line Options");
+    cmd_opts.add_options()
+            ("info", "Show Info")
+            ("nt", p_opt::value<int>()->default_value(8), "Number Tool Cursors to Load. Default 8")
+            ("ds", p_opt::value<float>()->default_value(0.026), "Offset between shaft tool cursors. Default 0.026");
+
+    p_opt::variables_map var_map;
+    p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).allow_unregistered().run(), var_map);
+    p_opt::notify(var_map);
+
+    if(var_map.count("info")){ std::cout<< cmd_opts << std::endl; return;}
+
+    int nt = var_map["nt"].as<int>();
+    float ds = var_map["ds"].as<float>();
+
+    if (nt > 0 && nt <= 8){
+        g_toolCursorList.resize(nt);
+    }
+    else{
+        cerr << "ERROR! VALID NUMBER OF TOOL CURSORS ARE BETWEEN 1 - 8. Specified value = " << nt << endl;
+    }
+
+    g_dX = ds;
 
     m_worldPtr = a_afWorld;
 
