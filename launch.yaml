@@ -11,6 +11,7 @@ plugins: [
 ]
 multibody configs:
   - "ADF/drill.yaml" #0
-  - "ADF/volume_low_res.yaml" #1
-  - "ADF/volume_high_res.yaml" #2
-  - "ADF/stereo_cameras.yaml" #3
+  - "ADF/volume_171.yaml" #1
+  - "ADF/volume_256.yaml" #2
+  - "ADF/volume_512.yaml" #3
+  - "ADF/stereo_cameras.yaml" #4

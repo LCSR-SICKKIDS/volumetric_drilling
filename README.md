@@ -45,23 +45,25 @@ cd ambf/bin/lin-x86_64/
 ```
 
 ## Option 2:
-A high res volume and a drill:
+A medium res volume and a drill:
 ```bash
 cd ambf/bin/lin-x86_64/
 ./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 2
 ```
 
-## Stereo Camera Option:
-You can add `3` to any of the above commands to load two cameras(Stereo):
+## Option 3:
+A high res volume and a drill:
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 1 3
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 3
 ```
-OR
 
+## Stereo Camera Option:
+You can add `4` to any of the above commands to load two cameras(Stereo):
+E.g.
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 2 3
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 1 4
 ```
 
 # Changing Scene Parameters
