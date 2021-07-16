@@ -173,7 +173,7 @@ void changeDrillSize(void);
 //------------------------------------------------------------------------------
 
 
-void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
+int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
 
     namespace p_opt = boost::program_options;
     p_opt::options_description cmd_opts("drilling_simulator Command Line Options");
@@ -186,7 +186,10 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).allow_unregistered().run(), var_map);
     p_opt::notify(var_map);
 
-    if(var_map.count("info")){ std::cout<< cmd_opts << std::endl; return;}
+    if(var_map.count("info")){
+        std::cout<< cmd_opts << std::endl;
+        return -1;
+    }
 
     int nt = var_map["nt"].as<int>();
     float ds = var_map["ds"].as<float>();
@@ -196,6 +199,7 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     }
     else{
         cerr << "ERROR! VALID NUMBER OF TOOL CURSORS ARE BETWEEN 1 - 8. Specified value = " << nt << endl;
+        return -1;
     }
 
     g_dX = ds;
@@ -214,8 +218,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     // importing drill model
     g_drillRigidBody = m_worldPtr->getRigidBody("mastoidectomy_drill");
     if (!g_drillRigidBody){
-        cerr << "ERROR! FAILED TO FIND DRILL RIGID BODY NAMED MASTOIDECTOMY_DRILL" << endl;
-        return;
+        cerr << "ERROR! FAILED TO FIND DRILL RIGID BODY NAMED " << "mastoidectomy_drill" << endl;
+        return -1;
     }
     else{
         g_burrMesh = new cShapeSphere(0.02);
@@ -230,8 +234,8 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
 
     g_volumeObject = m_worldPtr->getVolume("mastoidectomy_volume");
     if (!g_volumeObject){
-        cerr << "ERROR! FAILED TO FIND DRILL VOLUME NAMED MASTOIDECTOMY_DRILL" << endl;
-        return;
+        cerr << "ERROR! FAILED TO FIND DRILL VOLUME NAMED " << "mastoidectomy_volume" << endl;
+        return -1;
     }
     else{
         g_voxelObj = g_volumeObject->getInternalVolume();
