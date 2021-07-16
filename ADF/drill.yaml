@@ -1,7 +1,7 @@
 # AMBF Version: (0.1)
 bodies: [BODY mastoidectomy_drill]
 joints: []
-volumes: [VOLUME mastoidectomy_volume]
+volumes: []
 high resolution path: ./meshes/high_res/
 low resolution path: ./meshes/low_res/
 ignore inter-collision: true
@@ -39,21 +39,3 @@ BODY mastoidectomy_drill:
   publish children names: false
   publish joint names: false
   publish joint positions: false
-
-VOLUME mastoidectomy_volume:
-  name: mastoidectomy_volume
-  location:
-    position: {x: -0.5, y: 0, z: 0}
-    orientation: {r: 1.57079, p: 1.2, y: 0}
-  scale: 1.0
-  dimensions: {x: 1.0, y: 1.0, z: 1.0}
-  images:
-    path: ../resources/volumes/ear3_171/ # Low Res Path (Uncomment / Comment)
-    # path: ../resources/volumes/ear3_512/ # High Res Path (Uncomment / Comment)
-    prefix: plane00
-    format: png
-    count: 512
-  shaders:
-    path: ./shaders/volume/
-    vertex: shader.vs
-    fragment: shader.fs

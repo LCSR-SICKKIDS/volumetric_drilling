@@ -49,18 +49,17 @@ segmentation_camera:
   clipping plane: {near: 0.01, far: 20.0}
   field view angle: 0.8
   monitor: 0
-  # parent: camera2
   # multipass: True
   # publish image: True
-  # preprocessing shaders:
-  #    path: ../shaders/preprocessing/
-  #    vertex: "shader.vs"
-  #    fragment: "shader.fs"
+  preprocessing shaders:
+     path: ../shaders/preprocessing/
+     vertex: "shader.vs"
+     fragment: "shader.fs"
   # publish image interval: 1 # Publish every nth scene update
-  # publish depth: True
+  publish depth: True
   # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
-  # publish depth interval: 1 # Publish every nth scene update
-  # publish image resolution: {width: 640, height: 480}
+  publish depth interval: 1 # Publish every nth scene update
+  publish image resolution: {width: 640, height: 480}
   # depth compute shaders:
   #    path: ../../../ambf_shaders/depth
   #    vertex: "shader.vs"

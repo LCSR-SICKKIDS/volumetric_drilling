@@ -10,5 +10,7 @@ plugins: [
   }
 ]
 multibody configs:
-  - "ADF/drilling_simulator.yaml" #0
-  - "ADF/stereo_cameras.yaml" #1
+  - "ADF/drill.yaml" #0
+  - "ADF/volume_low_res.yaml" #1
+  - "ADF/volume_high_res.yaml" #2
+  - "ADF/stereo_cameras.yaml" #3
