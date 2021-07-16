@@ -41,21 +41,21 @@ That plugin description is set in the `launch.yaml` file so it loads automatical
 A low res volume and a drill:
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 1
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,1
 ```
 
 ## Option 2:
 A medium res volume and a drill:
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 2
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,2
 ```
 
 ## Option 3:
 A high res volume and a drill:
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 3
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,3
 ```
 
 ## Stereo Camera Option:
@@ -63,7 +63,7 @@ You can add `4` to any of the above commands to load two cameras(Stereo):
 E.g.
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 1 4
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,1,4
 ```
 
 # Changing Scene Parameters
