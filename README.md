@@ -33,13 +33,36 @@ export AMBF_PLUGIN_PATH=<volumetric_plugin_path>/build/
 ```
 If you want to run in a different terminal, make sure to set the plugin path again in that terminal. You can alternatively add the above command to you `.bashrc` file.
 
+That plugin description is set in the `launch.yaml` file so it loads automatically if the launch file loaded into AMBF.
+
 # Launching the plugin with ambf_simulator:
+
+## Option 1:
+A low res volume and a drill:
+```bash
+cd ambf/bin/lin-x86_64/
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 1
+```
+
+## Option 2:
+A high res volume and a drill:
+```bash
+cd ambf/bin/lin-x86_64/
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 2
+```
+
+## Stereo Camera Option:
+You can add `3` to any of the above commands to load two cameras(Stereo):
+```bash
+cd ambf/bin/lin-x86_64/
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 1 3
+```
+OR
 
 ```bash
 cd ambf/bin/lin-x86_64/
-./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0
+./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0 2 3
 ```
-That plugin description is set in the `launch.yaml` file above.
 
 # Changing Scene Parameters
-All the relevant ADF scene objects are in the ADF folder, you can change anything using the ADF files in there.
+All the relevant ADF scene objects are in the ADF folder
