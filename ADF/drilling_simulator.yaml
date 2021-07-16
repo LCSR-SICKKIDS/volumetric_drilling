@@ -1,5 +1,5 @@
 # AMBF Version: (0.1)
-bodies: [BODY mastoidectomy_drill, BODY camera_frame]
+bodies: [BODY mastoidectomy_drill]
 joints: []
 volumes: [VOLUME mastoidectomy_volume]
 high resolution path: ./meshes/high_res/
@@ -57,29 +57,3 @@ VOLUME mastoidectomy_volume:
     path: ./shaders/volume/
     vertex: shader.vs
     fragment: shader.fs
-
-BODY camera_frame:
-  name: camera_frame
-  mesh: ''
-  collision mesh type: ''
-  mass: 0.0
-  inertia:
-    ix: 0.0
-    iy: 0.0
-    iz: 0.0
-  collision margin: 0.001
-  scale: 1.0
-  location:
-    position:
-      x: 2.0
-      y: 0.0
-      z: 1.0
-    orientation:
-      r: 0.0
-      p: -0.45
-      y: 0.0
-  passive: false
-  color: random
-  publish children names: false
-  publish joint names: false
-  publish joint positions: false
