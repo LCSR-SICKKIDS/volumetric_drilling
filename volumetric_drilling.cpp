@@ -220,7 +220,9 @@ void afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_a
     else{
         g_burrMesh = new cShapeSphere(0.02);
         g_burrMesh->setRadius(0.02);
-        g_burrMesh->m_material->setGrayDark();
+        g_burrMesh->m_material->setBlack();
+        g_burrMesh->m_material->setShininess(0);
+        g_burrMesh->m_material->m_specular.set(0, 0, 0);
         g_burrMesh->setShowEnabled(true);
         g_drillRigidBody->addChildSceneObject(g_burrMesh, cTransform());
         m_worldPtr->addSceneObjectToWorld(g_burrMesh);
