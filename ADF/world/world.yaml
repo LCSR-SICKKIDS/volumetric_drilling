@@ -1,6 +1,6 @@
 enclosure size: {length: 10.0, width: 10.0, height: 3.0}
 lights: [light1, light2]
-cameras: [segmentation_camera]
+cameras: [main_camera]
 environment: "./checkered_floor.yaml"
 namespace: /ambf/env/
 max iterations: 50
@@ -39,9 +39,9 @@ light3:
   cutoff angle: 1.4
   # parent: BODY CameraFrame
 
-segmentation_camera:
+main_camera:
   namespace: cameras/
-  name: segmentation_camera
+  name: main_camera
   location: {x: 2.0, y: 0.0, z: 1.0}
   look at: {x: 0.0, y: 0.0, z: 0.0}
   # up: {x: 0.0, y: 0.4, z: 1.0}
@@ -51,15 +51,15 @@ segmentation_camera:
   monitor: 0
   # multipass: True
   # publish image: True
-  preprocessing shaders:
-     path: ../shaders/preprocessing/
-     vertex: "shader.vs"
-     fragment: "shader.fs"
+  # preprocessing shaders:
+  #    path: ../shaders/preprocessing/
+  #    vertex: "shader.vs"
+  #    fragment: "shader.fs"
   # publish image interval: 1 # Publish every nth scene update
-  publish depth: True
+  # publish depth: True
   # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
-  publish depth interval: 1 # Publish every nth scene update
-  publish image resolution: {width: 640, height: 480}
+  # publish depth interval: 1 # Publish every nth scene update
+  # publish image resolution: {width: 640, height: 480}
   # depth compute shaders:
   #    path: ../../../ambf_shaders/depth
   #    vertex: "shader.vs"

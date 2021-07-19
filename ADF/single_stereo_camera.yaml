@@ -1,0 +1,36 @@
+# AMBF Version: (0.1)
+bodies: []
+joints: []
+cameras: [stereoLR]
+high resolution path: ./high_res/
+low resolution path: ./low_res/
+ignore inter-collision: false
+namespace: /ambf/env/
+
+stereoLR:
+  namespace: cameras/
+  name: stereoLR
+  location: {x: 0.0, y: 0.0, z: 0.0}
+  look at: {x: 0.0, y: 0.0, z: 0.0}
+  # up: {x: 0.0, y: 0.4, z: 1.0}
+  up: {x: 0.0, y: 0.0, z: 1.0}
+  clipping plane: {near: 0.01, far: 10.0}
+  field view angle: 0.8
+  monitor: 2
+  stereo: {mode: Passive, eye separation: 0.13, focal length: 0.8}
+  # multipass: True
+  # publish image: True
+  # preprocessing shaders:
+  #   path: ../../../ambf_shaders/preprocessing/
+  #   vertex: "shader.vs"
+  #   fragment: "shader.fs"
+  # publish image interval: 1 # Publish every nth scene update
+  # publish depth: True
+  # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
+  # publish depth interval: 1 # Publish every nth scene update
+  # publish image resolution: {width: 1280, height: 480}
+  # depth compute shaders:
+  #    path: ../../../ambf_shaders/depth
+  #    vertex: "shader.vs"
+  #    fragment: "shader.fs"
+  parent: main_camera

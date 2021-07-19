@@ -14,4 +14,6 @@ multibody configs:
   - "ADF/volume_171.yaml" #1
   - "ADF/volume_256.yaml" #2
   - "ADF/volume_512.yaml" #3
-  - "ADF/stereo_cameras.yaml" #4
+  - "ADF/segmentation_camera.yaml" #4
+  - "ADF/stereo_cameras.yaml" #5
+  - "ADF/single_stereo_camera.yaml" #6

@@ -32,7 +32,7 @@ stereoL:
   #    path: ../../../ambf_shaders/depth
   #    vertex: "shader.vs"
   #    fragment: "shader.fs"
-  parent: segmentation_camera
+  parent: main_camera
 
 stereoR:
   namespace: cameras/
@@ -59,4 +59,4 @@ stereoR:
   #    path: ../../../ambf_shaders/depth
   #    vertex: "shader.vs"
   #    fragment: "shader.fs"
-  parent: segmentation_camera
+  parent: main_camera
