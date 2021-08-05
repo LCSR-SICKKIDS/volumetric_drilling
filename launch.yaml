@@ -6,7 +6,8 @@ input devices config: ADF/input_devices/input_devices.yaml
 plugins: [
   {
     name: DRILLING_SIMULATOR,
-    filename: libvolumetric_drilling.so
+    filename: libvolumetric_drilling.so,
+    path: build/
   }
 ]
 multibody configs:
