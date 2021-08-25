@@ -25,6 +25,7 @@ make
 ```
 If everything went smoothly, we are good to go.
 
+<strike>
 ## 3. Add this plugin to ambf plugins path
 Only needed once per terminal. In the terminal that you run `ambf_simulator` in, type the following command:
 
@@ -32,6 +33,7 @@ Only needed once per terminal. In the terminal that you run `ambf_simulator` in,
 export AMBF_PLUGIN_PATH=<volumetric_plugin_path>/build/
 ```
 If you want to run in a different terminal, make sure to set the plugin path again in that terminal. You can alternatively add the above command to you `.bashrc` file.
+ </strike>
 
 # Launching the plugin with ambf_simulator:
 The `libvolumetric_drilling.so` plugin is described in the `launch.yaml` file. It can be
