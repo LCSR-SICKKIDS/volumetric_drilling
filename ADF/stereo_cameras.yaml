@@ -15,7 +15,7 @@ stereoL:
   # up: {x: 0.0, y: 0.4, z: 1.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
   clipping plane: {near: 0.01, far: 10.0}
-  field view angle: 0.8
+  field view angle: 0.416659
   monitor: 0
   # multipass: True
   publish image: True
@@ -42,7 +42,7 @@ stereoR:
   # up: {x: 0.0, y: 0.4, z: 1.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
   clipping plane: {near: 0.01, far: 10.0}
-  field view angle: 0.8
+  field view angle: 0.416659
   monitor: 0
   # multipass: True
   publish image: True

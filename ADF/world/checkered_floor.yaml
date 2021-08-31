@@ -3,7 +3,7 @@
 # Link: https://github.com/WPI-AIM/ambf_addon
 # Generated on: 2020-03-24 12:12:07
 bodies:
-- BODY Plane
+# - BODY Plane
 joints: []
 high resolution path: ./high_res/
 low resolution path: ./low_res/
