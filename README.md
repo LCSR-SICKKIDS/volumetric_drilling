@@ -1,11 +1,11 @@
 # volumetric_drilling
-This repo provides a realistic simulator for skull-base surgery with VR and haptics integration as well as the ability to generate data for use in downstream algorithm development. Volumetric drilling is a plugin is built on top of Asynchronous Multibody Framework ([AMBF](https://github.com/WPI-AIM/ambf)) developed by Munawar et al. While the application shown in this repo is skull-base surgery, the framework of this plugin can be adapted to other surgical procedures.
+This repo provides a realistic virtual drilling simulator that is able to actively modify anatomy with a virtual drill. The simulator has both VR and haptics integration as well as the ability to generate data for use in downstream algorithm development. Volumetric_drilling is a plugin built on top of Asynchronous Multibody Framework ([AMBF](https://github.com/WPI-AIM/ambf)) developed by Munawar et al. We show the use of the plugin in lateral skull base surgery. 
 
 ![image](https://user-images.githubusercontent.com/61888209/136677737-af8e1a6c-1f76-44d7-bb3c-6a9d99ec08fd.png)
 
-# Installation Instructions:
+## 1. Installation Instructions:
 Lets call the absolute location of this package as **<volumetric_plugin_path>**. E.g. if you cloned this repo in your home folder, **<volumetric_plugin_path>** = `~/volumetric_drilling/` OR `/home/<username>/volumetric_plugin`
-## 1. Install and Source AMBF 2.0
+### 1.1 Install and Source AMBF 2.0
 
 Clone and build `ambf-2.0` branch.
 ```bash
@@ -21,9 +21,9 @@ cv-bridge # Can be installed via apt install ros-<version>-cv-bridge
 image-transport # Can be installed via apt install ros-<version>-image-transport
 ```
 
-Build and source ambf as per the instructions on [AMBFs wiki on installation](https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF).
+Build and source ambf as per the instructions on AMBFs wiki: https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF.
 
-## 2. Clone and build this plugin
+### 1.2 Clone and Build Plugin
 ``` bash
 git clone https://github.com/LCSR-SICKKIDS/volumetric_drilling
 cd <volumetric_plugin_path>
@@ -34,11 +34,18 @@ make
 ```
 If everything went smoothly, we are good to go.
 
-# Running the Plugin with ambf_simulator:
-The volumetric drilling simulator is a plugin that is launched on top of the AMBF simulator along with other AMBF multibodies as will be described below. 
-Note that the `libvolumetric_drilling.so` plugin is described in the `launch.yaml` file and can be commented out for the purpose of debugging the ADF (AMBF Description Format) files. Below are instructions as to how to load different volume and camera options. The -l tag used below allows user to run indexed multibodies that can also be found in the `launch.yaml` under the `multibody configs:` data block. More info on launching the simulator can be found in the [AMBF Wiki](https://github.com/WPI-AIM/ambf/wiki/Launching-the-Simulator).
+## 2 Running the Plugin with ambf_simulator:
+The volumetric drilling simulator is a plugin that is launched on top of the AMBF simulator along with other AMBF bodies, described by AMBF Description Format files (ADFs), as will be demonstrated below. The `libvolumetric_drilling.so` plugin is initialized in the `launch.yaml` file and can be commented out for the purpose of debugging the ADF files.   
 
-## Different Volume Options:
+Below are instructions as to how to load different volume and camera options. The -l tag used below allows user to run indexed multibodies that can also be found in the `launch.yaml` under the `multibody configs:` data block. More info on launching the simulator can be found in the AMBF Wiki:  
+
+https://github.com/WPI-AIM/ambf/wiki/Launching-the-Simulator  
+https://github.com/WPI-AIM/ambf/wiki/Selecting-Robots  
+https://github.com/WPI-AIM/ambf/wiki/Command-Line-Arguments  
+
+Note that the executable binary,`ambf_simulator`, is located in `ambf/bin/lin-x86_64` and you must be in that folder to run the simulator.
+
+### 2.1 Different Volume Options
 We provide three different volumes to choose from:
 
 #### Option 1:
@@ -61,10 +68,10 @@ A high res volume (`3`) and a drill (`0`):
 cd ambf/bin/lin-x86_64/
 ./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,3
 ```
-#### User-provided volume
+#### Option 4: User-provided volume
 Patient specific anatomy may also be used in the simulator. The volumes are an array of images (JPG or PNG) that are rendered via texture-based volume rendering. With segmented images and an ADF for the volume, user specified anatomy can easily be used in the simulator. We provide utility scripts that can convert the data from the NRRD format to an array of images.
 
-## Camera Options:
+### 2.2 Camera Options:
 Different cameras, defined via ADF model files, can be loaded alongside the simulation.
 
 #### Option 1:
@@ -86,8 +93,62 @@ You can also load both the segmentation_camera and the two stereo_cameras togeth
 cd ambf/bin/lin-x86_64/
 ./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,1,4,5
 ```
-## Changing Scene Parameters
+### 2.3 Changing Scene Parameters
 All the relevant ADF scene objects are in the ADF folder and can be modified as needed. For example, camera intrinsics can be adjusted via the field view angle and image resolution parameters of Camera ADFs.
 
-## Recording Data
+### 2.4 Manipulating Drill
+The virtual drill can be manipulated via a keyboard or haptic devices such as the Geomagic Touch/Phantom Omni.
+
+#### 2.4.1 Keyboard Navigation
+*Linear motion of tool -*  
+[Ctrl+W] - moves vertically upward w.r.t. camera  
+[Ctrl+S] - moves vertically downward w.r.t. camera  
+[Ctrl+A] - moves horizontally left w.r.t. camera  
+[Ctrl+D] - moves horizontally right w.r.t. camera  
+[Ctrl+I] - moves in the forward direction w.r.t. camera  
+[Ctrl+K] - moves in the backward direction w.r.t. camera  
+
+*Rotational motion of tool -*  
+[Num 8] - rotates towards upward direction w.r.t tool  
+[Num 5] - rotates towards downward direction w.r.t. tool  
+[Num 4] - rotates towards the left direction w.r.t. tool  
+[Num 6] - rotates towards the right direction w.r.t. tool  
+
+*Miscellaneous -*  
+[Ctrl+C] - changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)  
+[X] - toggles the functionality of sudden jumping of drill mesh towards the followSphere  
+[B] - toggles the visibility of drill mesh in the scene  
+
+#### 2.4.2 Geomagic Touch/Phantom Omni
+
+### 2.5 Navigating in Simulator
+Camera movement in the simulator can be accomplished through AMBF's python client, mouse movement or Head Mounted Displays (HMDs)
+#### 2.5.1 AMBF Python Client
+Camera can be moved with the AMBF python client as described here: https://github.com/WPI-AIM/ambf/wiki/The-Python-Client. To move all cameras in sync the object that should be moved is the parent of all the cameras, `main_camera`.  
+Note that only one instance of the AMBF python client can be opened at a time. The data generation script uses the python client, hence camera movement must be added to that script if data is also being recorded.
+
+#### 2.5.2 Mouse Movement
+Navigation using mouse shortcuts in AMBF is described here: https://github.com/WPI-AIM/ambf/wiki/Keyboard-and-Mouse-Shortcuts
+
+#### 2.5.3 HMDs
+
+
+### 2.6 Generating and Recording Data
 A python script is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file. 
+
+## Citation
+If you found this work helpful, please reference us using the following citation:
+```
+@INPROCEEDINGS{,
+author={A. {Munawar} and Z. {Li} and P. {Kunjam} and N. {Nagururu} and A.S. {Ding} and P. {Kazanzides} and T. {Looi} and F.X. {Creighton} and R.H. {Taylor} and M. {Unberath}},
+booktitle={AE-CAI | CARE | OR 2.0 Joint MICCAI Workshop 2021},
+title={Virtual Reality for Synergistic Surgical Training and Data Generation},
+year={2021},
+volume={},
+number={},
+pages={},
+keywords={},
+doi={},
+ISSN={},
+month={Nov},}
+```
