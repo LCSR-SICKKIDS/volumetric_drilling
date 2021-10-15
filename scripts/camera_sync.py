@@ -1,13 +1,18 @@
+# This file can be used to sync camera parameters for cameras being used. Desired camera parameters should be
+# placed in the segmenation_camera.yaml ADF and the desired baseline should be edited in this camera_sync file on
+# line 8. When the program is run, stereo_cameras.yaml and single_stereo_camera.yaml will be edited to reflect 
+# the same parameters used in segmentation_camera.yaml
+
 import re
 
-fi = open("segmentation_camera.yaml", "r")
-param = dict.fromkeys(["location:", "look at:", "clipping plane:", "field view angle:", "publish image resolution:"])
+fi = open("../ADF/segmentation_camera.yaml", "r")
+param = dict.fromkeys(["location:", "look at:", "clipping plane:", "field view angle:", "publish image resolution:", "publish image interval:"])
 baseline = 0.065
 
 for ln in fi:
 	for key in param:
 		if ln.lstrip().startswith(key): param[key] = ln[(ln.find(':')+1):].strip()
-
+fi.close()
 
 
 def sync(file):
@@ -51,5 +56,5 @@ def sync(file):
 	fo.close()
 
 
-sync("stereo_cameras.yaml")
-sync("single_stereo_camera.yaml")
+sync("../ADF/stereo_cameras.yaml")
+sync("../ADF/single_stereo_camera.yaml")

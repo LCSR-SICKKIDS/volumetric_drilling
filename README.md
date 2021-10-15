@@ -21,7 +21,7 @@ cv-bridge # Can be installed via apt install ros-<version>-cv-bridge
 image-transport # Can be installed via apt install ros-<version>-image-transport
 ```
 
-Build and source ambf as per the instructions on AMBFs wiki: https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF.
+Build and source ambf (make sure you're on branch ambf-2.0 before building) as per the instructions on AMBFs wiki: https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF.
 
 ### 1.2 Clone and Build Plugin
 ``` bash
@@ -69,7 +69,7 @@ cd ambf/bin/lin-x86_64/
 ./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,3
 ```
 #### Option 4: User-provided volume
-Patient specific anatomy may also be used in the simulator. The volumes are an array of images (JPG or PNG) that are rendered via texture-based volume rendering. With segmented images and an ADF for the volume, user specified anatomy can easily be used in the simulator. We provide utility scripts that can convert the data from the NRRD format to an array of images.
+Patient specific anatomy may also be used in the simulator. The volumes are an array of images (JPG or PNG) that are rendered via texture-based volume rendering. With images and an ADF for the volume, user specified anatomy can easily be used in the simulator. We provide utility scripts (located in the `scripts` folder) that can convert both segmented and non-segmented data from the NRRD format to an array of images.
 
 ### 2.2 Camera Options:
 Different cameras, defined via ADF model files, can be loaded alongside the simulation.
@@ -134,7 +134,7 @@ Navigation using mouse shortcuts in AMBF is described here: https://github.com/W
 
 
 ### 2.6 Generating and Recording Data
-A python script is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file. 
+A python script (located in the `scripts` folder) is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file. 
 
 ## Citation
 If you found this work helpful, please reference us using the following citation:
