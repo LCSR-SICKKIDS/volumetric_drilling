@@ -222,8 +222,8 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         return -1;
     }
     else{
-        g_burrMesh = new cShapeSphere(0.002); // 2mm by default
-        g_burrMesh->setRadius(0.002);
+        g_burrMesh = new cShapeSphere(0.043); // 2mm by default with 1 AMBF unit = 0.049664 m
+        g_burrMesh->setRadius(0.043);
         g_burrMesh->m_material->setBlack();
         g_burrMesh->m_material->setShininess(0);
         g_burrMesh->m_material->m_specular.set(0, 0, 0);
@@ -678,24 +678,24 @@ void changeDrillSize(){
     switch(g_drillSizeIdx)
     {
         case 0:
-            g_toolCursorList[0]->setRadius(0.002);
-            g_burrMesh->setRadius(0.002);
+            g_toolCursorList[0]->setRadius(0.0403);
+            g_burrMesh->setRadius(0.0403);
             cout << "Drill Size changed to 2 mm" << endl;
             g_currDrillSize = 2;
             g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
             break;
 
         case 1:
-            g_toolCursorList[0]->setRadius(0.004);
-            g_burrMesh->setRadius(0.004);
+            g_toolCursorList[0]->setRadius(0.0805);
+            g_burrMesh->setRadius(0.0805);
             cout << "Drill Size changed to 4 mm" << endl;
             g_currDrillSize = 4;
             g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
             break;
 
         case 2:
-            g_toolCursorList[0]->setRadius(0.006);
-            g_burrMesh->setRadius(0.006);
+            g_toolCursorList[0]->setRadius(0.1208);
+            g_burrMesh->setRadius(0.1208);
             cout << "Drill Size changed to 6 mm" << endl;
             g_currDrillSize = 6;
             g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");

@@ -10,10 +10,10 @@ namespace: /ambf/env/
 VOLUME mastoidectomy_volume_low:
   name: mastoidectomy_volume_low
   location:
-    position: {x: -0.25, y: 0, z: 0} # placed 250mm away from camera
+    position: {x: -5.034, y: 0, z: 0} # placed 250mm away from camera given 1AU = 0.049664m
     orientation: {r: 1.57079, p: 0.8, y: 0}
   scale: 1.0
-  dimensions: {x: 0.049664, y: 0.049664, z: 0.049664}
+  dimensions: {x: 1.0, y: 1.0, z: 1.0}
   images:
     path: ../resources/volumes/ear3_171/
     prefix: plane00

@@ -16,7 +16,7 @@ BODY mastoidectomy_drill:
     iy: 0.0
     iz: 0.0
   collision margin: 0.001
-  scale: 0.049664 # this is probably not the right scale now, need to double check?
+  scale: 1.0 # this is probably not the right scale now, need to double check?
   location:
     position:
       x: 0.01
