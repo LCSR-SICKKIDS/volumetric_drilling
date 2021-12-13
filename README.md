@@ -139,16 +139,12 @@ A python script (located in the `scripts` folder) is provided to generate left a
 ## Citation
 If you found this work helpful, please reference us using the following citation:
 ```
-@INPROCEEDINGS{,
-author={A. {Munawar} and Z. {Li} and P. {Kunjam} and N. {Nagururu} and A.S. {Ding} and P. {Kazanzides} and T. {Looi} and F.X. {Creighton} and R.H. {Taylor} and M. {Unberath}},
-booktitle={AE-CAI | CARE | OR 2.0 Joint MICCAI Workshop 2021},
-title={Virtual Reality for Synergistic Surgical Training and Data Generation},
-year={2021},
-volume={},
-number={},
-pages={},
-keywords={},
-doi={},
-ISSN={},
-month={Nov},}
+@article{munawar2021virtual,
+  title={Virtual reality for synergistic surgical training and data generation},
+  author={Munawar, Adnan and Li, Zhaoshuo and Kunjam, Punit and Nagururu, Nimesh and Ding, Andy S and Kazanzides, Peter and Looi, Thomas and Creighton, Francis X and Taylor, Russell H and Unberath, Mathias},
+  journal={Computer Methods in Biomechanics and Biomedical Engineering: Imaging \& Visualization},
+  pages={1--9},
+  year={2021},
+  publisher={Taylor \& Francis}
+}
 ```
