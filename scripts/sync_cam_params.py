@@ -2,6 +2,9 @@
 # placed in the segmenation_camera.yaml ADF and the desired baseline should be edited in this camera_sync file on
 # line 8. When the program is run, stereo_cameras.yaml and single_stereo_camera.yaml will be edited to reflect 
 # the same parameters used in segmentation_camera.yaml
+
+# TODO: update the above description
+
 import math
 from argparse import ArgumentParser
 
@@ -50,7 +53,20 @@ def sync(file, args, stereo=False, name=None):
     yaml.boolean_representation = ['False',
                                    'True']  # TODO: there is mixd upper case and lower case, which one is right?
     # TODO: there is mixed path with quotation and without, which one is right?
-    # TODO: in drilling.yaml, the dictionary are formatted without brackets. but in cameras, they are not. which one is right?
+    #  for example,
+    #  without quotation: path: ../../../ambf_shaders/depth,
+    #  with quotation: vertex: "shader.vs"
+
+    # TODO: in drilling.yaml, the dictionary are formatted without brackets.
+    #  but in cameras, they are not. which one is right?
+    #  for example:
+    #  in camera: location: {x: 10.0, y: 0.0, z: 0.0}
+    #  in drill:
+    #       location:
+    #           position:
+    #               x: 0.01
+    #               y: 0.01
+    #               z: 0.01
 
     with open(file, 'r') as f:
         params = yaml.load(f)
@@ -67,18 +83,18 @@ def sync(file, args, stereo=False, name=None):
 
 
 def main(args):
-    if args.name is None and not args.stereo:
+    if args.camera_name is None and not args.stereo:
         raise Exception('Specify camera name')
     else:
-        sync(args.camera_adf, args, stereo=args.stereo, name=args.name)
+        sync(args.camera_adf, args, stereo=args.stereo, name=args.camera_name)
 
 
 if __name__ == '__main__':
+    # TODO: once all above todos are checked off, verify the generated yaml files can be launched
     parser = ArgumentParser()
     parser.add_argument('--baseline', type=float, default=0.065, help='meters')
     parser.add_argument('--fov', type=float, default=None, help='vertical field of view in radians')
     parser.add_argument('--focal', type=float, default=0.25, help='focal length in meters (fx)')
-    parser.add_argument('--res', nargs='+', default=[640, 480], help='[width, height]')
     parser.add_argument('--location', nargs='+', default=[0.0, 0.0, 0.0], help='camera center location (meters)')
     parser.add_argument('--up', nargs='+', default=[0.0, 0.0, 1.0],
                         help='vertical up direction of camera (unit vector), negative y of pixel coordinate')
@@ -86,8 +102,14 @@ if __name__ == '__main__':
                         help='outwards direction of camera (unit vector), positive z of pixel coordinate')
     parser.add_argument('--clipping_plane', nargs='+', default=[0.01, 10.0], help='[near, far], meters')
 
+    parser.add_argument('--res', nargs='+', default=[640, 480], help='[width, height]')
+    # TODO: camera publish rate should be synced too. And is there a way to specify in terms of Hz/seconds?
+    # TODO: remove parenting to "main_camera" as it is not needed (redundant).
+    #  Currently main camera is initialized to be identity at origin, which makes it pointless
+
     parser.add_argument('--camera_adf', type=str, default=None)
     parser.add_argument('--stereo', action='store_true')
-    parser.add_argument('--name', type=str, default=None, help='name of  cameras')
+    parser.add_argument('--camera_name', type=str, default=None, help='name of  cameras')
+
     args = parser.parse_args()
     main(args)
