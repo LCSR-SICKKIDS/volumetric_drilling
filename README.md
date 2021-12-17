@@ -1,5 +1,22 @@
-# volumetric_drilling
-This repo provides a realistic virtual drilling simulator that is able to actively modify anatomy with a virtual drill. The simulator has both VR and haptics integration as well as the ability to generate data for use in downstream algorithm development. Volumetric_drilling is a plugin built on top of Asynchronous Multibody Framework ([AMBF](https://github.com/WPI-AIM/ambf)) developed by Munawar et al. We show the use of the plugin in lateral skull base surgery. 
+# Drilling Simulator
+### [News Coverage](https://techxplore.com/news/2021-12-virtual-reality-simulator-surgeons-skull-base.htmltodo) | [Paper](https://arxiv.org/abs/2111.08097) | [Video](https://youtu.be/36pYIt1KGs4)
+This repo provides a realistic virtual drilling simulator presented in our Best Paper at AE-CAI MICCAI 2021, [Virtual reality for synergistic surgical training and data generation](https://arxiv.org/abs/2111.08097).
+
+If you found this work helpful, please reference us using the following citation:
+```
+@article{munawar2021virtual,
+  title={Virtual reality for synergistic surgical training and data generation},
+  author={Munawar, Adnan and Li, Zhaoshuo and Kunjam, Punit and Nagururu, Nimesh and Ding, Andy S and Kazanzides, Peter and Looi, Thomas and Creighton, Francis X and Taylor, Russell H and Unberath, Mathias},
+  journal={Computer Methods in Biomechanics and Biomedical Engineering: Imaging \& Visualization},
+  pages={1--9},
+  year={2021},
+  publisher={Taylor \& Francis}
+}
+```
+
+## Overview
+
+The virtual reality drilling simulator is able to actively modify anatomy with a virtual drill. The simulator has both VR and haptics integration as well as the ability to generate data for use in downstream algorithm development. Volumetric_drilling is a plugin built on top of Asynchronous Multibody Framework ([AMBF](https://github.com/WPI-AIM/ambf)) developed by Munawar et al. We show the use of the plugin in lateral skull base surgery. 
 
 ![image](https://user-images.githubusercontent.com/61888209/136677737-af8e1a6c-1f76-44d7-bb3c-6a9d99ec08fd.png)
 
@@ -134,17 +151,4 @@ Navigation using mouse shortcuts in AMBF is described here: https://github.com/W
 
 
 ### 2.6 Generating and Recording Data
-A python script (located in the `scripts` folder) is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file. 
-
-## Citation
-If you found this work helpful, please reference us using the following citation:
-```
-@article{munawar2021virtual,
-  title={Virtual reality for synergistic surgical training and data generation},
-  author={Munawar, Adnan and Li, Zhaoshuo and Kunjam, Punit and Nagururu, Nimesh and Ding, Andy S and Kazanzides, Peter and Looi, Thomas and Creighton, Francis X and Taylor, Russell H and Unberath, Mathias},
-  journal={Computer Methods in Biomechanics and Biomedical Engineering: Imaging \& Visualization},
-  pages={1--9},
-  year={2021},
-  publisher={Taylor \& Francis}
-}
-```
+A python script (located in the `scripts` folder) is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file.
