@@ -3,6 +3,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 def verify_xyz(depth, K):
     h, w = depth.shape[1:3]
@@ -27,6 +38,9 @@ def pose_to_matrix(pose):
 
     return tau
 
+def toStr(f):
+    str
+    return f"{f:.3f}"
 
 def verify_sphere(depth, K, RT, pose_cam, pose_primitive):
     # simple test, querying a point on the sphere
@@ -47,7 +61,19 @@ def verify_sphere(depth, K, RT, pose_cam, pose_primitive):
 
     depth_output = np.array([depth[idx, v_, u_] for idx, (v_, u_) in enumerate(zip(v, u))])
     depth_output = depth_output[valid]
-
+    for i in range(len(depth_output)):
+        z_act = z[i]
+        z_mea = depth_output[i]
+        err = z_act - z_mea
+        error_str = "Analytical z: " + toStr(z_act) + " Captured z: " + toStr(z_mea) + " Difference: "
+        if abs(err) < 0.01:
+            error_str = error_str + " " + bcolors.OKGREEN + \
+            toStr(err) + bcolors.ENDC
+        else:
+            error_str = error_str + " " + bcolors.FAIL + \
+            toStr(err) + bcolors.ENDC
+        print(error_str)
+    # print(depth_output)
     assert np.all(np.isclose(z, depth_output, rtol=0.01)), "fail, largest error %f" % (np.max(np.abs(z - depth_output)))
 
     print("pass")

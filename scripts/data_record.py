@@ -214,7 +214,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     bridge = CvBridge()
-    _client, objects = init_ambf()
+    _client, objects = init_ambf('data_record')
     _client.clean_up()
     chunk = args.chunk_size
     scale = args.scale
