@@ -1,19 +1,22 @@
-# This file can be used to sync camera parameters for cameras being used. When calling the script from command line
-# first specify the camera AMBF description file (ADF) you want to change with --camera_adf. Then specify if the ADF
-# is describing stereo cameras with --stereo flag. If the ADF is not describing stereo cameras, specify the camera name
-# of the camera you wish to change with --camera_name. Now that the script knows which cameras to edit, you can change
-# any of the camera parameters by calling its flag and providing an argument (i.e. --fov 0.52). Any parameters that are
-# not called will stay untouched. A full list of parameters that can be changed are found by using the --help argument.
-# Note that all camera parameters can be reset to default by calling the --reset argument.
+'''
+This file can be used to sync camera parameters for cameras being used. When calling the script from command line
+specify the camera AMBF description files (ADF) you want to change with --camera_adfs. Now that the
+script knows which cameras to edit, you can change any of the camera parameters by calling its flag and providing an
+argument (i.e. --fov 0.52). Any parameters that are not called will stay untouched. A full list of parameters that can
+be changed are found by using the --help argument.
+Note that all camera parameters can be reset to default by calling the --reset argument.
 
-# The following is an example of using the script in the command line:
-#  python3 sync_cam_params.py --camera_adf ../ADF/stereo_cameras.yaml --stereo --location [0.5,0.5,1.0] --fov 0.85
+The following is an example of using the script in the command line:
+python3 sync_cam_params.py --camera_adf ../ADF/segmentation_camera.yaml ../ADF/stereo_cameras.yaml ../ADF/world/world.yaml --location [0.5,0.5,1.0] --fov 0.85
+
+'''
 
 import math
 from argparse import ArgumentParser, Namespace
 
 import ruamel.yaml
 yaml = ruamel.yaml.YAML()
+yaml.boolean_representation = [u'false', u'true']
 
 SENSOR_SIZE = [0.036, 0.024]  # meters
 
@@ -70,15 +73,20 @@ def sync_mono_param(params, args, name, stereo_r=False):
 
     return params
 
-def fill_args(file, args, name, stereo=False):
-    if stereo: name = 'stereoL'
+def fill_args(args):
+    file = args.camera_adfs[0]
     with open(file, 'r') as f:
         params = yaml.load(f)
+
+    name = params['cameras'][0]
     save_scale(args)
 
-    if args.baseline is None and stereo:
-        args.baseline = params['stereoR']['location']['y'] - params['stereoL']['location']['y']
-        args.baseline = args.baseline * args.scale
+    if '../ADF/stereo_cameras.yaml' in args.camera_adfs:
+        with open('../ADF/stereo_cameras.yaml','r') as f_s:
+            params_s = yaml.load(f_s)
+        if args.baseline is None:
+            args.baseline = params_s['stereoR']['location']['y'] - params_s['stereoL']['location']['y']
+            args.baseline = args.baseline * args.scale
     if args.fov is None:
         args.fov = params[name]['field view angle']
     if args.location is None:
@@ -97,12 +105,14 @@ def fill_args(file, args, name, stereo=False):
     if args.image_int is None:
         args.image_int = params[name]['publish image interval']
 
+    return args
+
 def str_to_list(strings):
     numbers = [float(item) for item in strings.strip(" []").split(',')]
     return numbers
 
 def save_scale(args):
-    world = "../ADF/world/world.yaml"  # this file is where scale is being stored
+    world = "../ADF/world/world.yaml"
     with open(world, 'r') as FILE:
         world_yaml = yaml.load(FILE)
     if args.scale is None:
@@ -113,38 +123,35 @@ def save_scale(args):
             yaml.dump(world_yaml, FILE)
 
 
-def sync(file, args, stereo=False, name=None):
-    yaml.boolean_representation = [u'false', u'true']
-    with open(file, 'r') as f:
-        params = yaml.load(f)
-        if stereo:
-            params = sync_mono_param(params, args, 'stereoL')
-            params = sync_mono_param(params, args, 'stereoR', stereo)
-        else:
-            params = sync_mono_param(params, args, name)
-
-    with open(file, 'w') as f:
-        yaml.dump(params, f)
-    f.close()
+def sync(args):
+    for file in args.camera_adfs:
+        with open(file, 'r') as f:
+            params = yaml.load(f)
+            cameras = params['cameras']
+            if len(cameras) > 1:
+                params = sync_mono_param(params, args, 'stereoL')
+                params = sync_mono_param(params, args, 'stereoR', True)
+            else:
+                params = sync_mono_param(params, args, cameras[0])
+        with open(file, 'w') as f:
+            yaml.dump(params, f)
+        f.close()
 
     return
 
 
 def main(args):
-    if args.camera_name is None and not args.stereo:
-        raise Exception('Specify camera name')
     if args.fov is not None and args.focal is not None:
         raise Exception('Specify either focal length or vertical field of view angle, not both')
     else:
-        fill_args(args.camera_adf, args, stereo=args.stereo, name=args.camera_name)
-        sync(args.camera_adf, args, stereo=args.stereo, name=args.camera_name)
+        fill_args(args)
+        sync(args)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--camera_adf', type=str, required=True, default=None)
-    parser.add_argument('--stereo', action='store_true')
-    parser.add_argument('--camera_name', type=str, default=None, help='name of camera')
+    parser.add_argument('--camera_adfs', type=str, nargs='+', default=[], help='relative paths to camera AMBF Description '
+                                                                               'Files (ADF) that need to be synchronized')
     parser.add_argument('--reset', action='store_true', help='reset cameras to default parameters')
 
     parser.add_argument('--baseline', type=float, nargs='?', const=0.065, help='meters')
