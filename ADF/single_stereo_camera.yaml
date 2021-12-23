@@ -11,11 +11,10 @@ stereoLR:
   namespace: cameras/
   name: stereoLR
   location: {x: 0.0, y: 0.0, z: 0.0}
-  look at: {x: -1.0, y: 0.0, z: 0.0}
-  # up: {x: 0.0, y: 0.4, z: 1.0}
+  look at: {x: -20.135309278350515, y: 0.0, z: 0.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 0.01, far: 10.0}
-  field view angle: 0.416659
+  clipping plane: {near: 0.10067654639175258, far: 201.35309278350516}
+  field view angle: 0.0959263737541534
   monitor: 2
   stereo: {mode: Passive, eye separation: 0.13, focal length: 0.8}
   # multipass: true
@@ -24,11 +23,11 @@ stereoLR:
   #   path: ../../../ambf_shaders/preprocessing/
   #   vertex: shader.vs
   #   fragment: shader.fs
-  # publish image interval: 1 # Publish every nth scene update
+  publish image interval: 100 # Publish every nth scene update
   # publish depth: true
   # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
   # publish depth interval: 1 # Publish every nth scene update
-  # publish image resolution: {width: 1280, height: 480}
+  publish image resolution: {width: 640, height: 480}
   # depth compute shaders:
   #    path: ../../../ambf_shaders/depth
   #    vertex: shader.vs
