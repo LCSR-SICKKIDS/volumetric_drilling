@@ -22,7 +22,7 @@ MTML:
       next mode: 3,
       prev mode: 4}
     pair cameras: [camera2] # The cameras paired with this IID-SDE pair
-    # visible: True
+    # visible: true
     # visible size: 0.005
 
 MTMR:
@@ -59,7 +59,7 @@ Geomagic Touch:
       g1: 1,
       next mode: 2,
       prev mode: 3}
-    # visible: True
+    # visible: true
     # visible size: 0.005
 
 Razer Hydra0:
@@ -80,7 +80,7 @@ Razer Hydra0:
       a2: 1,
       next mode: 2,
       prev mode: 3}
-    # visible: True
+    # visible: true
     # visible size: 0.005
 
 Razer Hydra1:
@@ -98,7 +98,7 @@ Razer Hydra1:
       a2: 1,
       next mode: 2,
       prev mode: 3}
-    # visible: True
+    # visible: true
     # visible size: 0.005
 
 Novint Falcon1:
@@ -117,7 +117,7 @@ Novint Falcon1:
       a2: 2,
       next mode: 3,
       prev mode: 1}
-    # visible: True
+    # visible: true
     # visible size: 0.005
 
 Novint Falcon2:
@@ -136,5 +136,5 @@ Novint Falcon2:
       a2: 2,
       next mode: 3,
       prev mode: 1}
-    # visible: True
+    # visible: true
     # visible size: 0.005

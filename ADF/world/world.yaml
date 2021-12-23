@@ -5,10 +5,11 @@ environment: "./checkered_floor.yaml"
 namespace: /ambf/env/
 max iterations: 50
 gravity: {x: 0.0, y: 0.0, z: -0.0}
+conversion factor: 0.049664 # when conversion factor is changed the volume occupies the same space, but camera parameters and data output are adjusted so scene looks the same.
 # shaders:
 #   path: ../../ambf_shaders/normal_map
-#   vertex: "shader.vs"
-#   fragment: "shader.fs"
+#   vertex: shader.vs
+#   fragment: shader.fs
 
 light1:
   namespace: lights/
@@ -49,20 +50,20 @@ main_camera:
   clipping plane: {near: 0.01, far: 20.0}
   field view angle: 0.416659 # so that focal length is approximately 1000px and phantom is 250 mm away
   monitor: 0
-  # multipass: True
-  # publish image: True
+  # multipass: true
+  # publish image: true
   # preprocessing shaders:
   #    path: ../shaders/preprocessing/
-  #    vertex: "shader.vs"
-  #    fragment: "shader.fs"
+  #    vertex: shader.vs
+  #    fragment: shader.fs
   # publish image interval: 1 # Publish every nth scene update
-  # publish depth: True
+  # publish depth: true
   # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
   # publish depth interval: 1 # Publish every nth scene update
   # publish image resolution: {width: 640, height: 480}
   # depth compute shaders:
   #    path: ../../../ambf_shaders/depth
-  #    vertex: "shader.vs"
-  #    fragment: "shader.fs"
+  #    vertex: shader.vs
+  #    fragment: shader.fs
 
-  # multipass: True
+  # multipass: true

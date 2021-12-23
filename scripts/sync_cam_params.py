@@ -27,7 +27,7 @@ def sync_mono_param(params, args, name, stereo_r=False):
     camera['look at']['y'] = args.look_at[1] + args.location[1]
     if stereo_r:
         camera['look at']['y'] = args.look_at[1] + args.baseline + args.location[1]
-    camera['look at']['z'] = args.look_at[2] + + args.location[2]
+    camera['look at']['z'] = args.look_at[2] + args.location[2]
 
     camera['up']['x'] = args.up[0]
     camera['up']['y'] = args.up[1]
@@ -52,24 +52,7 @@ def sync_mono_param(params, args, name, stereo_r=False):
 
 def sync(file, args, stereo=False, name=None):
     yaml = ruamel.yaml.YAML()
-    yaml.boolean_representation = ['False',
-                                   'True']  # TODO: there is mixd upper case and lower case, which one is right?
-    # TODO: there is mixed path with quotation and without, which one is right?
-    #  for example,
-    #  without quotation: path: ../../../ambf_shaders/depth,
-    #  with quotation: vertex: "shader.vs"
-
-    # TODO: in drilling.yaml, the dictionary are formatted without brackets.
-    #  but in cameras, they are not. which one is right?
-    #  for example:
-    #  in camera: location: {x: 10.0, y: 0.0, z: 0.0}
-    #  in drill:
-    #       location:
-    #           position:
-    #               x: 0.01
-    #               y: 0.01
-    #               z: 0.01
-
+    yaml.boolean_representation = [u'false', u'true']
     with open(file, 'r') as f:
         params = yaml.load(f)
         if stereo:
@@ -80,6 +63,11 @@ def sync(file, args, stereo=False, name=None):
 
     with open(file, 'w') as f:
         yaml.dump(params, f)
+
+    world = "../ADF/world/world.yaml"
+    with open(world, 'r+') as FILE:
+        world_yaml = yaml.load(FILE)
+        world_yaml['conversion factor'] = args.scale
 
     return
 
@@ -108,14 +96,12 @@ if __name__ == '__main__':
                                                                                   'set far plane as far as possible')
 
     parser.add_argument('--res', nargs='+', default=[640, 480], help='[width, height]')
-    # TODO: remove parenting to "main_camera" as it is not needed (redundant).
-    #  Currently main camera is initialized to be identity at origin, which makes it pointless
     # TODO: double check all units in meters are properly scaled by the scale value
     # TODO: save scale parameter in somewhere so we can read (either NRRD or ADF)??
 
     parser.add_argument('--camera_adf', type=str, default=None)
     parser.add_argument('--stereo', action='store_true')
-    parser.add_argument('--camera_name', type=str, default=None, help='name of  cameras')
+    parser.add_argument('--camera_name', type=str, default=None, help='name of cameras')
 
     args = parser.parse_args()
     main(args)
