@@ -1,19 +1,16 @@
 # TODO: currently only works with python 2.7 due to cv_bridge, we should migrate to python3 but not sure best way yet
 
 import math
-import os
-import time
 from argparse import ArgumentParser
 from collections import OrderedDict
 
-import h5py
 import numpy as np
 import yaml
 import sys
 if sys.version_info[0] >= 3:
-    from queue import Empty, Full, Queue
+    from queue import Queue
 else:
-    from Queue import Empty, Full, Queue
+    from Queue import Queue
 
 import message_filters
 import ros_numpy
@@ -21,7 +18,22 @@ import rospy
 from ambf_msgs.msg import RigidBodyState
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
-from utils import init_ambf
+from utils import *
+from scipy.spatial.transform import Rotation as R
+from geometry_msgs.msg import PoseStamped
+
+global intrinsic
+
+
+def pose_to_matrix(pose):
+    quat_norm = np.linalg.norm(pose[3:])
+    assert np.isclose(quat_norm, 1.0)
+    r = R.from_quat(pose[3:]).as_matrix()
+    t = pose[:3]
+    tau = np.identity(4)
+    tau[:3, :3] = r
+    tau[:3, -1] = t
+    return tau
 
 
 def depth_gen(depth_msg):
@@ -65,7 +77,8 @@ def pose_gen(pose_msg):
     return pose_np
 
 
-def init_hdf5(adf, camera_name, stereo):
+def init_camera_params(adf, camera_name):
+    global intrinsic
     # perspective camera intrinsics
     camera_adf = open(adf, "r")
     camera_params = yaml.safe_load(camera_adf)
@@ -79,26 +92,50 @@ def init_hdf5(adf, camera_name, stereo):
     c_y = img_height / 2
     intrinsic = np.array([[focal, 0, c_x], [0, focal, c_y], [0, 0, 1]])
 
-    # Create hdf5 file with date
-    if not os.path.exists('data'):
-        os.makedirs('data')
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    file = h5py.File("./data/" + time_str + ".hdf5", "w")
+    return img_height, img_width
 
-    metadata = file.create_group("metadata")
-    metadata.create_dataset("camera_intrinsic", data=intrinsic)
-    metadata.create_dataset("camera_extrinsic", data=extrinsic)
-    if stereo:
-        baseline = math.fabs(
-            camera_params['stereoL']['location']['y'] - camera_params['stereoR']['location']['y'])
-        metadata.create_dataset("baseline", data=baseline)
-    metadata.create_dataset("README", data="All position information is in meters unless specified otherwise \n"
-                                           "Quaternion is a list in the order of [qx, qy, qz, qw] \n"
-                                           "Extrinsic (T_cv_ambf) should be pre-multiplied to intrinsic")
 
-    file.create_group("data")
+def verify_sphere(depth, K, RT, pose_cam, pose_primitive, time_stamp):
+    global last_depth
+    # simple test, querying a point on the sphere
+    query_point = np.array([1, 0, 0, 1])[None, :, None]  # homo, Nx4x1
+    query_point_c = np.linalg.inv(pose_cam) @ (pose_primitive @ query_point)
+    query_point_c = RT @ query_point_c
+    uvz = K @ query_point_c[..., :3, :]
+    u = np.rint((uvz[..., 0, :] / uvz[..., -1, :]).squeeze()).astype(int)
+    v = np.rint((uvz[..., 1, :] / uvz[..., -1, :]).squeeze()).astype(int)
+    z = uvz[..., -1, :].squeeze()
 
-    return file, img_height, img_width
+    h, w = depth.shape
+
+    # make sure point is within image
+    if not (0 <= u, u < w) or not (0 <= v, v < h):
+        print("u: ", u,", v: ", v, " out of bounds, ignoring")
+        return
+
+    depth_output = depth[v, u]
+    z_act = z
+    last_depth = depth_output
+    z_mea = depth_output
+    ts = time_stamp
+    err = z_act - z_mea
+    time_str = INFO_STR("t: " + "{:10.6f}".format(ts))
+    pose_str = "Cam X: " + toStr(pose_cam[0:3, 3][0])
+    error_str = "Anal_z: " + \
+        toStr(z_act) + " Depth_z: " + toStr(z_mea) + " Diff: "
+    lag_lead_str = ""
+    if abs(err) < 0.01:
+        error_str = error_str + " " + OK_STR(err)
+    else:
+        error_str = error_str + " " + FAIL_STR(err)
+        if cb_cntr > 0:
+            if z_mea == last_depth:
+                lag_lead_str = WARN_STR("LAG")
+            else:
+                lag_lead_str = WARN2_STR("LEAD")
+    print(time_str, pose_str, error_str, lag_lead_str)
+
+    return
 
 
 def callback(*inputs):
@@ -109,12 +146,13 @@ def callback(*inputs):
     :param inputs:
     :return:
     """
+    global cb_cntr
     keys = list(inputs[-1])
-    data = dict(time=inputs[0].header.stamp.to_sec())
+    time_stamp = inputs[0].header.stamp.to_sec()
+    data = dict(time=time_stamp)
 
     # for inp in inputs[:-1]:
     #     print(inp.header.stamp.secs)
-
     for idx, key in enumerate(keys[1:]):  # skip time
         if 'l_img' == key or 'r_img' == key or 'segm' == key:
             data[key] = image_gen(inputs[idx])
@@ -123,41 +161,10 @@ def callback(*inputs):
         if 'pose_' in key:
             data[key] = pose_gen(inputs[idx])
 
-    try:
-        data_queue.put_nowait(data)
-    except Full:
-        print('full')
-
-
-def write_to_hdf5():
-    data_group = f["data"]
-    for key, value in container.items():
-        if len(value) > 0:
-            data_group.create_dataset(
-                key, data=np.stack(value, axis=0))  # write to disk
-            print(key, f["data"][key].shape)
-        container[key] = []  # reset list to empty memory
-    f.close()
-
-    return
-
-
-def timer_callback(_):
-    try:
-        data_dict = data_queue.get_nowait()
-    except Empty:
-        return
-
-    global data_id, f
-    for key, data in data_dict.items():
-        container[key].append(data)
-
-    data_id = data_id + 1
-    if data_id >= chunk:
-        print("write")
-        write_to_hdf5()
-        f, _, _ = init_hdf5(args.camera_adf, args.camera_name, args.stereo)
-        data_id = 0
+    T_cam = pose_to_matrix(data['pose_main_camera'])
+    T_sphere = pose_to_matrix(data['pose_Sphere'])
+    verify_sphere(data['depth'], intrinsic, extrinsic, T_cam, T_sphere, time_stamp)
+    cb_cntr = cb_cntr + 1
 
 
 def main(args):
@@ -201,12 +208,7 @@ def main(args):
         ats = message_filters.TimeSynchronizer(subscribers, queue_size=50)
         ats.registerCallback(callback, container.keys())
 
-    # separate thread for writing to hdf5 to release memory
-    rospy.Timer(rospy.Duration(0, 100000000), timer_callback)
-    # TODO: add an argument to set duration to be ~ 2x of publishing rate so we don't miss data
-
     rospy.spin()
-    write_to_hdf5()  # save when user exits
 
 
 if __name__ == '__main__':
@@ -235,6 +237,7 @@ if __name__ == '__main__':
     # TODO: record voxels (either what has been removed, or what is the current voxels) as asked by pete?
 
     args = parser.parse_args()
+    print(args)
 
     bridge = CvBridge()
     _client, objects = init_ambf('data_record')
@@ -250,8 +253,9 @@ if __name__ == '__main__':
     extrinsic = np.array([[0, 1, 0, 0], [0, 0, -1, 0],
                          [-1, 0, 0, 0], [0, 0, 0, 1]])  # T_cv_ambf
 
-    f, h, w = init_hdf5(args.camera_adf, args.camera_name, args.stereo)
-
+    h, w = init_camera_params(args.camera_adf, args.camera_name)
+    last_depth = 0.0
+    cb_cntr = 0
     data_queue = Queue(chunk)
     data_id = 0
     container = OrderedDict()
