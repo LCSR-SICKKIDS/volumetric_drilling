@@ -13,6 +13,11 @@ class afVolmetricDrillingPlugin: public afSimulatorPlugin{
     virtual void physicsUpdate(double dt) override;
     virtual void reset() override;
     virtual bool close() override;
+
+private:
+    cTransform T_d; // Drills target pose
+    cTransform T_i; // Input device transform
+    cVector3d V_i; // Input device linear velocity
 };
 
 

@@ -300,6 +300,9 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     g_drillSizeText->setFontScale(.75);
     g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
     g_mainCamera->getFrontLayer()->addChild(g_drillSizeText);
+
+    // Get drills initial pose
+    T_d = g_drillRigidBody->getLocalTransform();
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
@@ -322,9 +325,18 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     m_worldPtr->getChaiWorld()->computeGlobalPositions(true);
 
     // updates position of drill burr/tip tool cursor
-    g_toolCursorList[0]->updateFromDevice();
+//    g_toolCursorList[0]->updateFromDevice();
 
-    g_toolCursorList[0]->setLocalRot(g_mainCamera->getLocalRot());
+    bool clutch;
+
+    g_hapticDevice->getTransform(T_i);
+    g_hapticDevice->getLinearVelocity(V_i);
+    g_hapticDevice->getUserSwitch(0, clutch);
+
+    T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / g_toolCursorList[0]->getWorkspaceScaleFactor()));
+    T_d.setLocalRot(T_i.getLocalRot());
+
+    g_toolCursorList[0]->setDeviceLocalTransform(T_d);
 
     shaftToolCursorsPosUpdate(g_toolCursorList[0]->getDeviceGlobalTransform());
 
@@ -512,7 +524,7 @@ void toolCursorInit(const afWorldPtr a_afWorld){
 
             // map the physical workspace of the haptic device to a larger virtual workspace.
 
-            g_toolCursorList[i]->setWorkspaceRadius(1.0);
+            g_toolCursorList[i]->setWorkspaceRadius(10.0);
             g_toolCursorList[i]->setWaitForSmallForce(true);
             g_toolCursorList[i]->start();
             g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
