@@ -277,7 +277,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     }
 
     // check if device remains stuck inside voxel object
-    cVector3d force = m_targetToolCursor->getDeviceGlobalForce();
+    cVector3d force = m_targetToolCursor->getDeviceLocalForce();
     m_toolCursorList[0]->setDeviceLocalForce(force);
 
     if (m_flagStart)
@@ -309,7 +309,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     /////////////////////////////////////////////////////////////////////////
 
     // compute transformation from world to tool (haptic device)
-    cTransform world_T_tool = m_toolCursorList[0]->getDeviceGlobalTransform();
+    cTransform world_T_tool = m_toolCursorList[0]->getDeviceLocalTransform();
 
     // get status of user switch
     bool button = m_toolCursorList[0]->getUserSwitch(1);
@@ -334,7 +334,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         }
 
         // get transformation from object
-        cTransform world_T_object = m_selectedObject->getGlobalTransform();
+        cTransform world_T_object = m_selectedObject->getLocalTransform();
 
         // compute inverse transformation from contact point to object
         cTransform tool_T_world = world_T_tool;
@@ -368,7 +368,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         }
 
         // set zero forces when manipulating objects
-        m_toolCursorList[0]->setDeviceGlobalForce(0.0, 0.0, 0.0);
+        m_toolCursorList[0]->setDeviceLocalForce(0.0, 0.0, 0.0);
 
         m_toolCursorList[0]->initialize();
     }
@@ -490,7 +490,7 @@ void afVolmetricDrillingPlugin::checkShaftCollision(){
     for(int i=0; i<m_toolCursorList.size(); i++)
     {
 
-        m_currError = cDistance(m_toolCursorList[i]->m_hapticPoint->getGlobalPosProxy(), m_toolCursorList[i]->m_hapticPoint->getGlobalPosGoal());
+        m_currError = cDistance(m_toolCursorList[i]->m_hapticPoint->getLocalPosProxy(), m_toolCursorList[i]->m_hapticPoint->getLocalPosGoal());
 
         if(abs(m_currError) > abs(m_maxError + 0.00001))
         {
@@ -511,11 +511,11 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
 
     if(m_targetToolCursorIdx == 0){
         cTransform T_tip;
-        T_tip.setLocalPos(m_toolCursorList[0]->m_hapticPoint->getGlobalPosProxy());
-        T_tip.setLocalRot(m_toolCursorList[0]->getDeviceGlobalRot());
+        T_tip.setLocalPos(m_toolCursorList[0]->m_hapticPoint->getLocalPosProxy());
+        T_tip.setLocalRot(m_toolCursorList[0]->getDeviceLocalRot());
         m_drillRigidBody->setLocalTransform(T_tip);
     }
-    else if(cDistance(m_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), m_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
+    else if(cDistance(m_targetToolCursor->m_hapticPoint->getLocalPosProxy(), m_targetToolCursor->m_hapticPoint->getLocalPosGoal()) <= 0.001)
     {
         // direction of positive x-axis of drill mesh
         cVector3d xDir = m_drillRigidBody->getLocalRot().getCol0();
@@ -526,16 +526,16 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
         // drill mesh will make a sudden jump towards the followSphere
         if(!m_suddenJump)
         {
-            newDrillPos = (m_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * m_dX * m_targetToolCursorIdx);
+            newDrillPos = (m_targetToolCursor->m_hapticPoint->getLocalPosProxy() - xDir * m_dX * m_targetToolCursorIdx);
         }
 
         // drill mesh slowly moves towards the followSphere
         else
         {
-            newDrillPos = m_drillRigidBody->getLocalPos() + ((m_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * m_dX * m_targetToolCursorIdx) - m_drillRigidBody->getLocalPos()) * 0.04;
+            newDrillPos = m_drillRigidBody->getLocalPos() + ((m_targetToolCursor->m_hapticPoint->getLocalPosProxy() - xDir * m_dX * m_targetToolCursorIdx) - m_drillRigidBody->getLocalPos()) * 0.04;
         }
 
-//        cVector3d L = g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
+//        cVector3d L = g_targetToolCursor->m_hapticPoint->getLocalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
 
 //        cerr << "Colliding Cursor " << g_targetToolCursorIdx << " Error " << L.str(2) << endl;
 //        if ( L.length() < 0.01){
@@ -545,7 +545,7 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
 //            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
 //        }
 
-        newDrillRot = m_toolCursorList[0]->getDeviceGlobalRot();
+        newDrillRot = m_toolCursorList[0]->getDeviceLocalRot();
 
         cTransform trans;
         trans.setLocalPos(newDrillPos);
