@@ -524,15 +524,15 @@ void toolCursorInit(const afWorldPtr a_afWorld){
 
             // if the haptic device has a gripper, enable it as a user switch
             g_hapticDevice->setEnableGripperUserSwitch(true);
+            g_toolCursorList[i]->setRadius(0.043); // Set the correct radius for the tip which is not from the list of cursor radii
         }
         else
         {
             g_toolCursorList[i]->setShowContactPoints(g_showGoalProxySpheres, g_showGoalProxySpheres);
             g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
             g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
+            g_toolCursorList[i]->setRadius(g_toolCursorRadius[i]);
         }
-
-        g_toolCursorList[i]->setRadius(g_toolCursorRadius[i]);
      }
 
     // Initialize the start pose of the tool cursors
