@@ -212,17 +212,17 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     m_worldPtr->getChaiWorld()->computeGlobalPositions(true);
 
-    // updates position of drill burr/tip tool cursor
-//    g_toolCursorList[0]->updateFromDevice();
-
     bool clutch;
 
-    m_hapticDevice->getTransform(T_i);
-    m_hapticDevice->getLinearVelocity(V_i);
-    m_hapticDevice->getUserSwitch(0, clutch);
+    // If a valid haptic device is found, then it should be available
+    if (m_hapticDevice->isDeviceAvailable()){
+        m_hapticDevice->getTransform(T_i);
+        m_hapticDevice->getLinearVelocity(V_i);
+        m_hapticDevice->getUserSwitch(0, clutch);
 
-    T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor()));
-    T_d.setLocalRot(T_i.getLocalRot());
+        T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor()));
+        T_d.setLocalRot(T_i.getLocalRot());
+    }
 
     toolCursorsPosUpdate(T_d);
 
@@ -312,7 +312,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     cTransform world_T_tool = m_toolCursorList[0]->getDeviceGlobalTransform();
 
     // get status of user switch
-    bool button = m_toolCursorList[0]->getUserSwitch(0);
+    bool button = m_toolCursorList[0]->getUserSwitch(1);
     //
     // STATE 1:
     // Idle mode - user presses the user switch
@@ -434,8 +434,6 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
      }
 
     // Initialize the start pose of the tool cursors
-    cTransform T_d = m_drillRigidBody->getLocalTransform();
-    m_toolCursorList[0]->setDeviceLocalTransform(T_d);
     toolCursorsPosUpdate(T_d);
     for (int i = 0 ;  i < m_toolCursorList.size() ; i++){
         m_toolCursorList[i]->initialize();
@@ -448,8 +446,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 /// \param a_vel
 ///
 void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
-    cVector3d P = m_toolCursorList[0]->getDeviceGlobalPos() + a_vel;
-    m_toolCursorList[0]->setDeviceGlobalPos(P);
+    T_d.setLocalPos(T_d.getLocalPos() + a_vel);
 }
 
 
@@ -460,8 +457,8 @@ void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
 void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
     cMatrix3d R_cmd;
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
-    cMatrix3d R = m_toolCursorList[0]->getDeviceGlobalRot() * R_cmd;
-    m_toolCursorList[0]->setDeviceGlobalRot(R);
+    R_cmd = T_d.getLocalRot() * R_cmd;
+    T_d.setLocalRot(R_cmd);
 }
 
 ///
