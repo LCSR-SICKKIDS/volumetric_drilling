@@ -29,7 +29,7 @@ protected:
     void incrementDeviceRot(cVector3d a_rot);
 
     // update position of shaft tool cursors
-    void shaftToolCursorsPosUpdate(cTransform a_devicePose);
+    void toolCursorsPosUpdate(cTransform a_devicePose);
 
     // check for shaft collision
     void checkShaftCollision(void);

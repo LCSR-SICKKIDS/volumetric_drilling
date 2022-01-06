@@ -224,9 +224,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor()));
     T_d.setLocalRot(T_i.getLocalRot());
 
-    m_toolCursorList[0]->setDeviceLocalTransform(T_d);
-
-    shaftToolCursorsPosUpdate(m_toolCursorList[0]->getDeviceGlobalTransform());
+    toolCursorsPosUpdate(T_d);
 
     // check for shaft collision
     checkShaftCollision();
@@ -438,7 +436,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
     // Initialize the start pose of the tool cursors
     cTransform T_d = m_drillRigidBody->getLocalTransform();
     m_toolCursorList[0]->setDeviceLocalTransform(T_d);
-    shaftToolCursorsPosUpdate(T_d);
+    toolCursorsPosUpdate(T_d);
     for (int i = 0 ;  i < m_toolCursorList.size() ; i++){
         m_toolCursorList[i]->initialize();
     }
@@ -470,12 +468,12 @@ void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
 /// \brief This method updates the position of the shaft tool cursors
 /// which eventually updates the position of the whole tool.
 ///
-void afVolmetricDrillingPlugin::shaftToolCursorsPosUpdate(cTransform a_devicePose){
-    cVector3d n_x = a_devicePose.getLocalRot().getCol0() * m_dX;
-    for (int i = 1 ; i < m_toolCursorList.size() ; i++){
-        cVector3d P = a_devicePose.getLocalPos() + n_x * i;
+void afVolmetricDrillingPlugin::toolCursorsPosUpdate(cTransform a_targetPose){
+    cVector3d n_x = a_targetPose.getLocalRot().getCol0() * m_dX;
+    for (int i = 0 ; i < m_toolCursorList.size() ; i++){
+        cVector3d P = a_targetPose.getLocalPos() + n_x * i;
         m_toolCursorList[i]->setDeviceLocalPos(P);
-        m_toolCursorList[i]->setDeviceLocalRot(a_devicePose.getLocalRot());
+        m_toolCursorList[i]->setDeviceLocalRot(a_targetPose.getLocalRot());
     }
 }
 
