@@ -45,133 +45,15 @@
 
 #include "volumetric_drilling.h"
 #include <boost/program_options.hpp>
-#include <mutex>
 
 using namespace std;
-
-cVoxelObject* g_voxelObj;
-
-cToolCursor* g_targetToolCursor;
-
-int g_renderingMode = 0;
-
-double g_opticalDensity;
-
-mutex g_mutexVoxel;
-
-cCollisionAABBBox g_volumeUpdate;
-
-cColorb g_zeroColor(0x00, 0x00, 0x00, 0x00);
-
-bool g_flagStart = true;
-
-int counter = 0;
-
-cGenericObject* g_selectedObject = NULL;
-
-cTransform g_tool_T_object;
-
-// a haptic device handler
-cHapticDeviceHandler* g_deviceHandler;
-
-// a pointer to the current haptic device
-cGenericHapticDevicePtr g_hapticDevice;
-
-bool g_flagMarkVolumeForUpdate = false;
-
-afRigidBodyPtr g_drillRigidBody;
-
-afVolumePtr g_volumeObject;
-
-cShapeSphere* g_burrMesh;
-
-// tool's rotation matrix
-cMatrix3d g_toolRotMat;
-
-// rate of drill movement
-double g_drillRate = 0.020f;
-
-// Local offset between shaft tool cursors
-double g_dX = 0.03;
-
-// camera to render the world
-afCameraPtr g_mainCamera;
-
-bool g_showDrill = true;
-
-bool g_showGoalProxySpheres = false;
-
-// list of tool cursors
-vector<cToolCursor*> g_toolCursorList;
-
-// radius of tool cursors
-vector<double> g_toolCursorRadius{0.02, 0.013, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025};
-
-// warning pop-up panel
-cPanel* g_warningPopup;
-cLabel* g_warningText;
-
-// panel to display current drill size
-cPanel* g_drillSizePanel;
-cLabel* g_drillSizeText;
-
-// current and maximum distance between proxy and goal spheres
-double g_currError = 0;
-double g_maxError = 0;
-
-// for storing index of follow sphere
-int g_targetToolCursorIdx = 0;
-
-// toggles whether the drill mesh should move slowly towards the followSphere
-// or make a sudden jump
-bool g_suddenJump = true;
-
-// index of current drill size
-int g_drillSizeIdx = 0;
-
-// current drill size
-int g_currDrillSize = 2;
-
-// color property of bone
-cColorb g_boneColor(255, 249, 219, 255);
-
-// get color of voxels at (x,y,z)
-cColorb g_storedColor(0x00, 0x00, 0x00, 0x00);
-
-enum HapticStates
-{
-    HAPTIC_IDLE,
-    HAPTIC_SELECTION
-};
-
-HapticStates state = HAPTIC_IDLE;
 
 
 //------------------------------------------------------------------------------
 // DECLARED FUNCTIONS
 //------------------------------------------------------------------------------
 
-// Initialize tool cursors
-void toolCursorInit(const afWorldPtr);
-
-void incrementDevicePos(cVector3d a_pos);
-
-void incrementDeviceRot(cVector3d a_rot);
-
-// update position of shaft tool cursors
-void shaftToolCursorsPosUpdate(cTransform a_devicePose);
-
-// check for shaft collision
-void checkShaftCollision(void);
-
-// update position of drill mesh
-void drillPosUpdate(void);
-
-// toggles size of the drill burr
-void changeDrillSize(void);
-
 //------------------------------------------------------------------------------
-
 
 int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
 
@@ -195,128 +77,134 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     float ds = var_map["ds"].as<float>();
 
     if (nt > 0 && nt <= 8){
-        g_toolCursorList.resize(nt);
+        m_toolCursorList.resize(nt);
     }
     else{
         cerr << "ERROR! VALID NUMBER OF TOOL CURSORS ARE BETWEEN 1 - 8. Specified value = " << nt << endl;
         return -1;
     }
 
-    g_dX = ds;
+    m_zeroColor = cColorb(0x00, 0x00, 0x00, 0x00);
+
+    m_boneColor = cColorb(255, 249, 219, 255);
+
+    m_storedColor = cColorb(0x00, 0x00, 0x00, 0x00);
+
+    m_dX = ds;
 
     m_worldPtr = a_afWorld;
 
     // Get first camera
-    g_mainCamera = m_worldPtr->getCameras()[0];
+    m_mainCamera = m_worldPtr->getCameras()[0];
 
     double maxStiffness = 10.0;
 
     // Initializing tool's rotation matrix as an identity matrix
-    g_toolRotMat.identity();
-    g_toolRotMat = g_mainCamera->getLocalRot() * g_toolRotMat;
+    m_toolRotMat.identity();
+    m_toolRotMat = m_mainCamera->getLocalRot() * m_toolRotMat;
 
     // importing drill model
-    g_drillRigidBody = m_worldPtr->getRigidBody("mastoidectomy_drill");
-    if (!g_drillRigidBody){
+    m_drillRigidBody = m_worldPtr->getRigidBody("mastoidectomy_drill");
+    if (!m_drillRigidBody){
         cerr << "ERROR! FAILED TO FIND DRILL RIGID BODY NAMED " << "mastoidectomy_drill" << endl;
         return -1;
     }
     else{
-        g_burrMesh = new cShapeSphere(0.043); // 2mm by default with 1 AMBF unit = 0.049664 m
-        g_burrMesh->setRadius(0.043);
-        g_burrMesh->m_material->setBlack();
-        g_burrMesh->m_material->setShininess(0);
-        g_burrMesh->m_material->m_specular.set(0, 0, 0);
-        g_burrMesh->setShowEnabled(true);
-        g_drillRigidBody->addChildSceneObject(g_burrMesh, cTransform());
-        m_worldPtr->addSceneObjectToWorld(g_burrMesh);
+        m_burrMesh = new cShapeSphere(0.043); // 2mm by default with 1 AMBF unit = 0.049664 m
+        m_burrMesh->setRadius(0.043);
+        m_burrMesh->m_material->setBlack();
+        m_burrMesh->m_material->setShininess(0);
+        m_burrMesh->m_material->m_specular.set(0, 0, 0);
+        m_burrMesh->setShowEnabled(true);
+        m_drillRigidBody->addChildSceneObject(m_burrMesh, cTransform());
+        m_worldPtr->addSceneObjectToWorld(m_burrMesh);
     }
 
-    g_volumeObject = m_worldPtr->getVolume("mastoidectomy_volume");
-    if (!g_volumeObject){
+    m_volumeObject = m_worldPtr->getVolume("mastoidectomy_volume");
+    if (!m_volumeObject){
         cerr << "ERROR! FAILED TO FIND DRILL VOLUME NAMED " << "mastoidectomy_volume" << endl;
         return -1;
     }
     else{
-        g_voxelObj = g_volumeObject->getInternalVolume();
+        m_voxelObj = m_volumeObject->getInternalVolume();
     }
 
     // create a haptic device handler
-    g_deviceHandler = new cHapticDeviceHandler();
+    m_deviceHandler = new cHapticDeviceHandler();
 
     // get access to the first available haptic device found
-    g_deviceHandler->getDevice(g_hapticDevice, 0);
+    m_deviceHandler->getDevice(m_hapticDevice, 0);
 
     // retrieve information about the current haptic device
-    cHapticDeviceInfo hapticDeviceInfo = g_hapticDevice->getSpecifications();
+    cHapticDeviceInfo hapticDeviceInfo = m_hapticDevice->getSpecifications();
 
     // Initializing tool cursors
     toolCursorInit(a_afWorld);
 
     // read the scale factor between the physical workspace of the haptic
     // device and the virtual workspace defined for the tool
-    double workspaceScaleFactor = g_toolCursorList[0]->getWorkspaceScaleFactor();
+    double workspaceScaleFactor = m_toolCursorList[0]->getWorkspaceScaleFactor();
 
     // stiffness properties
     maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
 
     // Set voxels surface contact properties
-    g_voxelObj->m_material->setStiffness(0.2 * maxStiffness);
-    g_voxelObj->m_material->setDamping(0.0);
-    g_voxelObj->m_material->setDynamicFriction(0.0);
-    g_voxelObj->setUseMaterial(true);
+    m_voxelObj->m_material->setStiffness(0.2 * maxStiffness);
+    m_voxelObj->m_material->setDamping(0.0);
+    m_voxelObj->m_material->setDynamicFriction(0.0);
+    m_voxelObj->setUseMaterial(true);
 
     // create a font
     cFontPtr font = NEW_CFONTCALIBRI40();
 
     // A warning pop-up that shows up while drilling at critical region
-    g_warningPopup = new cPanel();
-    g_warningPopup->set(g_mainCamera->m_width/2, g_mainCamera->m_height/5);
-    g_warningPopup->setColor(cColorf(0.6,0,0));
-    g_warningPopup->setLocalPos(g_mainCamera->m_width*0.3, g_mainCamera->m_height*0.6, 0);
-    g_mainCamera->getFrontLayer()->addChild(g_warningPopup);
-    g_warningPopup->setShowPanel(false);
+    m_warningPopup = new cPanel();
+    m_warningPopup->set(m_mainCamera->m_width/2, m_mainCamera->m_height/5);
+    m_warningPopup->setColor(cColorf(0.6,0,0));
+    m_warningPopup->setLocalPos(m_mainCamera->m_width*0.3, m_mainCamera->m_height*0.6, 0);
+    m_mainCamera->getFrontLayer()->addChild(m_warningPopup);
+    m_warningPopup->setShowPanel(false);
 
-    g_warningText = new cLabel(font);
-    g_warningText->setLocalPos(0.31 * g_mainCamera->m_width, 0.67 * g_mainCamera->m_height, 0.5);
-    g_warningText->m_fontColor.setWhite();
-    g_warningText->setFontScale(1.0);
-    g_warningText->setText("WARNING! Critical Region Detected");
-    g_mainCamera->getFrontLayer()->addChild(g_warningText);
-    g_warningText->setShowEnabled(false);
+    m_warningText = new cLabel(font);
+    m_warningText->setLocalPos(0.31 * m_mainCamera->m_width, 0.67 * m_mainCamera->m_height, 0.5);
+    m_warningText->m_fontColor.setWhite();
+    m_warningText->setFontScale(1.0);
+    m_warningText->setText("WARNING! Critical Region Detected");
+    m_mainCamera->getFrontLayer()->addChild(m_warningText);
+    m_warningText->setShowEnabled(false);
 
     // A panel to display current drill size
-    g_drillSizePanel = new cPanel();
-    g_drillSizePanel->setSize(170, 50);
-    g_drillSizePanel->setCornerRadius(10, 10, 10, 10);
-    g_drillSizePanel->setLocalPos(40,60);
-    g_drillSizePanel->setColor(cColorf(1, 1, 1));
-    g_drillSizePanel->setTransparencyLevel(0.8);
-    g_mainCamera->getFrontLayer()->addChild(g_drillSizePanel);
+    m_drillSizePanel = new cPanel();
+    m_drillSizePanel->setSize(170, 50);
+    m_drillSizePanel->setCornerRadius(10, 10, 10, 10);
+    m_drillSizePanel->setLocalPos(40,60);
+    m_drillSizePanel->setColor(cColorf(1, 1, 1));
+    m_drillSizePanel->setTransparencyLevel(0.8);
+    m_mainCamera->getFrontLayer()->addChild(m_drillSizePanel);
 
-    g_drillSizeText = new cLabel(font);
-    g_drillSizeText->setLocalPos(50,70);
-    g_drillSizeText->m_fontColor.setBlack();
-    g_drillSizeText->setFontScale(.75);
-    g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
-    g_mainCamera->getFrontLayer()->addChild(g_drillSizeText);
+    m_drillSizeText = new cLabel(font);
+    m_drillSizeText->setLocalPos(50,70);
+    m_drillSizeText->m_fontColor.setBlack();
+    m_drillSizeText->setFontScale(.75);
+    m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
+    m_mainCamera->getFrontLayer()->addChild(m_drillSizeText);
 
     // Get drills initial pose
-    T_d = g_drillRigidBody->getLocalTransform();
+    T_d = m_drillRigidBody->getLocalTransform();
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
 
     // update region of voxels to be updated
-    if (g_flagMarkVolumeForUpdate)
+    if (m_flagMarkVolumeForUpdate)
     {
-        g_mutexVoxel.lock();
-        cVector3d min = g_volumeUpdate.m_min;
-        cVector3d max = g_volumeUpdate.m_max;
-        g_volumeUpdate.setEmpty();
-        g_mutexVoxel.unlock();
-        ((cTexture3d*)g_voxelObj->m_texture.get())->markForPartialUpdate(min, max);
-        g_flagMarkVolumeForUpdate = false;
+        m_mutexVoxel.acquire();
+        cVector3d min = m_volumeUpdate.m_min;
+        cVector3d max = m_volumeUpdate.m_max;
+        m_volumeUpdate.setEmpty();
+        m_mutexVoxel.release();
+        ((cTexture3d*)m_voxelObj->m_texture.get())->markForPartialUpdate(min, max);
+        m_flagMarkVolumeForUpdate = false;
     }
 }
 
@@ -329,16 +217,16 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     bool clutch;
 
-    g_hapticDevice->getTransform(T_i);
-    g_hapticDevice->getLinearVelocity(V_i);
-    g_hapticDevice->getUserSwitch(0, clutch);
+    m_hapticDevice->getTransform(T_i);
+    m_hapticDevice->getLinearVelocity(V_i);
+    m_hapticDevice->getUserSwitch(0, clutch);
 
-    T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / g_toolCursorList[0]->getWorkspaceScaleFactor()));
+    T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor()));
     T_d.setLocalRot(T_i.getLocalRot());
 
-    g_toolCursorList[0]->setDeviceLocalTransform(T_d);
+    m_toolCursorList[0]->setDeviceLocalTransform(T_d);
 
-    shaftToolCursorsPosUpdate(g_toolCursorList[0]->getDeviceGlobalTransform());
+    shaftToolCursorsPosUpdate(m_toolCursorList[0]->getDeviceGlobalTransform());
 
     // check for shaft collision
     checkShaftCollision();
@@ -348,72 +236,72 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
 
      // read user switch
-    int userSwitches = g_toolCursorList[0]->getUserSwitches();
+    int userSwitches = m_toolCursorList[0]->getUserSwitches();
 
-    if (g_toolCursorList[0]->isInContact(g_voxelObj) && g_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
+    if (m_toolCursorList[0]->isInContact(m_voxelObj) && m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
 
         // retrieve contact event
-        cCollisionEvent* contact = g_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
+        cCollisionEvent* contact = m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
 
         cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
         cVector3d ray = orig;
 
-        g_voxelObj->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_storedColor);
+        m_voxelObj->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), m_storedColor);
 
         //if the tool comes in contact with the critical region, instantiate the warning message
-        if(g_storedColor != g_boneColor && g_storedColor != g_zeroColor)
+        if(m_storedColor != m_boneColor && m_storedColor != m_zeroColor)
         {
-            g_warningPopup->setShowPanel(true);
-            g_warningText->setShowEnabled(true);
+            m_warningPopup->setShowPanel(true);
+            m_warningText->setShowEnabled(true);
         }
 
-        g_voxelObj->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), g_zeroColor);
+        m_voxelObj->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), m_zeroColor);
 
-        g_mutexVoxel.lock();
-        g_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
-        g_mutexVoxel.unlock();
+        m_mutexVoxel.acquire();
+        m_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
+        m_mutexVoxel.release();
         // mark voxel for update
 
-        g_flagMarkVolumeForUpdate = true;
+        m_flagMarkVolumeForUpdate = true;
     }
 
     // remove warning panel
     else
     {
-        g_warningPopup->setShowPanel(false);
-        g_warningText->setShowEnabled(false);
+        m_warningPopup->setShowPanel(false);
+        m_warningText->setShowEnabled(false);
     }
 
     // compute interaction forces
-    for(int i = 0 ; i < g_toolCursorList.size() ; i++){
-        g_toolCursorList[i]->computeInteractionForces();
+    for(int i = 0 ; i < m_toolCursorList.size() ; i++){
+        m_toolCursorList[i]->computeInteractionForces();
     }
 
     // check if device remains stuck inside voxel object
-    cVector3d force = g_targetToolCursor->getDeviceGlobalForce();
-    g_toolCursorList[0]->setDeviceLocalForce(force);
+    cVector3d force = m_targetToolCursor->getDeviceGlobalForce();
+    m_toolCursorList[0]->setDeviceLocalForce(force);
 
-    if (g_flagStart)
+    if (m_flagStart)
     {
         if (force.length() != 0.0)
         {
 
-            g_toolCursorList[0]->initialize();
-            counter = 0;
+            m_toolCursorList[0]->initialize();
+            m_counter = 0;
         }
         else
         {
-            counter++;
-            if (counter > 10)
-                g_flagStart = false;
+            m_counter++;
+            if (m_counter > 10)
+                m_flagStart = false;
         }
     }
     else
     {
         if (force.length() > 10.0)
         {
-            g_flagStart = true;
+            m_flagStart = true;
         }
     }
 
@@ -423,42 +311,42 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     /////////////////////////////////////////////////////////////////////////
 
     // compute transformation from world to tool (haptic device)
-    cTransform world_T_tool = g_toolCursorList[0]->getDeviceGlobalTransform();
+    cTransform world_T_tool = m_toolCursorList[0]->getDeviceGlobalTransform();
 
     // get status of user switch
-    bool button = g_toolCursorList[0]->getUserSwitch(0);
+    bool button = m_toolCursorList[0]->getUserSwitch(0);
     //
     // STATE 1:
     // Idle mode - user presses the user switch
     //
-    if ((state == HAPTIC_IDLE) && (button == true))
+    if ((m_controlMode == HAPTIC_IDLE) && (button == true))
     {
         // check if at least one contact has occurred
-        if (g_toolCursorList[0]->m_hapticPoint->getNumCollisionEvents() > 0)
+        if (m_toolCursorList[0]->m_hapticPoint->getNumCollisionEvents() > 0)
         {
             // get contact event
-            cCollisionEvent* collisionEvent = g_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
+            cCollisionEvent* collisionEvent = m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
 
             // get object from contact event
-            g_selectedObject = collisionEvent->m_object;
+            m_selectedObject = collisionEvent->m_object;
         }
         else
         {
-            g_selectedObject = g_voxelObj;
+            m_selectedObject = m_voxelObj;
         }
 
         // get transformation from object
-        cTransform world_T_object = g_selectedObject->getGlobalTransform();
+        cTransform world_T_object = m_selectedObject->getGlobalTransform();
 
         // compute inverse transformation from contact point to object
         cTransform tool_T_world = world_T_tool;
         tool_T_world.invert();
 
         // store current transformation tool
-        g_tool_T_object = tool_T_world * world_T_object;
+        m_tool_T_object = tool_T_world * world_T_object;
 
         // update state
-        state = HAPTIC_SELECTION;
+        m_controlMode = HAPTIC_SELECTION;
     }
 
 
@@ -466,25 +354,25 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // STATE 2:
     // Selection mode - operator maintains user switch enabled and moves object
     //
-    else if ((state == HAPTIC_SELECTION) && (button == true))
+    else if ((m_controlMode == HAPTIC_SELECTION) && (button == true))
     {
         // compute new transformation of object in global coordinates
-        cTransform world_T_object = world_T_tool * g_tool_T_object;
+        cTransform world_T_object = world_T_tool * m_tool_T_object;
 
         // compute new transformation of object in local coordinates
-        cTransform parent_T_world = g_selectedObject->getParent()->getLocalTransform();
+        cTransform parent_T_world = m_selectedObject->getParent()->getLocalTransform();
         parent_T_world.invert();
         cTransform parent_T_object = parent_T_world * world_T_object;
 
         // assign new local transformation to object
-        if (g_selectedObject == g_voxelObj){
-            g_volumeObject->setLocalTransform(parent_T_object);
+        if (m_selectedObject == m_voxelObj){
+            m_volumeObject->setLocalTransform(parent_T_object);
         }
 
         // set zero forces when manipulating objects
-        g_toolCursorList[0]->setDeviceGlobalForce(0.0, 0.0, 0.0);
+        m_toolCursorList[0]->setDeviceGlobalForce(0.0, 0.0, 0.0);
 
-        g_toolCursorList[0]->initialize();
+        m_toolCursorList[0]->initialize();
     }
 
     //
@@ -493,7 +381,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     //
     else
     {
-        state = HAPTIC_IDLE;
+        m_controlMode = HAPTIC_IDLE;
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -501,7 +389,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     /////////////////////////////////////////////////////////////////////////
 
     // send forces to haptic device
-    g_toolCursorList[0]->applyToDevice();
+    m_toolCursorList[0]->applyToDevice();
 
 }
 
@@ -510,49 +398,49 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 /// \param a_afWorld    A world that contains all objects of the virtual environment
 /// \return
 ///
-void toolCursorInit(const afWorldPtr a_afWorld){
+void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 
-    for(int i=0; i<g_toolCursorList.size(); i++)
+    for(int i=0; i<m_toolCursorList.size(); i++)
     {
-        g_toolCursorList[i] = new cToolCursor(a_afWorld->getChaiWorld());
+        m_toolCursorList[i] = new cToolCursor(a_afWorld->getChaiWorld());
 
-        a_afWorld->addSceneObjectToWorld(g_toolCursorList[i]);
+        a_afWorld->addSceneObjectToWorld(m_toolCursorList[i]);
 
         if(i == 0)
         {
-            g_toolCursorList[i]->setHapticDevice(g_hapticDevice);
+            m_toolCursorList[i]->setHapticDevice(m_hapticDevice);
 
             // map the physical workspace of the haptic device to a larger virtual workspace.
 
-            g_toolCursorList[i]->setWorkspaceRadius(10.0);
-            g_toolCursorList[i]->setWaitForSmallForce(true);
-            g_toolCursorList[i]->start();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
+            m_toolCursorList[i]->setWorkspaceRadius(10.0);
+            m_toolCursorList[i]->setWaitForSmallForce(true);
+            m_toolCursorList[i]->start();
+            m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
 
-            g_toolCursorList[i]->m_name = "mastoidectomy_drill";
-            g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setBlueAquamarine();
+            m_toolCursorList[i]->m_name = "mastoidectomy_drill";
+            m_toolCursorList[i]->m_hapticPoint->setShow(m_showGoalProxySpheres, m_showGoalProxySpheres);
+            m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setRedCrimson();
+            m_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setBlueAquamarine();
 
             // if the haptic device has a gripper, enable it as a user switch
-            g_hapticDevice->setEnableGripperUserSwitch(true);
-            g_toolCursorList[i]->setRadius(0.043); // Set the correct radius for the tip which is not from the list of cursor radii
+            m_hapticDevice->setEnableGripperUserSwitch(true);
+            m_toolCursorList[i]->setRadius(0.043); // Set the correct radius for the tip which is not from the list of cursor radii
         }
         else
         {
-            g_toolCursorList[i]->setShowContactPoints(g_showGoalProxySpheres, g_showGoalProxySpheres);
-            g_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
-            g_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
-            g_toolCursorList[i]->setRadius(g_toolCursorRadius[i]);
+            m_toolCursorList[i]->setShowContactPoints(m_showGoalProxySpheres, m_showGoalProxySpheres);
+            m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
+            m_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
+            m_toolCursorList[i]->setRadius(m_toolCursorRadius[i]);
         }
      }
 
     // Initialize the start pose of the tool cursors
-    cTransform T_d = g_drillRigidBody->getLocalTransform();
-    g_toolCursorList[0]->setDeviceLocalTransform(T_d);
+    cTransform T_d = m_drillRigidBody->getLocalTransform();
+    m_toolCursorList[0]->setDeviceLocalTransform(T_d);
     shaftToolCursorsPosUpdate(T_d);
-    for (int i = 0 ;  i < g_toolCursorList.size() ; i++){
-        g_toolCursorList[i]->initialize();
+    for (int i = 0 ;  i < m_toolCursorList.size() ; i++){
+        m_toolCursorList[i]->initialize();
     }
 }
 
@@ -561,9 +449,9 @@ void toolCursorInit(const afWorldPtr a_afWorld){
 /// \brief incrementDevicePos
 /// \param a_vel
 ///
-void incrementDevicePos(cVector3d a_vel){
-    cVector3d P = g_toolCursorList[0]->getDeviceGlobalPos() + a_vel;
-    g_toolCursorList[0]->setDeviceGlobalPos(P);
+void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
+    cVector3d P = m_toolCursorList[0]->getDeviceGlobalPos() + a_vel;
+    m_toolCursorList[0]->setDeviceGlobalPos(P);
 }
 
 
@@ -571,23 +459,23 @@ void incrementDevicePos(cVector3d a_vel){
 /// \brief incrementDeviceRot
 /// \param a_rot
 ///
-void incrementDeviceRot(cVector3d a_rot){
+void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
     cMatrix3d R_cmd;
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
-    cMatrix3d R = g_toolCursorList[0]->getDeviceGlobalRot() * R_cmd;
-    g_toolCursorList[0]->setDeviceGlobalRot(R);
+    cMatrix3d R = m_toolCursorList[0]->getDeviceGlobalRot() * R_cmd;
+    m_toolCursorList[0]->setDeviceGlobalRot(R);
 }
 
 ///
 /// \brief This method updates the position of the shaft tool cursors
 /// which eventually updates the position of the whole tool.
 ///
-void shaftToolCursorsPosUpdate(cTransform a_devicePose){
-    cVector3d n_x = a_devicePose.getLocalRot().getCol0() * g_dX;
-    for (int i = 1 ; i < g_toolCursorList.size() ; i++){
+void afVolmetricDrillingPlugin::shaftToolCursorsPosUpdate(cTransform a_devicePose){
+    cVector3d n_x = a_devicePose.getLocalRot().getCol0() * m_dX;
+    for (int i = 1 ; i < m_toolCursorList.size() ; i++){
         cVector3d P = a_devicePose.getLocalPos() + n_x * i;
-        g_toolCursorList[i]->setDeviceLocalPos(P);
-        g_toolCursorList[i]->setDeviceLocalRot(a_devicePose.getLocalRot());
+        m_toolCursorList[i]->setDeviceLocalPos(P);
+        m_toolCursorList[i]->setDeviceLocalRot(a_devicePose.getLocalRot());
     }
 }
 
@@ -599,21 +487,21 @@ void shaftToolCursorsPosUpdate(cTransform a_devicePose){
 /// If there's no collision, the drill mesh follows the proxy position of the shaft tool cursor which is
 /// closest to the tip tool cursor.
 ///
-void checkShaftCollision(){
+void afVolmetricDrillingPlugin::checkShaftCollision(){
 
-    g_maxError = 0;
-    g_targetToolCursor = g_toolCursorList[0];
-    g_targetToolCursorIdx = 0;
-    for(int i=0; i<g_toolCursorList.size(); i++)
+    m_maxError = 0;
+    m_targetToolCursor = m_toolCursorList[0];
+    m_targetToolCursorIdx = 0;
+    for(int i=0; i<m_toolCursorList.size(); i++)
     {
 
-        g_currError = cDistance(g_toolCursorList[i]->m_hapticPoint->getGlobalPosProxy(), g_toolCursorList[i]->m_hapticPoint->getGlobalPosGoal());
+        m_currError = cDistance(m_toolCursorList[i]->m_hapticPoint->getGlobalPosProxy(), m_toolCursorList[i]->m_hapticPoint->getGlobalPosGoal());
 
-        if(abs(g_currError) > abs(g_maxError + 0.00001))
+        if(abs(m_currError) > abs(m_maxError + 0.00001))
         {
-            g_maxError = g_currError;
-            g_targetToolCursor = g_toolCursorList[i];
-            g_targetToolCursorIdx = i;
+            m_maxError = m_currError;
+            m_targetToolCursor = m_toolCursorList[i];
+            m_targetToolCursorIdx = i;
         }
     }
 }
@@ -624,32 +512,32 @@ void checkShaftCollision(){
 /// After obtaining g_targetToolCursor, the drill mesh adjust it's position and rotation
 /// such that it follows the proxy position of the g_targetToolCursor.
 ///
-void drillPosUpdate(){
+void afVolmetricDrillingPlugin::drillPosUpdate(){
 
-    if(g_targetToolCursorIdx == 0){
+    if(m_targetToolCursorIdx == 0){
         cTransform T_tip;
-        T_tip.setLocalPos(g_toolCursorList[0]->m_hapticPoint->getGlobalPosProxy());
-        T_tip.setLocalRot(g_toolCursorList[0]->getDeviceGlobalRot());
-        g_drillRigidBody->setLocalTransform(T_tip);
+        T_tip.setLocalPos(m_toolCursorList[0]->m_hapticPoint->getGlobalPosProxy());
+        T_tip.setLocalRot(m_toolCursorList[0]->getDeviceGlobalRot());
+        m_drillRigidBody->setLocalTransform(T_tip);
     }
-    else if(cDistance(g_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), g_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
+    else if(cDistance(m_targetToolCursor->m_hapticPoint->getGlobalPosProxy(), m_targetToolCursor->m_hapticPoint->getGlobalPosGoal()) <= 0.001)
     {
         // direction of positive x-axis of drill mesh
-        cVector3d xDir = g_drillRigidBody->getLocalRot().getCol0();
+        cVector3d xDir = m_drillRigidBody->getLocalRot().getCol0();
 
         cVector3d newDrillPos;
         cMatrix3d newDrillRot;
 
         // drill mesh will make a sudden jump towards the followSphere
-        if(!g_suddenJump)
+        if(!m_suddenJump)
         {
-            newDrillPos = (g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx);
+            newDrillPos = (m_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * m_dX * m_targetToolCursorIdx);
         }
 
         // drill mesh slowly moves towards the followSphere
         else
         {
-            newDrillPos = g_drillRigidBody->getLocalPos() + ((g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * g_dX * g_targetToolCursorIdx) - g_drillRigidBody->getLocalPos()) * 0.04;
+            newDrillPos = m_drillRigidBody->getLocalPos() + ((m_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - xDir * m_dX * m_targetToolCursorIdx) - m_drillRigidBody->getLocalPos()) * 0.04;
         }
 
 //        cVector3d L = g_targetToolCursor->m_hapticPoint->getGlobalPosProxy() - g_toolCursorList[0]->getDeviceLocalPos();
@@ -662,14 +550,14 @@ void drillPosUpdate(){
 //            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
 //        }
 
-        newDrillRot = g_toolCursorList[0]->getDeviceGlobalRot();
+        newDrillRot = m_toolCursorList[0]->getDeviceGlobalRot();
 
         cTransform trans;
         trans.setLocalPos(newDrillPos);
         trans.setLocalRot(newDrillRot);
 
 //        g_drillRigidBody->setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
-        g_drillRigidBody->setLocalTransform(trans);
+        m_drillRigidBody->setLocalTransform(trans);
     }
 }
 
@@ -678,39 +566,39 @@ void drillPosUpdate(){
 /// \brief This method changes the size of the tip tool cursor.
 /// Currently, the size of the tip tool cursor can be set to 2mm, 4mm, and 6mm.
 ///
-void changeDrillSize(){
+void afVolmetricDrillingPlugin::changeDrillSize(){
 
-    g_drillSizeIdx++;
+    m_drillSizeIdx++;
 
-    if(g_drillSizeIdx > 2)
+    if(m_drillSizeIdx > 2)
     {
-        g_drillSizeIdx = 0;
+        m_drillSizeIdx = 0;
     }
 
-    switch(g_drillSizeIdx)
+    switch(m_drillSizeIdx)
     {
         case 0:
-            g_toolCursorList[0]->setRadius(0.0403);
-            g_burrMesh->setRadius(0.0403);
+            m_toolCursorList[0]->setRadius(0.0403);
+            m_burrMesh->setRadius(0.0403);
             cout << "Drill Size changed to 2 mm" << endl;
-            g_currDrillSize = 2;
-            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
+            m_currDrillSize = 2;
+            m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
             break;
 
         case 1:
-            g_toolCursorList[0]->setRadius(0.0805);
-            g_burrMesh->setRadius(0.0805);
+            m_toolCursorList[0]->setRadius(0.0805);
+            m_burrMesh->setRadius(0.0805);
             cout << "Drill Size changed to 4 mm" << endl;
-            g_currDrillSize = 4;
-            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
+            m_currDrillSize = 4;
+            m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
             break;
 
         case 2:
-            g_toolCursorList[0]->setRadius(0.1208);
-            g_burrMesh->setRadius(0.1208);
+            m_toolCursorList[0]->setRadius(0.1208);
+            m_burrMesh->setRadius(0.1208);
             cout << "Drill Size changed to 6 mm" << endl;
-            g_currDrillSize = 6;
-            g_drillSizeText->setText("Drill Size: " + cStr(g_currDrillSize) + " mm");
+            m_currDrillSize = 6;
+            m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
             break;
 
         default:
@@ -725,55 +613,55 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         // controls linear motion of tool
         if (a_key == GLFW_KEY_W) {
 
-            cVector3d dir = g_mainCamera->getUpVector() * g_drillRate;
+            cVector3d dir = m_mainCamera->getUpVector() * m_drillRate;
             incrementDevicePos(dir);
         }
 
         else if (a_key == GLFW_KEY_D) {
 
-            cVector3d dir = g_mainCamera->getRightVector() * g_drillRate;
+            cVector3d dir = m_mainCamera->getRightVector() * m_drillRate;
             incrementDevicePos(dir);
 
         }
 
         else if (a_key == GLFW_KEY_S) {
 
-            cVector3d dir = g_mainCamera->getUpVector() * g_drillRate;
+            cVector3d dir = m_mainCamera->getUpVector() * m_drillRate;
             incrementDevicePos(-dir);
 
         }
 
         else if (a_key == GLFW_KEY_A) {
 
-            cVector3d dir = g_mainCamera->getRightVector() * g_drillRate;
+            cVector3d dir = m_mainCamera->getRightVector() * m_drillRate;
             incrementDevicePos(-dir);
 
         }
 
         else if (a_key == GLFW_KEY_K) {
 
-            cVector3d dir = g_mainCamera->getLookVector() * g_drillRate;
+            cVector3d dir = m_mainCamera->getLookVector() * m_drillRate;
             incrementDevicePos(-dir);
 
         }
 
         else if (a_key == GLFW_KEY_I) {
 
-            cVector3d dir = g_mainCamera->getLookVector() * g_drillRate;
+            cVector3d dir = m_mainCamera->getLookVector() * m_drillRate;
             incrementDevicePos(dir);
         }
 
         else if (a_key == GLFW_KEY_C) {
-            g_showGoalProxySpheres = !g_showGoalProxySpheres;
-            for (int i = 0 ; i < g_toolCursorList.size() ; i++){
-                g_toolCursorList[i]->m_hapticPoint->setShow(g_showGoalProxySpheres, g_showGoalProxySpheres);
+            m_showGoalProxySpheres = !m_showGoalProxySpheres;
+            for (int i = 0 ; i < m_toolCursorList.size() ; i++){
+                m_toolCursorList[i]->m_hapticPoint->setShow(m_showGoalProxySpheres, m_showGoalProxySpheres);
             }
         }
 
         // option - polygonize model and save to file
         else if (a_key == GLFW_KEY_P) {
             cMultiMesh *surface = new cMultiMesh;
-            g_voxelObj->polygonize(surface, 0.01, 0.01, 0.01);
+            m_voxelObj->polygonize(surface, 0.01, 0.01, 0.01);
             double SCALE = 0.1;
             double METERS_TO_MILLIMETERS = 1000.0;
             surface->scale(SCALE * METERS_TO_MILLIMETERS);
@@ -787,168 +675,168 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
         // option - reduce size along X axis
         if (a_key == GLFW_KEY_4) {
-            double value = cClamp((g_voxelObj->m_maxCorner.x() - 0.005), 0.01, 0.5);
-            g_voxelObj->m_maxCorner.x(value);
-            g_voxelObj->m_minCorner.x(-value);
-            g_voxelObj->m_maxTextureCoord.x(0.5 + value);
-            g_voxelObj->m_minTextureCoord.x(0.5 - value);
+            double value = cClamp((m_voxelObj->m_maxCorner.x() - 0.005), 0.01, 0.5);
+            m_voxelObj->m_maxCorner.x(value);
+            m_voxelObj->m_minCorner.x(-value);
+            m_voxelObj->m_maxTextureCoord.x(0.5 + value);
+            m_voxelObj->m_minTextureCoord.x(0.5 - value);
             cout << "> Reduce size along X axis.                            \r";
         }
 
         // option - increase size along X axis
         else if (a_key == GLFW_KEY_5) {
-            double value = cClamp((g_voxelObj->m_maxCorner.x() + 0.005), 0.01, 0.5);
-            g_voxelObj->m_maxCorner.x(value);
-            g_voxelObj->m_minCorner.x(-value);
-            g_voxelObj->m_maxTextureCoord.x(0.5 + value);
-            g_voxelObj->m_minTextureCoord.x(0.5 - value);
+            double value = cClamp((m_voxelObj->m_maxCorner.x() + 0.005), 0.01, 0.5);
+            m_voxelObj->m_maxCorner.x(value);
+            m_voxelObj->m_minCorner.x(-value);
+            m_voxelObj->m_maxTextureCoord.x(0.5 + value);
+            m_voxelObj->m_minTextureCoord.x(0.5 - value);
             cout << "> Increase size along X axis.                            \r";
         }
 
         // option - reduce size along Y axis
         else if (a_key == GLFW_KEY_6) {
-            double value = cClamp((g_voxelObj->m_maxCorner.y() - 0.005), 0.01, 0.5);
-            g_voxelObj->m_maxCorner.y(value);
-            g_voxelObj->m_minCorner.y(-value);
-            g_voxelObj->m_maxTextureCoord.y(0.5 + value);
-            g_voxelObj->m_minTextureCoord.y(0.5 - value);
+            double value = cClamp((m_voxelObj->m_maxCorner.y() - 0.005), 0.01, 0.5);
+            m_voxelObj->m_maxCorner.y(value);
+            m_voxelObj->m_minCorner.y(-value);
+            m_voxelObj->m_maxTextureCoord.y(0.5 + value);
+            m_voxelObj->m_minTextureCoord.y(0.5 - value);
             cout << "> Reduce size along Y axis.                            \r";
         }
 
         // option - increase size along Y axis
         else if (a_key == GLFW_KEY_7) {
-            double value = cClamp((g_voxelObj->m_maxCorner.y() + 0.005), 0.01, 0.5);
-            g_voxelObj->m_maxCorner.y(value);
-            g_voxelObj->m_minCorner.y(-value);
-            g_voxelObj->m_maxTextureCoord.y(0.5 + value);
-            g_voxelObj->m_minTextureCoord.y(0.5 - value);
+            double value = cClamp((m_voxelObj->m_maxCorner.y() + 0.005), 0.01, 0.5);
+            m_voxelObj->m_maxCorner.y(value);
+            m_voxelObj->m_minCorner.y(-value);
+            m_voxelObj->m_maxTextureCoord.y(0.5 + value);
+            m_voxelObj->m_minTextureCoord.y(0.5 - value);
             cout << "> Increase size along Y axis.                            \r";
         }
 
         // option - reduce size along Z axis
         else if (a_key == GLFW_KEY_8) {
-            double value = cClamp((g_voxelObj->m_maxCorner.z() - 0.005), 0.01, 0.5);
-            g_voxelObj->m_maxCorner.z(value);
-            g_voxelObj->m_minCorner.z(-value);
-            g_voxelObj->m_maxTextureCoord.z(0.5 + value);
-            g_voxelObj->m_minTextureCoord.z(0.5 - value);
+            double value = cClamp((m_voxelObj->m_maxCorner.z() - 0.005), 0.01, 0.5);
+            m_voxelObj->m_maxCorner.z(value);
+            m_voxelObj->m_minCorner.z(-value);
+            m_voxelObj->m_maxTextureCoord.z(0.5 + value);
+            m_voxelObj->m_minTextureCoord.z(0.5 - value);
             cout << "> Reduce size along Z axis.                            \r";
         }
 
         // option - increase size along Z axis
         else if (a_key == GLFW_KEY_9) {
-            double value = cClamp((g_voxelObj->m_maxCorner.z() + 0.005), 0.01, 0.5);
-            g_voxelObj->m_maxCorner.z(value);
-            g_voxelObj->m_minCorner.z(-value);
-            g_voxelObj->m_maxTextureCoord.z(0.5 + value);
-            g_voxelObj->m_minTextureCoord.z(0.5 - value);
+            double value = cClamp((m_voxelObj->m_maxCorner.z() + 0.005), 0.01, 0.5);
+            m_voxelObj->m_maxCorner.z(value);
+            m_voxelObj->m_minCorner.z(-value);
+            m_voxelObj->m_maxTextureCoord.z(0.5 + value);
+            m_voxelObj->m_minTextureCoord.z(0.5 - value);
             cout << "> Increase size along Z axis.                            \r";
         }
         // option - decrease quality of graphic rendering
         else if (a_key == GLFW_KEY_L) {
-            double value = g_voxelObj->getQuality();
-            g_voxelObj->setQuality(value - 0.01);
-            cout << "> Quality set to " << cStr(g_voxelObj->getQuality(), 1) << "                            \r";
+            double value = m_voxelObj->getQuality();
+            m_voxelObj->setQuality(value - 0.01);
+            cout << "> Quality set to " << cStr(m_voxelObj->getQuality(), 1) << "                            \r";
         }
 
         // option - increase quality of graphic rendering
         else if (a_key == GLFW_KEY_U) {
-            double value = g_voxelObj->getQuality();
-            g_voxelObj->setQuality(value + 0.01);
-            cout << "> Quality set to " << cStr(g_voxelObj->getQuality(), 1) << "                            \r";
+            double value = m_voxelObj->getQuality();
+            m_voxelObj->setQuality(value + 0.01);
+            cout << "> Quality set to " << cStr(m_voxelObj->getQuality(), 1) << "                            \r";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_UP) {
-            double value = g_voxelObj->getOpacityThreshold();
-            g_voxelObj->setOpacityThreshold(value + 0.01);
-            cout << "> Opacity Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
+            double value = m_voxelObj->getOpacityThreshold();
+            m_voxelObj->setOpacityThreshold(value + 0.01);
+            cout << "> Opacity Threshold set to " << cStr(m_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_DOWN) {
-            double value = g_voxelObj->getOpacityThreshold();
-            g_voxelObj->setOpacityThreshold(value - 0.01);
-            cout << "> Opacity Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
+            double value = m_voxelObj->getOpacityThreshold();
+            m_voxelObj->setOpacityThreshold(value - 0.01);
+            cout << "> Opacity Threshold set to " << cStr(m_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_RIGHT) {
-            double value = g_voxelObj->getIsosurfaceValue();
-            g_voxelObj->setIsosurfaceValue(value + 0.01);
-            cout << "> Isosurface Threshold set to " << cStr(g_voxelObj->getIsosurfaceValue(), 1)
+            double value = m_voxelObj->getIsosurfaceValue();
+            m_voxelObj->setIsosurfaceValue(value + 0.01);
+            cout << "> Isosurface Threshold set to " << cStr(m_voxelObj->getIsosurfaceValue(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_LEFT) {
-            double value = g_voxelObj->getIsosurfaceValue();
-            g_voxelObj->setIsosurfaceValue(value - 0.01);
-            cout << "> Isosurface Threshold set to " << cStr(g_voxelObj->getIsosurfaceValue(), 1)
+            double value = m_voxelObj->getIsosurfaceValue();
+            m_voxelObj->setIsosurfaceValue(value - 0.01);
+            cout << "> Isosurface Threshold set to " << cStr(m_voxelObj->getIsosurfaceValue(), 1)
                  << "                            \n";
         }
 
         // option - toggle vertical mirroring
         else if (a_key == GLFW_KEY_ENTER) {
-            g_renderingMode++;
-            if (g_renderingMode > 7) {
-                g_renderingMode = 0;
+            m_renderingMode++;
+            if (m_renderingMode > 7) {
+                m_renderingMode = 0;
             }
-            switch (g_renderingMode) {
+            switch (m_renderingMode) {
             case 0:
-                g_voxelObj->setRenderingModeBasic();
+                m_voxelObj->setRenderingModeBasic();
                 std::cerr << "setRenderingModeBasic" << std::endl;
                 break;
             case 1:
-                g_voxelObj->setRenderingModeVoxelColors();
+                m_voxelObj->setRenderingModeVoxelColors();
                 std::cerr << "setRenderingModeVoxelColors" << std::endl;
                 break;
             case 2:
-                g_voxelObj->setRenderingModeVoxelColorMap();
+                m_voxelObj->setRenderingModeVoxelColorMap();
                 std::cerr << "setRenderingModeVoxelColorMap" << std::endl;
                 break;
             case 3:
-                g_voxelObj->setRenderingModeIsosurfaceColors();
+                m_voxelObj->setRenderingModeIsosurfaceColors();
                 std::cerr << "setRenderingModeIsosurfaceColors" << std::endl;
                 break;
             case 4:
-                g_voxelObj->setRenderingModeIsosurfaceMaterial();
+                m_voxelObj->setRenderingModeIsosurfaceMaterial();
                 std::cerr << "setRenderingModeIsosurfaceMaterial" << std::endl;
                 break;
             case 5:
-                g_voxelObj->setRenderingModeIsosurfaceColorMap();
+                m_voxelObj->setRenderingModeIsosurfaceColorMap();
                 std::cerr << "setRenderingModeIsosurfaceColorMap" << std::endl;
                 break;
             case 6:
-                g_voxelObj->setRenderingModeDVRColorMap();
+                m_voxelObj->setRenderingModeDVRColorMap();
                 std::cerr << "setRenderingModeDVRColorMap" << std::endl;
                 break;
             case 7:
-                g_voxelObj->setRenderingModeCustom();
+                m_voxelObj->setRenderingModeCustom();
                 std::cerr << "setRenderingModeCustom" << std::endl;
                 break;
             default:
                 break;
             }
         } else if (a_key == GLFW_KEY_PAGE_UP) {
-            g_opticalDensity += 0.1;
-            g_voxelObj->setOpticalDensity(g_opticalDensity);
-            cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
+            m_opticalDensity += 0.1;
+            m_voxelObj->setOpticalDensity(m_opticalDensity);
+            cout << "> Optical Density set to " << cStr(m_opticalDensity, 1) << "                            \n";
         } else if (a_key == GLFW_KEY_PAGE_DOWN) {
-            g_opticalDensity -= 0.1;
-            g_voxelObj->setOpticalDensity(g_opticalDensity);
-            cout << "> Optical Density set to " << cStr(g_opticalDensity, 1) << "                            \n";
+            m_opticalDensity -= 0.1;
+            m_voxelObj->setOpticalDensity(m_opticalDensity);
+            cout << "> Optical Density set to " << cStr(m_opticalDensity, 1) << "                            \n";
         } else if (a_key == GLFW_KEY_HOME) {
-            float val = g_voxelObj->getOpacityThreshold();
-            g_voxelObj->setOpacityThreshold(val + 0.1);
-            cout << "> Optical Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
+            float val = m_voxelObj->getOpacityThreshold();
+            m_voxelObj->setOpacityThreshold(val + 0.1);
+            cout << "> Optical Threshold set to " << cStr(m_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         } else if (a_key == GLFW_KEY_END) {
-            float val = g_voxelObj->getOpacityThreshold();
-            g_voxelObj->setOpacityThreshold(val - 0.1);
-            cout << "> Optical Threshold set to " << cStr(g_voxelObj->getOpacityThreshold(), 1)
+            float val = m_voxelObj->getOpacityThreshold();
+            m_voxelObj->setOpacityThreshold(val - 0.1);
+            cout << "> Optical Threshold set to " << cStr(m_voxelObj->getOpacityThreshold(), 1)
                  << "                            \n";
         }
 
@@ -980,22 +868,22 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         // toggles the functionality of sudden jumping of drill mesh towards the followSphere
         else if(a_key == GLFW_KEY_X){
 
-            if(g_suddenJump)
+            if(m_suddenJump)
             {
-                g_suddenJump = false;
+                m_suddenJump = false;
             }
 
             else
             {
-                g_suddenJump = true;
+                m_suddenJump = true;
             }
         }
 
         // toggles the visibility of drill mesh in the scene
         else if (a_key == GLFW_KEY_B){
-            g_showDrill = !g_showDrill;
-            g_drillRigidBody->m_visualMesh->setShowEnabled(g_showDrill);
-            g_burrMesh->setShowEnabled(g_showDrill);
+            m_showDrill = !m_showDrill;
+            m_drillRigidBody->m_visualMesh->setShowEnabled(m_showDrill);
+            m_burrMesh->setShowEnabled(m_showDrill);
 
         }
 
@@ -1022,10 +910,10 @@ void afVolmetricDrillingPlugin::reset(){
 
 bool afVolmetricDrillingPlugin::close()
 {
-    for(auto tool : g_toolCursorList)
+    for(auto tool : m_toolCursorList)
     {
         tool->stop();
     }
 
-    delete g_deviceHandler;
+    delete m_deviceHandler;
 }
