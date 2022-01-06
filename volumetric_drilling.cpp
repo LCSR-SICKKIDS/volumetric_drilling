@@ -219,9 +219,9 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         m_hapticDevice->getTransform(T_i);
         m_hapticDevice->getLinearVelocity(V_i);
         m_hapticDevice->getUserSwitch(0, clutch);
-
-        T_d.setLocalPos(T_d.getLocalPos() + (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor()));
-        T_d.setLocalRot(T_i.getLocalRot());
+        V_i =  m_mainCamera->getLocalRot() * (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor());
+        T_d.setLocalPos(T_d.getLocalPos() + V_i);
+        T_d.setLocalRot(m_mainCamera->getLocalRot() * T_i.getLocalRot());
     }
 
     toolCursorsPosUpdate(T_d);
@@ -277,7 +277,8 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     }
 
     // check if device remains stuck inside voxel object
-    cVector3d force = m_targetToolCursor->getDeviceLocalForce();
+    // Also orient the force to match the camera rotation
+    cVector3d force = cTranspose(m_mainCamera->getLocalRot()) * m_targetToolCursor->getDeviceLocalForce();
     m_toolCursorList[0]->setDeviceLocalForce(force);
 
     if (m_flagStart)
