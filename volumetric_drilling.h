@@ -1,3 +1,5 @@
+// To silence warnings on MacOS
+#define GL_SILENCE_DEPRECATION
 #include <afFramework.h>
 
 using namespace std;
