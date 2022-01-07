@@ -191,6 +191,8 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     // Get drills initial pose
     T_d = m_drillRigidBody->getLocalTransform();
+
+    return 1;
 }
 
 void afVolmetricDrillingPlugin::graphicsUpdate(){
@@ -912,4 +914,6 @@ bool afVolmetricDrillingPlugin::close()
     }
 
     delete m_deviceHandler;
+
+    return true;
 }
