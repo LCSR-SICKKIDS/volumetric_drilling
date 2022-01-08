@@ -909,7 +909,8 @@ void afVolmetricDrillingPlugin::mouseScrollUpdate(GLFWwindow *a_window, double x
 }
 
 void afVolmetricDrillingPlugin::reset(){
-
+    cerr << "INFO! PLUGIN RESET CALLED" << endl;
+    T_d = m_drillRigidBody->getLocalTransform();
 }
 
 bool afVolmetricDrillingPlugin::close()
