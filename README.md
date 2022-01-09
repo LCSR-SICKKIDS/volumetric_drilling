@@ -117,24 +117,32 @@ All the relevant ADF scene objects are in the ADF folder and can be modified as 
 The virtual drill can be manipulated via a keyboard or haptic devices such as the Geomagic Touch/Phantom Omni.
 
 #### 2.4.1 Keyboard Navigation
-*Linear motion of tool -*  
-[Ctrl+W] - moves vertically upward w.r.t. camera  
-[Ctrl+S] - moves vertically downward w.r.t. camera  
-[Ctrl+A] - moves horizontally left w.r.t. camera  
-[Ctrl+D] - moves horizontally right w.r.t. camera  
-[Ctrl+I] - moves in the forward direction w.r.t. camera  
-[Ctrl+K] - moves in the backward direction w.r.t. camera  
 
-*Rotational motion of tool -*  
-[Num 8] - rotates towards upward direction w.r.t tool  
-[Num 5] - rotates towards downward direction w.r.t. tool  
-[Num 4] - rotates towards the left direction w.r.t. tool  
-[Num 6] - rotates towards the right direction w.r.t. tool  
+| # | Linear Motion of Tool | Description                                  |
+|---|-----------------------|----------------------------------------------|
+| 1 | [Ctrl+W]              | Moves vertically upward w.r.t. camera        |
+| 2 | [Ctrl+S]              | Moves vertically downward w.r.t. camera      |
+| 3 | [Ctrl+A]              | Moves horizontally left w.r.t. camera        |
+| 4 | [Ctrl+D]              | Moves horizontally right w.r.t. camera       |
+| 5 | [Ctrl+I]              | Moves in the forward direction w.r.t camera  |
+| 6 | [Ctrl+K]              | Moves in the backward direction w.r.t camera |
 
-*Miscellaneous -*  
-[Ctrl+C] - changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)  
-[X] - toggles the functionality of sudden jumping of drill mesh towards the followSphere  
-[B] - toggles the visibility of drill mesh in the scene  
+
+| # | Angular Motion of Tool | Description                                     |
+|---|------------------------|-------------------------------------------------|
+| 1 | [Num 8]                | Rotates towards upward direction w.r.t tool     |
+| 2 | [Num 5]                | Rotates towards downward direction w.r.t. tool  |
+| 3 | [Num 4]                | Rotates towards the left direction w.r.t. tool  |
+| 4 | [Num 6]                | Rotates towards the right direction w.r.t. tool |
+
+
+| # | Miscellaneous | Description                                                                        |
+|---|---------------|------------------------------------------------------------------------------------|
+| 1 | [Ctrl+C]      | Changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)       |
+| 2 | [Ctrl+N]      | Resets the shape of the volume                                                     |
+| 3 | [Alt+R]       | Resets the whole world and this plugin                                             |
+| 2 | [X]           | Toggles the functionality of sudden jumping of drill mesh towards the followSphere |
+| 3 | [B]           | Toggles the visibility of drill mesh in the scene                                  |
 
 #### 2.4.2 Geomagic Touch/Phantom Omni
 
