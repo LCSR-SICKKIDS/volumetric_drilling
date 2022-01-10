@@ -67,7 +67,9 @@ def camera_config(params, args, name):
 
     camera['publish image resolution']['width'] = args.res[0]
     camera['publish image resolution']['height'] = args.res[1]
-    camera['publish image interval'] = args.image_int
+    camera['publish image interval'] = args.image_interval
+    if 'publish depth interval' in camera:
+        camera['publish depth interval'] = args.image_interval
 
     return params
 
@@ -188,7 +190,7 @@ if __name__ == '__main__':
     parser.add_argument('--clipping_plane', nargs='+', default=[0.5, 50.0], help='[near, far], meters, for accuracy\n'
                                                                                  'set far plane as far as possible')
     parser.add_argument('--res', nargs='+', default=[640, 480], help='image [width, height]')
-    parser.add_argument('--image_int', nargs='?', type=int, default=100, help='Publish every nth scene update')
+    parser.add_argument('--image_interval', type=int, default=20, help='Publish every nth scene update')
 
     args = parser.parse_args()
     main(args)
