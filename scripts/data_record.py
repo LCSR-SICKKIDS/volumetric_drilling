@@ -166,7 +166,7 @@ def write_to_hdf5():
 
 
 def timer_callback(_):
-    log.log(logging.DEBUG, "timer callback")
+    log.log(logging.NOTSET, "timer callback")
     try:
         data_dict = data_queue.get_nowait()
     except Empty:
@@ -191,7 +191,7 @@ def setup_subscriber(args):
     topics = []
 
     if active_topics == ['/rosout_agg', '/rosout']:
-        log.log(logging.WARNING, 'Launch simulation before recording!')
+        log.log(logging.CRITICAL, 'CRITICAL! Launch simulation before recording!')
         exit()
 
     if args.stereoL_topic != 'None':
@@ -201,7 +201,8 @@ def setup_subscriber(args):
             container['l_img'] = []
             topics += [args.stereoL_topic]
         else:
-            print("Failed to subscribe to", args.stereoL_topic)
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.stereoL_topic)
+            exit()
 
     if args.depth_topic != 'None':
         if args.depth_topic in active_topics:
@@ -210,7 +211,8 @@ def setup_subscriber(args):
             container['depth'] = []
             topics += [args.depth_topic]
         else:
-            print("Failed to subscribe to", args.depth_topic)
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.depth_topic)
+            exit()
 
     if args.stereoR_topic != 'None':
         if args.stereoR_topic in active_topics:
@@ -219,7 +221,8 @@ def setup_subscriber(args):
             container['r_img'] = []
             topics += [args.stereoR_topic]
         else:
-            print("Failed to subscribe to", args.stereoR_topic)
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.stereoR_topic)
+            exit()
 
     if args.segm_topic != 'None':
         if args.segm_topic in active_topics:
@@ -228,7 +231,8 @@ def setup_subscriber(args):
             container['segm'] = []
             topics += [args.segm_topic]
         else:
-            print("Failed to subscribe to", args.segm_topic)
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.segm_topic)
+            exit()
 
     # poses
     for name, _ in objects.items():
