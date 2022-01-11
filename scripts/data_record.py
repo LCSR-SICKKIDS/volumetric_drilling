@@ -190,7 +190,7 @@ def setup_subscriber(args):
     subscribers = []
     topics = []
 
-    if len(active_topics) <= 2:
+    if active_topics == ['/rosout_agg', '/rosout']:
         log.log(logging.WARNING, 'Launch simulation before recording!')
         exit()
 

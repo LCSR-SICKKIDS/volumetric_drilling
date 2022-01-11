@@ -40,7 +40,7 @@ image-transport # Can be installed via apt install ros-<version>-image-transport
 
 Build and source ambf (make sure you're on branch ambf-2.0 before building) as per the instructions on AMBFs wiki: https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF.
 
-### 1.2 Clone and Build Plugin
+### 1.2 Clone and Build Simulator
 ``` bash
 git clone https://github.com/LCSR-SICKKIDS/volumetric_drilling
 cd <volumetric_plugin_path>
@@ -158,5 +158,8 @@ Navigation using mouse shortcuts in AMBF is described here: https://github.com/W
 #### 2.5.3 HMDs
 
 
-### 2.6 Generating and Recording Data
-A python script (located in the `scripts` folder) is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file.
+### 2.6 Data Recording
+A python script (`scripts/data_record.py`) is provided to record data based on the user's configuration. By default, the left and right stereo images, depth point cloud, segmentation mask, and drill/camera poses are recorded. The data is stored as a convenient and well-organized hdf5 file.
+NOTE: 
+- Source the ambf environment in terminal before running the script.
+- By default, data recording should be launched after the simulator. We perform sanity check on this to make sure topics subscribed are meaningful.
