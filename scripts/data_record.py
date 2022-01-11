@@ -59,9 +59,15 @@ def image_gen(image_msg):
 
 def pose_gen(pose_msg):
     pose = pose_msg.pose
-    pose_np = np.array(
-        [pose.position.x, pose.position.y, pose.position.z, pose.orientation.x, pose.orientation.y, pose.orientation.z,
-         pose.orientation.w])
+    pose_np = np.array([
+        pose.position.x * scale,
+        pose.position.y * scale,
+        pose.position.z * scale,
+        pose.orientation.x,
+        pose.orientation.y,
+        pose.orientation.z,
+        pose.orientation.w
+    ])
 
     return pose_np
 
@@ -95,9 +101,10 @@ def init_hdf5(args, stereo):
     metadata = file.create_group("metadata")
     metadata.create_dataset("camera_intrinsic", data=intrinsic)
     metadata.create_dataset("camera_extrinsic", data=extrinsic)
-    metadata.create_dataset("README", data="All position information is in meters unless specified otherwise \n"
-                                           "Quaternion is a list in the order of [qx, qy, qz, qw] \n"
-                                           "Extrinsic (T_cv_ambf) should be pre-multiplied to intrinsic")
+    metadata.create_dataset("README", data="All position information is in meters unless specified otherwise. \n"
+                                           "Quaternion is a list in the order of [qx, qy, qz, qw]. \n"
+                                           "Poses are defined to be T_world_obj. \n"
+                                           "Depth in CV convention (corrected by extrinsic, T_cv_ambf). \n")
 
     # baseline info from stereo adf
     if stereo:
