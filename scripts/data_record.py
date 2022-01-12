@@ -16,12 +16,17 @@ else:
     from Queue import Empty, Full, Queue
 
 import message_filters
-from msg_synchronizer import ApproximateTimeSynchronizer, TimeSynchronizer
+from msg_synchronizer import TimeSynchronizer
 import ros_numpy
 import rospy
 from ambf_msgs.msg import RigidBodyState
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
+try:
+    from vdrilling_msgs.msg import points
+except ImportError:
+    print("\nvdrilling_msgs.msg: cannot open shared message file. " +
+          "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
 from utils import init_ambf
 
 
@@ -116,6 +121,7 @@ def init_hdf5(args, stereo):
         metadata.create_dataset("baseline", data=baseline)
 
     file.create_group("data")
+    file.create_group("voxels_removed")
 
     return file, img_height, img_width, s
 
@@ -153,13 +159,16 @@ def callback(*inputs):
 
 
 def write_to_hdf5():
-    data_group = f["data"]
-    for key, value in container.items():
-        if len(value) > 0:
-            data_group.create_dataset(
-                key, data=np.stack(value, axis=0))  # write to disk
-            log.log(logging.INFO, (key, f["data"][key].shape))
-        container[key] = []  # reset list to empty memory
+    containers = [(f["data"], container), (f["voxels_removed"], collisions)]
+    for group, data in containers:
+        for key, value in data.items():
+            if len(value) > 0:
+                group.create_dataset(
+                    key, data=np.stack(value, axis=0))  # write to disk
+                log.log(logging.INFO, (key, group[key].shape))
+            data[key] = []  # reset list to empty memory
+
+    data_group = f["voxels_removed"]
     f.close()
 
     return
@@ -183,6 +192,12 @@ def timer_callback(_):
         write_to_hdf5()
         f, _, _, _ = init_hdf5(args, stereo)
         num_data = 0
+
+def rm_vox_callback(rm_vox_msg):
+    voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
+    collisions['sim_time'].append(rm_vox_msg.sim_time)
+    collisions['voxel_removed'].append(voxel)
+    collisions['voxel_color'].append(rm_vox_msg.voxel_color)
 
 
 def setup_subscriber(args):
@@ -234,6 +249,16 @@ def setup_subscriber(args):
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.segm_topic)
             exit()
 
+    if args.rm_vox_topic != 'None':
+        if args.rm_vox_topic in active_topics:
+            rm_vox_sub = rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
+            collisions['sim_time'] = []
+            collisions['voxel_removed'] = []
+            collisions['voxel_color'] = []
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.rm_vox_topic)
+            exit()
+
     # poses
     for name, _ in objects.items():
         subname = name
@@ -265,7 +290,7 @@ def main(args):
     # NOTE: don't set queue size to a large number (e.g. 1000).
     # Otherwise, the time taken to compute synchronization becomes very long and no more message will be spit out.
     if args.sync is False:
-        ats = ApproximateTimeSynchronizer(subscribers, queue_size=50, slop=0.01)
+        ats = message_filters.ApproximateTimeSynchronizer(subscribers, queue_size=50, slop=0.01)
         ats.registerCallback(callback, container.keys())
     else:
         ats = TimeSynchronizer(subscribers, queue_size=50)
@@ -324,7 +349,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--segm_topic', default='/ambf/env/cameras/segmentation_camera/ImageData', type=str)
     parser.add_argument(
-        '--sync', type=str, default='True')
+        '--rm_vox_topic', default='/ambf/volumetric_drilling/voxels_removed', type=str)
+    parser.add_argument('--sync', action='store_true')
     parser.add_argument('--debug', action='store_true')
 
     # TODO: record voxels (either what has been removed, or what is the current voxels) as asked by pete?
@@ -367,11 +393,8 @@ if __name__ == '__main__':
     data_queue = Queue(chunk * 2)
     num_data = 0
     container = OrderedDict()
+    collisions = OrderedDict()
 
-    if args.sync in ['True', 'true', '1']:
-        args.sync = True
-    else:
-        args.sync = False
 
     main(args)
     _client.clean_up()

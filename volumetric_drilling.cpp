@@ -190,6 +190,9 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     // Get drills initial pose
     T_d = m_drillRigidBody->getLocalTransform();
 
+    // Set up voxels_removed publisher
+    m_drillingPub = new DrillingPublisher("ambf", "volumetric_drilling");
+
     return 1;
 }
 
@@ -255,6 +258,24 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         }
 
         m_voxelObj->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), m_zeroColor);
+
+        //Publisher for voxels removed
+        if(m_storedColor != m_zeroColor)
+        {
+        double sim_time = m_drillRigidBody->getCurrentTimeStamp();
+
+        double voxel_array[3] = {ray.get(0), ray.get(1), ray.get(2)};
+
+        cColorf color_glFloat = m_storedColor.getColorf();
+        int color_array[4];
+        color_array[0] = color_glFloat.getR();
+        color_array[1] = color_glFloat.getG();
+        color_array[2] = color_glFloat.getB();
+        color_array[3] = color_glFloat.getA();
+
+
+        m_drillingPub -> voxelsRemoved(voxel_array,color_array,sim_time);
+        }
 
         m_mutexVoxel.acquire();
         m_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));

@@ -1,6 +1,7 @@
 // To silence warnings on MacOS
 #define GL_SILENCE_DEPRECATION
 #include <afFramework.h>
+#include "collision_publisher.h"
 
 using namespace std;
 using namespace ambf;
@@ -22,6 +23,7 @@ class afVolmetricDrillingPlugin: public afSimulatorPlugin{
     virtual void reset() override;
     virtual bool close() override;
 
+    DrillingPublisher* m_drillingPub;
 protected:
     // Initialize tool cursors
     void toolCursorInit(const afWorldPtr);
@@ -136,7 +138,6 @@ private:
 
     // get color of voxels at (x,y,z)
     cColorb m_storedColor;
-
 
     HapticStates m_controlMode = HAPTIC_IDLE;
 };
