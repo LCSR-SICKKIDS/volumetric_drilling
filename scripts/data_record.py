@@ -1,7 +1,7 @@
-# TODO: currently only works with python 2.7 due to cv_bridge, we should migrate to python3 but not sure best way yet
-
+import logging
 import math
 import os
+import sys
 import time
 from argparse import ArgumentParser
 from collections import OrderedDict
@@ -9,13 +9,14 @@ from collections import OrderedDict
 import h5py
 import numpy as np
 import yaml
-import sys
+
 if sys.version_info[0] >= 3:
     from queue import Empty, Full, Queue
 else:
     from Queue import Empty, Full, Queue
 
 import message_filters
+from msg_synchronizer import ApproximateTimeSynchronizer, TimeSynchronizer
 import ros_numpy
 import rospy
 from ambf_msgs.msg import RigidBodyState
@@ -58,21 +59,33 @@ def image_gen(image_msg):
 
 def pose_gen(pose_msg):
     pose = pose_msg.pose
-    pose_np = np.array(
-        [pose.position.x, pose.position.y, pose.position.z, pose.orientation.x, pose.orientation.y, pose.orientation.z,
-         pose.orientation.w])
+    pose_np = np.array([
+        pose.position.x * scale,
+        pose.position.y * scale,
+        pose.position.z * scale,
+        pose.orientation.x,
+        pose.orientation.y,
+        pose.orientation.z,
+        pose.orientation.w
+    ])
 
     return pose_np
 
 
-def init_hdf5(adf, camera_name, stereo):
-    # perspective camera intrinsics
-    camera_adf = open(adf, "r")
-    camera_params = yaml.safe_load(camera_adf)
+def init_hdf5(args, stereo):
+    adf = args.world_adf
 
-    fva = camera_params[camera_name]["field view angle"]
-    img_height = camera_params[camera_name]["publish image resolution"]["height"]
-    img_width = camera_params[camera_name]["publish image resolution"]["width"]
+    world_adf = open(adf, "r")
+    world_params = yaml.safe_load(world_adf)
+    world_adf.close()
+
+    s = world_params["conversion factor"]
+    main_camera = world_params["main_camera"]
+
+    # perspective camera intrinsics
+    fva = main_camera["field view angle"]
+    img_height = main_camera["publish image resolution"]["height"]
+    img_width = main_camera["publish image resolution"]["width"]
 
     focal = img_height / (2 * math.tan(fva / 2))
     c_x = img_width / 2
@@ -80,25 +93,31 @@ def init_hdf5(adf, camera_name, stereo):
     intrinsic = np.array([[focal, 0, c_x], [0, focal, c_y], [0, 0, 1]])
 
     # Create hdf5 file with date
-    if not os.path.exists('data'):
-        os.makedirs('data')
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
     time_str = time.strftime("%Y%m%d_%H%M%S")
     file = h5py.File("./data/" + time_str + ".hdf5", "w")
 
     metadata = file.create_group("metadata")
     metadata.create_dataset("camera_intrinsic", data=intrinsic)
     metadata.create_dataset("camera_extrinsic", data=extrinsic)
+    metadata.create_dataset("README", data="All position information is in meters unless specified otherwise. \n"
+                                           "Quaternion is a list in the order of [qx, qy, qz, qw]. \n"
+                                           "Poses are defined to be T_world_obj. \n"
+                                           "Depth in CV convention (corrected by extrinsic, T_cv_ambf). \n")
+
+    # baseline info from stereo adf
     if stereo:
+        adf = args.stereo_adf
+        stereo_adf = open(adf, "r")
+        stereo_params = yaml.safe_load(stereo_adf)
         baseline = math.fabs(
-            camera_params['stereoL']['location']['y'] - camera_params['stereoR']['location']['y'])
+            stereo_params['stereoL']['location']['y'] - stereo_params['stereoR']['location']['y']) * s
         metadata.create_dataset("baseline", data=baseline)
-    metadata.create_dataset("README", data="All position information is in meters unless specified otherwise \n"
-                                           "Quaternion is a list in the order of [qx, qy, qz, qw] \n"
-                                           "Extrinsic (T_cv_ambf) should be pre-multiplied to intrinsic")
 
     file.create_group("data")
 
-    return file, img_height, img_width
+    return file, img_height, img_width, s
 
 
 def callback(*inputs):
@@ -109,24 +128,28 @@ def callback(*inputs):
     :param inputs:
     :return:
     """
+    log.log(logging.DEBUG, "msg callback")
+
     keys = list(inputs[-1])
     data = dict(time=inputs[0].header.stamp.to_sec())
 
-    # for inp in inputs[:-1]:
-    #     print(inp.header.stamp.secs)
+    if num_data % 5 == 0:
+        print("Recording data: " + '#' * (num_data // 10), end='\r')
 
     for idx, key in enumerate(keys[1:]):  # skip time
         if 'l_img' == key or 'r_img' == key or 'segm' == key:
             data[key] = image_gen(inputs[idx])
         if 'depth' == key:
+            # print("depth")
             data[key] = depth_gen(inputs[idx])
         if 'pose_' in key:
+            # print("pose")
             data[key] = pose_gen(inputs[idx])
 
     try:
         data_queue.put_nowait(data)
     except Full:
-        print('full')
+        log.log(logging.DEBUG, "Queue full")
 
 
 def write_to_hdf5():
@@ -135,7 +158,7 @@ def write_to_hdf5():
         if len(value) > 0:
             data_group.create_dataset(
                 key, data=np.stack(value, axis=0))  # write to disk
-            print(key, f["data"][key].shape)
+            log.log(logging.INFO, (key, f["data"][key].shape))
         container[key] = []  # reset list to empty memory
     f.close()
 
@@ -143,82 +166,153 @@ def write_to_hdf5():
 
 
 def timer_callback(_):
+    log.log(logging.NOTSET, "timer callback")
     try:
         data_dict = data_queue.get_nowait()
     except Empty:
+        log.log(logging.NOTSET, "Empty queue")
         return
 
-    global data_id, f
+    global num_data, f
     for key, data in data_dict.items():
         container[key].append(data)
 
-    data_id = data_id + 1
-    if data_id >= chunk:
-        print("write")
+    num_data = num_data + 1
+    if num_data >= chunk:
+        log.log(logging.INFO, "Write data to disk")
         write_to_hdf5()
-        f, _, _ = init_hdf5(args.camera_adf, args.camera_name, args.stereo)
-        data_id = 0
+        f, _, _, _ = init_hdf5(args, stereo)
+        num_data = 0
 
 
-def main(args):
-    print("started")
+def setup_subscriber(args):
+    active_topics = [n for [n, _] in rospy.get_published_topics()]
+    subscribers = []
+    topics = []
 
-    container['time'] = []
+    if active_topics == ['/rosout_agg', '/rosout']:
+        log.log(logging.CRITICAL, 'CRITICAL! Launch simulation before recording!')
+        exit()
 
-    stereoL_sub = message_filters.Subscriber(args.stereoL_topic, Image)
-    subscribers = [stereoL_sub]
-    container['l_img'] = []
+    if args.stereoL_topic != 'None':
+        if args.stereoL_topic in active_topics:
+            stereoL_sub = message_filters.Subscriber(args.stereoL_topic, Image)
+            subscribers += [stereoL_sub]
+            container['l_img'] = []
+            topics += [args.stereoL_topic]
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.stereoL_topic)
+            exit()
 
     if args.depth_topic != 'None':
-        depth_sub = message_filters.Subscriber(args.depth_topic, PointCloud2)
-        subscribers += [depth_sub]
-        container['depth'] = []
+        if args.depth_topic in active_topics:
+            depth_sub = message_filters.Subscriber(args.depth_topic, PointCloud2)
+            subscribers += [depth_sub]
+            container['depth'] = []
+            topics += [args.depth_topic]
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.depth_topic)
+            exit()
 
     if args.stereoR_topic != 'None':
-        stereoR_sub = message_filters.Subscriber(args.stereoR_topic, Image)
-        subscribers += [stereoR_sub]
-        container['r_img'] = []
+        if args.stereoR_topic in active_topics:
+            stereoR_sub = message_filters.Subscriber(args.stereoR_topic, Image)
+            subscribers += [stereoR_sub]
+            container['r_img'] = []
+            topics += [args.stereoR_topic]
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.stereoR_topic)
+            exit()
 
     if args.segm_topic != 'None':
-        segm_sub = message_filters.Subscriber(args.segm_topic, Image)
-        subscribers += [segm_sub]
-        container['segm'] = []
+        if args.segm_topic in active_topics:
+            segm_sub = message_filters.Subscriber(args.segm_topic, Image)
+            subscribers += [segm_sub]
+            container['segm'] = []
+            topics += [args.segm_topic]
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.segm_topic)
+            exit()
 
     # poses
     for name, _ in objects.items():
-        container['pose_' + name] = []
+        subname = name
         if 'camera' in name:
-            name = 'cameras/' + name
-        pose_sub = message_filters.Subscriber(
-            '/ambf/env/' + name + '/State', RigidBodyState)
-        subscribers += [pose_sub]
+            if name == 'main_camera':
+                subname = 'cameras/' + name
+            else:
+                continue
+        topic = '/ambf/env/' + subname + '/State'
+        pose_sub = message_filters.Subscriber(topic, RigidBodyState)
+
+        if topic in active_topics:
+            container['pose_' + name] = []
+            subscribers += [pose_sub]
+            topics += [topic]
+        else:
+            print("Failed to subscribe to", topic)
+
+    log.log(logging.INFO, '\n'.join(["Subscribed to the following topics:"] + topics))
+    return subscribers
+
+
+def main(args):
+    container['time'] = []
+
+    subscribers = setup_subscriber(args)
 
     print("Synchronous? : ", args.sync)
+    # NOTE: don't set queue size to a large number (e.g. 1000).
+    # Otherwise, the time taken to compute synchronization becomes very long and no more message will be spit out.
     if args.sync is False:
-        ats = message_filters.ApproximateTimeSynchronizer(subscribers, queue_size=100, slop=0.01)
+        ats = ApproximateTimeSynchronizer(subscribers, queue_size=50, slop=0.01)
         ats.registerCallback(callback, container.keys())
     else:
-        ats = message_filters.TimeSynchronizer(subscribers, queue_size=50)
+        ats = TimeSynchronizer(subscribers, queue_size=50)
         ats.registerCallback(callback, container.keys())
 
     # separate thread for writing to hdf5 to release memory
-    rospy.Timer(rospy.Duration(0, 100000000), timer_callback)
-    # TODO: add an argument to set duration to be ~ 2x of publishing rate so we don't miss data
+    rospy.Timer(rospy.Duration(0, 500000), timer_callback)  # set to 2Khz such that we don't miss pose data
+    print("Writing to HDF5 every chunk of %d data" % args.chunk_size)
 
-    rospy.spin()
+    try:
+        print("Recording started, press Q to quit")
+
+        while not rospy.core.is_shutdown():
+            rospy.rostime.wallsleep(0.5)
+            keypress = input("")
+            if keypress == "Q" or keypress == "q":
+                break
+    except KeyboardInterrupt:
+        rospy.core.signal_shutdown('keyboard interrupt')
+
     write_to_hdf5()  # save when user exits
+
+
+def verify_cv_bridge():
+    arr = np.zeros([480, 640])
+    msg = bridge.cv2_to_imgmsg(arr)
+    try:
+        bridge.imgmsg_to_cv2(msg)
+    except ImportError:
+        log.log(logging.WARNING, "libcv_bridge.so: cannot open shared object file. Please source ros env first.")
+        return False
+
+    return True
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument(
-        '--camera_adf', default='../ADF/segmentation_camera.yaml', type=str)
-    parser.add_argument('--camera_name', default=None, type=str)
-    parser.add_argument('--stereo', action='store_true')
 
-    parser.add_argument('--scale', type=float, default=0.049664,
-                        help='Scale factor is the dimension of the volume in 1 axis')
-    parser.add_argument('--chunk_size', type=int, default=500,
+    parser.add_argument(
+        '--output_dir', default='data', type=str)
+
+    parser.add_argument(
+        '--world_adf', default='../ADF/world/world.yaml', type=str)
+    parser.add_argument(
+        '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
+
+    parser.add_argument('--chunk_size', type=int, default=200,
                         help='Write to disk every chunk size')
 
     parser.add_argument(
@@ -231,29 +325,53 @@ if __name__ == '__main__':
         '--segm_topic', default='/ambf/env/cameras/segmentation_camera/ImageData', type=str)
     parser.add_argument(
         '--sync', type=str, default='True')
+    parser.add_argument('--debug', action='store_true')
 
     # TODO: record voxels (either what has been removed, or what is the current voxels) as asked by pete?
 
     args = parser.parse_args()
 
+    # init cv bridge for data conversion
     bridge = CvBridge()
+    valid = verify_cv_bridge()
+    if not valid:
+        exit()
+
+    # init logger
+    log = logging.getLogger('logger')
+    log.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(message)s')
+    ch = logging.StreamHandler()
+    if args.debug:
+        ch.setLevel(logging.DEBUG)
+    else:
+        ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    log.addHandler(ch)
+
+    # read object groups
     _client, objects = init_ambf('data_record')
-    _client.clean_up()
     chunk = args.chunk_size
-    scale = args.scale
+
+    # camera extrinsics, the transformation that pre-multiplies recorded poses to match opencv convention
+    extrinsic = np.array([[0, 1, 0, 0], [0, 0, -1, 0],
+                          [-1, 0, 0, 0], [0, 0, 0, 1]])  # T_cv_ambf
+
+    # check topics and see if we need to read stereo adf for baseline
+    if args.stereoL_topic is not None and args.stereoR_topic is not None:
+        stereo = True
+    else:
+        stereo = False
+    f, h, w, scale = init_hdf5(args, stereo)
+
+    data_queue = Queue(chunk * 2)
+    num_data = 0
+    container = OrderedDict()
+
     if args.sync in ['True', 'true', '1']:
         args.sync = True
     else:
         args.sync = False
 
-    # camera extrinsics, the transformation that pre-multiplies recorded poses to match opencv convention
-    extrinsic = np.array([[0, 1, 0, 0], [0, 0, -1, 0],
-                         [-1, 0, 0, 0], [0, 0, 0, 1]])  # T_cv_ambf
-
-    f, h, w = init_hdf5(args.camera_adf, args.camera_name, args.stereo)
-
-    data_queue = Queue(chunk)
-    data_id = 0
-    container = OrderedDict()
-
     main(args)
+    _client.clean_up()

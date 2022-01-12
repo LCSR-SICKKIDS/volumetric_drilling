@@ -40,7 +40,7 @@ image-transport # Can be installed via apt install ros-<version>-image-transport
 
 Build and source ambf (make sure you're on branch ambf-2.0 before building) as per the instructions on AMBFs wiki: https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF.
 
-### 1.2 Clone and Build Plugin
+### 1.2 Clone and Build Simulator
 ``` bash
 git clone https://github.com/LCSR-SICKKIDS/volumetric_drilling
 cd <volumetric_plugin_path>
@@ -117,24 +117,32 @@ All the relevant ADF scene objects are in the ADF folder and can be modified as 
 The virtual drill can be manipulated via a keyboard or haptic devices such as the Geomagic Touch/Phantom Omni.
 
 #### 2.4.1 Keyboard Navigation
-*Linear motion of tool -*  
-[Ctrl+W] - moves vertically upward w.r.t. camera  
-[Ctrl+S] - moves vertically downward w.r.t. camera  
-[Ctrl+A] - moves horizontally left w.r.t. camera  
-[Ctrl+D] - moves horizontally right w.r.t. camera  
-[Ctrl+I] - moves in the forward direction w.r.t. camera  
-[Ctrl+K] - moves in the backward direction w.r.t. camera  
 
-*Rotational motion of tool -*  
-[Num 8] - rotates towards upward direction w.r.t tool  
-[Num 5] - rotates towards downward direction w.r.t. tool  
-[Num 4] - rotates towards the left direction w.r.t. tool  
-[Num 6] - rotates towards the right direction w.r.t. tool  
+| # | Linear Motion of Tool | Description                                  |
+|---|-----------------------|----------------------------------------------|
+| 1 | [Ctrl+W]              | Moves vertically upward w.r.t. camera        |
+| 2 | [Ctrl+S]              | Moves vertically downward w.r.t. camera      |
+| 3 | [Ctrl+A]              | Moves horizontally left w.r.t. camera        |
+| 4 | [Ctrl+D]              | Moves horizontally right w.r.t. camera       |
+| 5 | [Ctrl+I]              | Moves in the forward direction w.r.t camera  |
+| 6 | [Ctrl+K]              | Moves in the backward direction w.r.t camera |
 
-*Miscellaneous -*  
-[Ctrl+C] - changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)  
-[X] - toggles the functionality of sudden jumping of drill mesh towards the followSphere  
-[B] - toggles the visibility of drill mesh in the scene  
+
+| # | Angular Motion of Tool | Description                                     |
+|---|------------------------|-------------------------------------------------|
+| 1 | [Num 8]                | Rotates towards upward direction w.r.t tool     |
+| 2 | [Num 5]                | Rotates towards downward direction w.r.t. tool  |
+| 3 | [Num 4]                | Rotates towards the left direction w.r.t. tool  |
+| 4 | [Num 6]                | Rotates towards the right direction w.r.t. tool |
+
+
+| # | Miscellaneous | Description                                                                        |
+|---|---------------|------------------------------------------------------------------------------------|
+| 1 | [Ctrl+C]      | Changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)       |
+| 2 | [Ctrl+N]      | Resets the shape of the volume                                                     |
+| 3 | [Alt+R]       | Resets the whole world and this plugin                                             |
+| 2 | [X]           | Toggles the functionality of sudden jumping of drill mesh towards the followSphere |
+| 3 | [B]           | Toggles the visibility of drill mesh in the scene                                  |
 
 #### 2.4.2 Geomagic Touch/Phantom Omni
 
@@ -150,5 +158,8 @@ Navigation using mouse shortcuts in AMBF is described here: https://github.com/W
 #### 2.5.3 HMDs
 
 
-### 2.6 Generating and Recording Data
-A python script (located in the `scripts` folder) is provided to generate left and right stereo images, depth point cloud, segmentation mask, and object/camera pose. Data is recorded in a convenient and well-organized hdf5 file.
+### 2.6 Data Recording
+A python script (`scripts/data_record.py`) is provided to record data based on the user's configuration. By default, the left and right stereo images, depth point cloud, segmentation mask, and drill/camera poses are recorded. The data is stored as a convenient and well-organized hdf5 file.
+NOTE: 
+- Source the ambf environment in terminal before running the script.
+- By default, data recording should be launched after the simulator. We perform sanity check on this to make sure topics subscribed are meaningful.

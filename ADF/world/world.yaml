@@ -14,19 +14,19 @@ conversion factor: 0.049664 # when conversion factor is changed the volume occup
 light1:
   namespace: lights/
   name: light1
-  location: {x: 5.0, y: -1.0, z: 2.0}
-  direction: {x: -1.0, y: 1.0, z: -1.0}
+  location: {x: -13.0, y: 1.0, z: 5.0}
+  direction: {x: 0.0, y: 0.0, z: -1.0}
   spot exponent: 0.3
-  shadow quality: 0
+  shadow quality: 5
   cutoff angle: 0.7
 
 light2:
   namespace: lights/
   name: light2
-  location: {x: 5.0, y: 1.0, z: 2.0}
-  direction: {x: -1.0, y: -1.0, z: -1.0}
+  location: {x: -13.0, y: -1.0, z: -5.0}
+  direction: {x: 0.0, y: 0.0, z: 1.0}
   spot exponent: 0.3
-  shadow quality: 5
+  shadow quality: 0
   cutoff angle: 0.7
   parent: BODY CameraFrame
 
@@ -44,10 +44,10 @@ main_camera:
   namespace: cameras/
   name: main_camera
   location: {x: 0.0, y: 0.0, z: 0.0}
-  look at: {x: -20.135309278350515, y: 0.0, z: 0.0}
+  look at: {x: -15.000805412371134, y: 0.0, z: 0.0}
   # up: {x: 0.0, y: 0.4, z: 1.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 0.10067654639175258, far: 201.35309278350516}
+  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
   field view angle: 0.0959263737541534 # so that focal length is approximately 1000px and phantom is 250 mm away
   monitor: 0
   # multipass: true
@@ -56,7 +56,7 @@ main_camera:
   #    path: ../shaders/preprocessing/
   #    vertex: shader.vs
   #    fragment: shader.fs
-  publish image interval: 100 # Publish every nth scene update
+  publish image interval: 20  # Publish every nth scene update
   # publish depth: true
   # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
   # publish depth interval: 1 # Publish every nth scene update

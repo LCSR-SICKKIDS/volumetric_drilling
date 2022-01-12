@@ -1,8 +1,11 @@
+from argparse import ArgumentParser
+
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+
 from utils import *
+
 
 def verify_xyz(depth, K):
     h, w = depth.shape[1:3]
@@ -46,7 +49,7 @@ def verify_sphere(depth, K, RT, pose_cam, pose_primitive, time_stamps):
     valid_v = np.logical_and(0 <= v, v < h)
     valid = np.logical_and(valid_u, valid_v)
     depth_output = np.array([depth[idx, v_, u_]
-                            for idx, (v_, u_) in enumerate(zip(v, u))])
+                             for idx, (v_, u_) in enumerate(zip(v, u))])
     depth_output = depth_output[valid]
     time_stamps = time_stamps[valid]
     pose_cam = pose_cam[valid]
@@ -60,13 +63,13 @@ def verify_sphere(depth, K, RT, pose_cam, pose_primitive, time_stamps):
         lag_lead_str = ""
         cam_pose_str = "Cam Z: " + toStr(cam_xyz[0])
         error_str = "Anal_z: " + \
-            toStr(z_act) + " Depth_z: " + toStr(z_mea) + " Diff: "
+                    toStr(z_act) + " Depth_z: " + toStr(z_mea) + " Diff: "
         if abs(err) < 0.01:
             error_str = error_str + " " + OK_STR(err)
         else:
             error_str = error_str + " " + FAIL_STR(err)
             if i > 0:
-                if z_mea == depth_output[i-1]:
+                if z_mea == depth_output[i - 1]:
                     lag_lead_str = WARN_STR("LAG")
                 else:
                     lag_lead_str = WARN2_STR("LEAD")
@@ -80,6 +83,60 @@ def verify_sphere(depth, K, RT, pose_cam, pose_primitive, time_stamps):
     return
 
 
+def pose_depth_test(K, pose, depth, u, v):
+    for i in range(depth.shape[0] - 1):
+        # iproj
+        d = depth[i, v, u]
+        X0 = np.linalg.inv(K) @ np.array([u, v, 1]) * d  # in camera coordinate
+
+        # transform
+        X0_one = np.concatenate([X0, np.ones([1])], axis=-1)[..., None]
+        X1_one = np.linalg.inv(pose[i + 1]) @ pose[i] @ X0_one  # T_i+1,wc^-1 @ T_i,wc
+        X1 = X1_one[:3, 0]
+        uvz = K @ X1
+        uv = uvz[:2] / uvz[2]
+
+        # update uv
+        v = np.rint(uv[1]).astype(int)
+        u = np.rint(uv[0]).astype(int)
+
+        if not np.all(pose[i + 1] == pose[i]):
+            # check if within image
+            if v < 0 or v >= 480:
+                print("out of window", i)
+                break
+            if u < 0 or u >= 640:
+                print("out of window", i)
+                break
+
+            d_new = depth[i + 1, v, u]
+            assert np.isclose(uvz[2], d_new, rtol=0.01)
+
+
+def verify_drilling(K, pose_cam, segm, depth):
+    # tool
+    tool = np.all(segm[0] == np.array([33, 32, 34]), axis=-1)
+    y, x = np.where(tool)
+    while True:
+        u = np.random.randint(np.min(x), np.max(x))
+        v = np.random.randint(np.min(y), np.max(y))
+        if tool[v, u]:
+            break
+    pose_depth_test(K, pose_cam, depth, u, v)
+
+    # mastoid
+    mastoid = np.all(segm[0] == np.array([219, 249, 255]), axis=-1)
+    y, x = np.where(mastoid)
+    while True:
+        u = np.random.randint(np.min(x), np.max(x))
+        v = np.random.randint(np.min(y), np.max(y))
+        if tool[v, u]:
+            break
+    pose_depth_test(K, pose_cam, depth, u, v)
+    print("All test passed :)")
+    return
+
+
 def verify_cube(depth, K, RT, poses):
     # TODO
     return
@@ -90,28 +147,30 @@ def verify_cylinder(depth, K, RT, poses):
     return
 
 
-f = h5py.File(
-    '/home/adnan/ambf_plugins/volumetric_drilling/scripts/data/test.hdf5', 'r')
-intrinsic = f['metadata']['camera_intrinsic'][()]
-extrinsic = f['metadata']['camera_extrinsic'][()]
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument('--setting', choices=['sphere', 'drilling'], type=str, default='drilling')
+    parser.add_argument('--file', type=str, default=None)
 
-depth = f['data']['depth'][()]
-time_stamps = f['data']['time'][()]
-np.set_printoptions(suppress=True, formatter={'float_kind':'{:f}'.format})
-# verify_xyz(depth, intrinsic)
-# plt.imshow(depth[0].astype(np.float32))
-# plt.show()
+    np.set_printoptions(suppress=True, formatter={'float_kind': '{:f}'.format})
+    np.random.seed(32)
 
-# img = f['data']['l_img'][()]
-# plt.imshow(img[0])
-# plt.show()
+    args = parser.parse_args()
+    if args.file is not None:
+        f = h5py.File(args.file, 'r')
+        intrinsic = f['metadata']['camera_intrinsic'][()]
+        extrinsic = f['metadata']['camera_extrinsic'][()]
 
-pose_cam = pose_to_matrix(f['data']['pose_main_camera'][()])
-pose_sphere = pose_to_matrix(f['data']['pose_Sphere'][()])
+        depth = f['data']['depth'][()]
+        time_stamps = f['data']['time'][()]
 
-verify_sphere(depth, intrinsic, extrinsic, pose_cam, pose_sphere, time_stamps)
-# print(intrinsics)
-# print(depth.shape)
-#
-# plt.imshow(depth[0, ..., -1].astype(np.float32))
-# plt.show()
+        pose_cam = pose_to_matrix(f['data']['pose_main_camera'][()])
+        pose_cam = np.matmul(pose_cam, np.linalg.inv(extrinsic)[None])  # update pose so world directly maps to CV
+
+        if args.setting == 'sphere':
+            pose_sphere = pose_to_matrix(f['data']['pose_Sphere'][()])
+            verify_sphere(depth, intrinsic, extrinsic, pose_cam, pose_sphere, time_stamps)
+        elif args.setting == 'drilling':
+            segm = f['data']['segm'][()]
+            pose_drill = pose_to_matrix(f['data']['pose_mastoidectomy_drill'][()])
+            verify_drilling(intrinsic, pose_cam, segm, depth)

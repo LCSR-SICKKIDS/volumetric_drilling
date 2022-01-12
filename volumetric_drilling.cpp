@@ -668,6 +668,12 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             cout << "> Volume has been polygonized and saved to disk                            \r";
             delete surface;
         }
+
+        // toggles size of drill burr/tip tool cursor
+        else if (a_key == GLFW_KEY_N){
+            cerr << "INFO! RESETTING THE VOLUME" << endl;
+            m_volumeObject->reset();
+        }
     }
     else{
 
@@ -903,7 +909,8 @@ void afVolmetricDrillingPlugin::mouseScrollUpdate(GLFWwindow *a_window, double x
 }
 
 void afVolmetricDrillingPlugin::reset(){
-
+    cerr << "INFO! PLUGIN RESET CALLED" << endl;
+    T_d = m_drillRigidBody->getLocalTransform();
 }
 
 bool afVolmetricDrillingPlugin::close()
