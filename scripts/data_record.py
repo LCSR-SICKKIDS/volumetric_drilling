@@ -16,7 +16,7 @@ else:
     from Queue import Empty, Full, Queue
 
 import message_filters
-from msg_synchronizer import ApproximateTimeSynchronizer, TimeSynchronizer
+from msg_synchronizer import TimeSynchronizer
 import ros_numpy
 import rospy
 from ambf_msgs.msg import RigidBodyState
@@ -265,7 +265,7 @@ def main(args):
     # NOTE: don't set queue size to a large number (e.g. 1000).
     # Otherwise, the time taken to compute synchronization becomes very long and no more message will be spit out.
     if args.sync is False:
-        ats = ApproximateTimeSynchronizer(subscribers, queue_size=50, slop=0.01)
+        ats = message_filters.ApproximateTimeSynchronizer(subscribers, queue_size=50, slop=0.01)
         ats.registerCallback(callback, container.keys())
     else:
         ats = TimeSynchronizer(subscribers, queue_size=50)
@@ -323,8 +323,7 @@ if __name__ == '__main__':
         '--stereoR_topic', default='/ambf/env/cameras/stereoR/ImageData', type=str)
     parser.add_argument(
         '--segm_topic', default='/ambf/env/cameras/segmentation_camera/ImageData', type=str)
-    parser.add_argument(
-        '--sync', type=str, default='True')
+    parser.add_argument('--sync', action='store_true')
     parser.add_argument('--debug', action='store_true')
 
     # TODO: record voxels (either what has been removed, or what is the current voxels) as asked by pete?
@@ -367,11 +366,6 @@ if __name__ == '__main__':
     data_queue = Queue(chunk * 2)
     num_data = 0
     container = OrderedDict()
-
-    if args.sync in ['True', 'true', '1']:
-        args.sync = True
-    else:
-        args.sync = False
 
     main(args)
     _client.clean_up()
