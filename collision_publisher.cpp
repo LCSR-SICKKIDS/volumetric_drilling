@@ -17,7 +17,7 @@ void DrillingPublisher::init(string a_namespace, string a_plugin){
 
 }
 
-void DrillingPublisher::voxelsRemoved(float ray[3], int vcolor[4], double time){
+void DrillingPublisher::voxelsRemoved(double ray[3], int vcolor[4], double time){
     msg.sim_time = time;
 
     std::vector<int> vec(vcolor, vcolor + 3);
@@ -26,7 +26,6 @@ void DrillingPublisher::voxelsRemoved(float ray[3], int vcolor[4], double time){
     msg.voxel_removed.x = ray[0];
     msg.voxel_removed.y = ray[1];
     msg.voxel_removed.z = ray[2];
-
 
     m_voxelsRemovedPub.publish(msg);
 
