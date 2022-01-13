@@ -42,10 +42,11 @@ project (volumetric_plugin)
 
 set(CMAKE_CXX_STANDARD 11)
 
-
 find_package(AMBF)
 find_package(Boost COMPONENTS program_options filesystem)
-find_package(catkin COMPONENTS vdrilling_msgs ambf_msgs)
+
+add_subdirectory(vdrilling_msgs)
+find_package(catkin COMPONENTS vdrilling_msgs)
 
 include_directories(${AMBF_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
