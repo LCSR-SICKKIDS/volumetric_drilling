@@ -476,6 +476,9 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 ///
 void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
     T_d.setLocalPos(T_d.getLocalPos() + a_vel);
+    if(m_hapticDevice->isDeviceAvailable() == false){
+        m_drillRigidBody->setLocalTransform(T_d);
+    }
 }
 
 
@@ -488,6 +491,9 @@ void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
     R_cmd = T_d.getLocalRot() * R_cmd;
     T_d.setLocalRot(R_cmd);
+    if(m_hapticDevice->isDeviceAvailable() == false){
+       m_drillRigidBody->setLocalTransform(T_d);
+    }
 }
 
 ///
