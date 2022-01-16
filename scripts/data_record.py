@@ -22,6 +22,7 @@ import rospy
 from ambf_msgs.msg import RigidBodyState
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
+
 try:
     from vdrilling_msgs.msg import points
 except ImportError:
@@ -164,11 +165,10 @@ def write_to_hdf5():
         for key, value in data.items():
             if len(value) > 0:
                 group.create_dataset(
-                    key, data=np.stack(value, axis=0))  # write to disk
+                    key, data=np.stack(value, axis=0), compression='gzip')  # write to disk
                 log.log(logging.INFO, (key, group[key].shape))
             data[key] = []  # reset list to empty memory
 
-    data_group = f["voxels_removed"]
     f.close()
 
     return
@@ -188,10 +188,11 @@ def timer_callback(_):
 
     num_data = num_data + 1
     if num_data >= chunk:
-        log.log(logging.INFO, "Write data to disk")
+        log.log(logging.INFO, "\nWrite data to disk")
         write_to_hdf5()
         f, _, _, _ = init_hdf5(args, stereo)
         num_data = 0
+
 
 def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
@@ -300,17 +301,7 @@ def main(args):
     rospy.Timer(rospy.Duration(0, 500000), timer_callback)  # set to 2Khz such that we don't miss pose data
     print("Writing to HDF5 every chunk of %d data" % args.chunk_size)
 
-    try:
-        print("Recording started, press Q to quit")
-
-        while not rospy.core.is_shutdown():
-            rospy.rostime.wallsleep(0.5)
-            keypress = input("")
-            if keypress == "Q" or keypress == "q":
-                break
-    except KeyboardInterrupt:
-        rospy.core.signal_shutdown('keyboard interrupt')
-
+    rospy.spin()
     write_to_hdf5()  # save when user exits
 
 
@@ -337,7 +328,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
 
-    parser.add_argument('--chunk_size', type=int, default=200,
+    parser.add_argument('--chunk_size', type=int, default=500,
                         help='Write to disk every chunk size')
 
     parser.add_argument(
@@ -394,7 +385,6 @@ if __name__ == '__main__':
     num_data = 0
     container = OrderedDict()
     collisions = OrderedDict()
-
 
     main(args)
     _client.clean_up()
