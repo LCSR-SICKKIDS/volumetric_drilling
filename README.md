@@ -138,6 +138,7 @@ The virtual drill can be manipulated via a keyboard or haptic devices such as th
 
 | # | Miscellaneous | Description                                                                        |
 |---|---------------|------------------------------------------------------------------------------------|
+| 1 | [Ctrl+O]      | Toggle the drill's control mode between Haptic Device / Keyboard to ROS Comm       |
 | 1 | [Ctrl+C]      | Changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)       |
 | 2 | [Ctrl+N]      | Resets the shape of the volume                                                     |
 | 3 | [Alt+R]       | Resets the whole world and this plugin                                             |
