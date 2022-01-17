@@ -19,7 +19,7 @@ import message_filters
 from msg_synchronizer import TimeSynchronizer
 import ros_numpy
 import rospy
-from ambf_msgs.msg import RigidBodyState
+from ambf_msgs.msg import RigidBodyState, CameraState
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
 
@@ -261,15 +261,13 @@ def setup_subscriber(args):
             exit()
 
     # poses
-    for name, _ in objects.items():
-        subname = name
+    for name in args.objects:
         if 'camera' in name:
-            if name == 'main_camera':
-                subname = 'cameras/' + name
-            else:
-                continue
-        topic = '/ambf/env/' + subname + '/State'
-        pose_sub = message_filters.Subscriber(topic, RigidBodyState)
+            topic = '/ambf/env/' + 'cameras/' + name + '/State'
+            pose_sub = message_filters.Subscriber(topic, CameraState)
+        else:
+            topic = '/ambf/env/' + name + '/State'
+            pose_sub = message_filters.Subscriber(topic, RigidBodyState)
 
         if topic in active_topics:
             container['pose_' + name] = []
@@ -285,6 +283,8 @@ def setup_subscriber(args):
 def main(args):
     container['time'] = []
 
+    # setup ros node and subscribers
+    rospy.init_node('data_recorder')
     subscribers = setup_subscriber(args)
 
     print("Synchronous? : ", args.sync)
@@ -328,9 +328,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
 
-    parser.add_argument('--chunk_size', type=int, default=500,
-                        help='Write to disk every chunk size')
-
     parser.add_argument(
         '--stereoL_topic', default='/ambf/env/cameras/stereoL/ImageData', type=str)
     parser.add_argument(
@@ -341,10 +338,13 @@ if __name__ == '__main__':
         '--segm_topic', default='/ambf/env/cameras/segmentation_camera/ImageData', type=str)
     parser.add_argument(
         '--rm_vox_topic', default='/ambf/volumetric_drilling/voxels_removed', type=str)
-    parser.add_argument('--sync', action='store_true')
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument(
+        '--objects', default=['mastoidectomy_drill', 'main_camera'], type=str, nargs='+')
 
-    # TODO: record voxels (either what has been removed, or what is the current voxels) as asked by pete?
+    parser.add_argument('--sync', action='store_true')
+    parser.add_argument('--chunk_size', type=int, default=500,
+                        help='Write to disk every chunk size')
+    parser.add_argument('--debug', action='store_true')
 
     args = parser.parse_args()
 
@@ -366,10 +366,6 @@ if __name__ == '__main__':
     ch.setFormatter(formatter)
     log.addHandler(ch)
 
-    # read object groups
-    _client, objects = init_ambf('data_record')
-    chunk = args.chunk_size
-
     # camera extrinsics, the transformation that pre-multiplies recorded poses to match opencv convention
     extrinsic = np.array([[0, 1, 0, 0], [0, 0, -1, 0],
                           [-1, 0, 0, 0], [0, 0, 0, 1]])  # T_cv_ambf
@@ -381,10 +377,11 @@ if __name__ == '__main__':
         stereo = False
     f, h, w, scale = init_hdf5(args, stereo)
 
+    # initialize queue for multi-threading
+    chunk = args.chunk_size
     data_queue = Queue(chunk * 2)
     num_data = 0
     container = OrderedDict()
     collisions = OrderedDict()
 
     main(args)
-    _client.clean_up()
