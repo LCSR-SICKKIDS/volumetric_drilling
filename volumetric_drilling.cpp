@@ -97,8 +97,6 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     // Get first camera
     m_mainCamera = m_worldPtr->getCameras()[0];
 
-    double maxStiffness = 10.0;
-
     // Initializing tool's rotation matrix as an identity matrix
     m_toolRotMat.identity();
     m_toolRotMat = m_mainCamera->getLocalRot() * m_toolRotMat;
@@ -146,10 +144,10 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     double workspaceScaleFactor = m_toolCursorList[0]->getWorkspaceScaleFactor();
 
     // stiffness properties
-    maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
+    double maxStiffness = hapticDeviceInfo.m_maxLinearStiffness / workspaceScaleFactor;
 
     // Set voxels surface contact properties
-    m_voxelObj->m_material->setStiffness(0.2 * maxStiffness);
+    m_voxelObj->m_material->setStiffness(2.0*maxStiffness);
     m_voxelObj->m_material->setDamping(0.0);
     m_voxelObj->m_material->setDynamicFriction(0.0);
     m_voxelObj->setUseMaterial(true);
