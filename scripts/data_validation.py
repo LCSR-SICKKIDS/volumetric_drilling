@@ -7,6 +7,19 @@ from scipy.spatial.transform import Rotation as R
 from utils import *
 
 
+def quaternion_multiply(q1, q2):
+    """
+    rotation multiplication as quaternion
+    """
+    x1, y1, z1, w1 = np.split(q1, 4, axis=-1)
+    x2, y2, z2, w2 = np.split(q2, 4, axis=-1)
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 + y1 * w2 + z1 * x2 - x1 * z2
+    z = w1 * z2 + z1 * w2 + x1 * y2 - y1 * x2
+    return np.concatenate([x, y, z, w], axis=-1)
+
+
 def verify_xyz(depth, K):
     h, w = depth.shape[1:3]
     u, v = np.meshgrid(np.arange(0, w), np.arange(0, h))
@@ -160,12 +173,15 @@ if __name__ == "__main__":
         f = h5py.File(args.file, 'r')
         intrinsic = f['metadata']['camera_intrinsic'][()]
         extrinsic = f['metadata']['camera_extrinsic'][()]
+        extrinsic_quat_inv = R.from_matrix(np.linalg.inv(extrinsic)[:3, :3]).as_quat()
 
         depth = f['data']['depth'][()]
         time_stamps = f['data']['time'][()]
 
-        pose_cam = pose_to_matrix(f['data']['pose_main_camera'][()])
-        pose_cam = np.matmul(pose_cam, np.linalg.inv(extrinsic)[None])  # update pose so world directly maps to CV
+        pose_cam = f['data']['pose_main_camera'][()]
+        # apply extrinsic inv to camera poses
+        pose_cam[:, 3:] = quaternion_multiply(pose_cam[:, 3:], extrinsic_quat_inv)
+        pose_cam = pose_to_matrix(pose_cam)
 
         if args.setting == 'sphere':
             pose_sphere = pose_to_matrix(f['data']['pose_Sphere'][()])
