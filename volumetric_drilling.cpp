@@ -228,7 +228,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     if (getOverrideDrillControl()){
         T_d = m_drillRigidBody->getLocalTransform();
     }
-    else{
+    else if(m_hapticDevice->isDeviceAvailable()){
         m_hapticDevice->getTransform(T_i);
         m_hapticDevice->getLinearVelocity(V_i);
         m_hapticDevice->getUserSwitch(0, clutch);
@@ -244,7 +244,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     if (getOverrideDrillControl() == false){
         // updates position of drill mesh
-        drillPosUpdate();
+        drillPoseUpdateFromCursors();
     }
 
     if (m_toolCursorList[0]->isInContact(m_voxelObj) && m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
@@ -545,12 +545,15 @@ void afVolmetricDrillingPlugin::checkShaftCollision(){
 /// After obtaining g_targetToolCursor, the drill mesh adjust it's position and rotation
 /// such that it follows the proxy position of the g_targetToolCursor.
 ///
-void afVolmetricDrillingPlugin::drillPosUpdate(){
+void afVolmetricDrillingPlugin::drillPoseUpdateFromCursors(){
+    cMatrix3d newDrillRot;
+    newDrillRot = m_toolCursorList[0]->getDeviceLocalRot();
+//    cerr << newDrillRot.str(2) << endl;
 
     if(m_targetToolCursorIdx == 0){
         cTransform T_tip;
         T_tip.setLocalPos(m_toolCursorList[0]->m_hapticPoint->getLocalPosProxy());
-        T_tip.setLocalRot(m_toolCursorList[0]->getDeviceLocalRot());
+        T_tip.setLocalRot(newDrillRot);
         m_drillRigidBody->setLocalTransform(T_tip);
     }
     else if(cDistance(m_targetToolCursor->m_hapticPoint->getLocalPosProxy(), m_targetToolCursor->m_hapticPoint->getLocalPosGoal()) <= 0.001)
@@ -559,7 +562,6 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
         cVector3d xDir = m_drillRigidBody->getLocalRot().getCol0();
 
         cVector3d newDrillPos;
-        cMatrix3d newDrillRot;
 
         // drill mesh will make a sudden jump towards the followSphere
         if(!m_suddenJump)
@@ -582,8 +584,6 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
 //        else{
 //            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
 //        }
-
-        newDrillRot = m_toolCursorList[0]->getDeviceLocalRot();
 
         cTransform trans;
         trans.setLocalPos(newDrillPos);

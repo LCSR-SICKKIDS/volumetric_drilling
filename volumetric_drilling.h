@@ -39,7 +39,7 @@ protected:
     void checkShaftCollision(void);
 
     // update position of drill mesh
-    void drillPosUpdate(void);
+    void drillPoseUpdateFromCursors(void);
 
     // toggles size of the drill burr
     void changeDrillSize(void);
