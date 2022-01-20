@@ -17,10 +17,10 @@ void DrillingPublisher::init(string a_namespace, string a_plugin){
 
 }
 
-void DrillingPublisher::voxelsRemoved(double ray[3], int vcolor[4], double time){
-    msg.sim_time = time;
+void DrillingPublisher::voxelsRemoved(double ray[3], float vcolor[4], double time){
+    msg.header.stamp.fromSec(time);
 
-    std::vector<int> vec(vcolor, vcolor + 3);
+    std::vector<float> vec(vcolor, vcolor + 4);
     msg.voxel_color = vec;
 
     msg.voxel_removed.x = ray[0];

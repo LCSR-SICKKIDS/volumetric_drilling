@@ -272,7 +272,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         double voxel_array[3] = {ray.get(0), ray.get(1), ray.get(2)};
 
         cColorf color_glFloat = m_storedColor.getColorf();
-        int color_array[4];
+        float color_array[4];
         color_array[0] = color_glFloat.getR();
         color_array[1] = color_glFloat.getG();
         color_array[2] = color_glFloat.getB();

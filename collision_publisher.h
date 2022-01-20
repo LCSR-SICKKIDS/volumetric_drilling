@@ -13,7 +13,7 @@ public:
     void init(std::string a_namespace, std::string a_plugin);
     ros::NodeHandle* m_rosNode;
 
-    void voxelsRemoved(double ray[3], int vcolor[4], double time);
+    void voxelsRemoved(double ray[3], float vcolor[4], double time);
 private:
     ros::Publisher m_voxelsRemovedPub;
     vdrilling_msgs::points msg;
