@@ -605,25 +605,26 @@ void afVolmetricDrillingPlugin::changeDrillSize(){
 
     switch(m_drillSizeIdx)
     {
+    // Drill bit size is in diameters i.e. for 2mm drill bit, 1mm * (1 ambf unit/49.664mm) = 0.02014
         case 0:
-            m_toolCursorList[0]->setRadius(0.0403);
-            m_burrMesh->setRadius(0.0403);
+            m_toolCursorList[0]->setRadius(0.02014);
+            m_burrMesh->setRadius(0.02014);
             cout << "Drill Size changed to 2 mm" << endl;
             m_currDrillSize = 2;
             m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
             break;
 
         case 1:
-            m_toolCursorList[0]->setRadius(0.0805);
-            m_burrMesh->setRadius(0.0805);
+            m_toolCursorList[0]->setRadius(0.04030);
+            m_burrMesh->setRadius(0.04030);
             cout << "Drill Size changed to 4 mm" << endl;
             m_currDrillSize = 4;
             m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
             break;
 
         case 2:
-            m_toolCursorList[0]->setRadius(0.1208);
-            m_burrMesh->setRadius(0.1208);
+            m_toolCursorList[0]->setRadius(0.06041);
+            m_burrMesh->setRadius(0.06041);
             cout << "Drill Size changed to 6 mm" << endl;
             m_currDrillSize = 6;
             m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
