@@ -289,14 +289,12 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
         m_flagMarkVolumeForUpdate = true;
     }
-
     // remove warning panel
     else
     {
         m_warningPopup->setShowPanel(false);
         m_warningText->setShowEnabled(false);
     }
-
     // compute interaction forces
     for(int i = 0 ; i < m_toolCursorList.size() ; i++){
         m_toolCursorList[i]->computeInteractionForces();
@@ -633,6 +631,9 @@ void afVolmetricDrillingPlugin::changeDrillSize(){
         default:
             break;
     }
+
+    double sim_time = m_drillRigidBody->getCurrentTimeStamp();
+    m_drillingPub -> burrChange(m_currDrillSize, sim_time);
 }
 
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
