@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import pickle
 import sys
 import time
 from argparse import ArgumentParser
@@ -28,7 +29,6 @@ try:
 except ImportError:
     print("\nvdrilling_msgs.msg: cannot open shared message file. " +
           "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
-from utils import init_ambf
 
 
 def depth_gen(depth_msg):
@@ -79,13 +79,10 @@ def pose_gen(pose_msg):
 
 
 def init_hdf5(args, stereo):
-    adf = args.world_adf
-
-    world_adf = open(adf, "r")
+    world_adf = open(args.world_adf, "r")
     world_params = yaml.safe_load(world_adf)
     world_adf.close()
 
-    s = world_params["conversion factor"]
     main_camera = world_params["main_camera"]
 
     # perspective camera intrinsics
@@ -97,6 +94,14 @@ def init_hdf5(args, stereo):
     c_x = img_width / 2
     c_y = img_height / 2
     intrinsic = np.array([[focal, 0, c_x], [0, focal, c_y], [0, 0, 1]])
+
+    # conversion factor
+    nrrd_header = open(args.nrrd_header, "rb")
+    header = pickle.load(nrrd_header)
+    directions = header['space directions']
+    sizes = header['sizes']
+    largest_dim = np.argmax(sizes)
+    s = np.linalg.norm(directions[largest_dim]) * sizes[largest_dim] / 1000.0
 
     # Create hdf5 file with date
     if not os.path.exists(args.output_dir):
@@ -196,7 +201,7 @@ def timer_callback(_):
 
 def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
-    collisions['sim_time'].append(rm_vox_msg.sim_time)
+    collisions['sim_time'].append(rm_vox_msg.header.stamp.to_sec())
     collisions['voxel_removed'].append(voxel)
     collisions['voxel_color'].append(rm_vox_msg.voxel_color)
 
@@ -328,6 +333,8 @@ if __name__ == '__main__':
         '--world_adf', default='../ADF/world/world.yaml', type=str)
     parser.add_argument(
         '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
+    parser.add_argument(
+        '--nrrd_header', default='../resources/volumes/nrrd_header.pkl', type=str)
 
     parser.add_argument(
         '--stereoL_topic', default='/ambf/env/cameras/stereoL/ImageData', type=str)

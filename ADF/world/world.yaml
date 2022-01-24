@@ -5,7 +5,6 @@ environment: ./checkered_floor.yaml
 namespace: /ambf/env/
 max iterations: 50
 gravity: {x: 0.0, y: 0.0, z: -0.0}
-conversion factor: 0.049664 # when conversion factor is changed the volume occupies the same space, but camera parameters and data output are adjusted so scene looks the same.
 # shaders:
 #   path: ../../ambf_shaders/normal_map
 #   vertex: shader.vs
