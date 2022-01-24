@@ -96,7 +96,7 @@ def verify_sphere(depth, K, RT, pose_cam, pose_primitive, time_stamps):
     return
 
 
-def pose_depth_test(K, pose, depth, u, v):
+def pose_depth_test(K, pose, depth, segm, u, v):
     for i in range(depth.shape[0] - 1):
         # iproj
         d = depth[i, v, u]
@@ -110,23 +110,37 @@ def pose_depth_test(K, pose, depth, u, v):
         uv = uvz[:2] / uvz[2]
 
         # update uv
-        v = np.rint(uv[1]).astype(int)
-        u = np.rint(uv[0]).astype(int)
+        v_new = np.rint(uv[1]).astype(int)
+        u_new = np.rint(uv[0]).astype(int)
 
         if not np.all(pose[i + 1] == pose[i]):
             # check if within image
-            if v < 0 or v >= 480:
+            if v_new < 0 or v_new >= 480:
                 print("out of window", i)
                 break
-            if u < 0 or u >= 640:
+            if u_new < 0 or u_new >= 640:
                 print("out of window", i)
+                break
+            if not np.all(segm[i + 1, v_new, u_new] == np.array([33, 32, 34]), axis=-1):
+                if np.all(segm[i + 1, v_new + 1, u_new] == np.array([33, 32, 34]), axis=-1):
+                    v_new += 1
+                elif np.all(segm[i + 1, v_new, u_new + 1] == np.array([33, 32, 34]), axis=-1):
+                    u_new += 1
+                elif np.all(segm[i + 1, v_new - 1, u_new] == np.array([33, 32, 34]), axis=-1):
+                    v_new -= 1
+                elif np.all(segm[i + 1, v_new, u_new - 1] == np.array([33, 32, 34]), axis=-1):
+                    u_new -= 1
+                print("can't find tool any more")
                 break
 
-            d_new = depth[i + 1, v, u]
+            d_new = depth[i + 1, v_new, u_new]
             assert np.isclose(uvz[2], d_new, rtol=0.01)
 
+            u = u_new
+            v = v_new
 
-def verify_drilling(K, pose_cam, segm, depth):
+
+def verify_drilling(K, pose_cam, pose_drill, segm, depth):
     # tool
     tool = np.all(segm[0] == np.array([33, 32, 34]), axis=-1)
     y, x = np.where(tool)
@@ -135,17 +149,18 @@ def verify_drilling(K, pose_cam, segm, depth):
         v = np.random.randint(np.min(y), np.max(y))
         if tool[v, u]:
             break
-    pose_depth_test(K, pose_cam, depth, u, v)
+    poses = np.linalg.inv(pose_drill) @ pose_cam
+    pose_depth_test(K, poses, depth, segm, u, v)
 
-    # mastoid
-    mastoid = np.all(segm[0] == np.array([219, 249, 255]), axis=-1)
-    y, x = np.where(mastoid)
-    while True:
-        u = np.random.randint(np.min(x), np.max(x))
-        v = np.random.randint(np.min(y), np.max(y))
-        if tool[v, u]:
-            break
-    pose_depth_test(K, pose_cam, depth, u, v)
+    # # mastoid (only valid when there is no drilling)
+    # mastoid = np.all(segm[0] == np.array([219, 249, 255]), axis=-1)
+    # y, x = np.where(mastoid)
+    # while True:
+    #     u = np.random.randint(np.min(x), np.max(x))
+    #     v = np.random.randint(np.min(y), np.max(y))
+    #     if tool[v, u]:
+    #         break
+    # pose_depth_test(K, pose_cam, depth, u, v)
     print("All test passed :)")
     return
 
@@ -189,4 +204,4 @@ if __name__ == "__main__":
         elif args.setting == 'drilling':
             segm = f['data']['segm'][()]
             pose_drill = pose_to_matrix(f['data']['pose_mastoidectomy_drill'][()])
-            verify_drilling(intrinsic, pose_cam, segm, depth)
+            verify_drilling(intrinsic, pose_cam, pose_drill, segm, depth)
