@@ -204,7 +204,8 @@ def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
     collisions['sim_time'].append(rm_vox_msg.header.stamp.to_sec())
     collisions['voxel_removed'].append(voxel)
-    collisions['voxel_color'].append(rm_vox_msg.voxel_color)
+    int_vox_color = [round(elem*255) for elem in rm_vox_msg.voxel_color]
+    collisions['voxel_color'].append(int_vox_color)
 
 def burr_change_callback(burr_change_msg):
     global burr_change
