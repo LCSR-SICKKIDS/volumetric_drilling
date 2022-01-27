@@ -25,7 +25,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
 
 try:
-    from vdrilling_msgs.msg import points
+    from vdrilling_msgs.msg import points, UInt8Stamped
 except ImportError:
     print("\nvdrilling_msgs.msg: cannot open shared message file. " +
           "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
@@ -128,6 +128,7 @@ def init_hdf5(args, stereo):
 
     file.create_group("data")
     file.create_group("voxels_removed")
+    file.create_group("burr_change")
 
     return file, img_height, img_width, s
 
@@ -165,7 +166,7 @@ def callback(*inputs):
 
 
 def write_to_hdf5():
-    containers = [(f["data"], container), (f["voxels_removed"], collisions)]
+    containers = [(f["data"], container), (f["voxels_removed"], collisions), (f["burr_change"], burr_change)]
     for group, data in containers:
         for key, value in data.items():
             if len(value) > 0:
@@ -203,7 +204,13 @@ def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
     collisions['sim_time'].append(rm_vox_msg.header.stamp.to_sec())
     collisions['voxel_removed'].append(voxel)
-    collisions['voxel_color'].append(rm_vox_msg.voxel_color)
+    int_vox_color = [round(elem*255) for elem in rm_vox_msg.voxel_color]
+    collisions['voxel_color'].append(int_vox_color)
+
+def burr_change_callback(burr_change_msg):
+    global burr_change
+    burr_change['sim_time'].append(burr_change_msg.header.stamp.to_sec())
+    burr_change['burr_size'].append(burr_change_msg.number.data)
 
 
 def setup_subscriber(args):
@@ -257,12 +264,21 @@ def setup_subscriber(args):
 
     if args.rm_vox_topic != 'None':
         if args.rm_vox_topic in active_topics:
-            rm_vox_sub = rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
+            rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
             collisions['sim_time'] = []
             collisions['voxel_removed'] = []
             collisions['voxel_color'] = []
         else:
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.rm_vox_topic)
+            exit()
+
+    if args.burr_change_topic != 'None':
+        if args.burr_change_topic in active_topics:
+            rospy.Subscriber(args.burr_change_topic, UInt8Stamped, burr_change_callback)
+            burr_change['sim_time'] = []
+            burr_change['burr_size'] = []
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.burr_change_topic)
             exit()
 
     # poses
@@ -347,6 +363,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--rm_vox_topic', default='/ambf/volumetric_drilling/voxels_removed', type=str)
     parser.add_argument(
+        '--burr_change_topic', default='/ambf/volumetric_drilling/burr_change', type=str)
+    parser.add_argument(
         '--objects', default=['mastoidectomy_drill', 'main_camera'], type=str, nargs='+')
 
     parser.add_argument('--sync', action='store_true')
@@ -391,5 +409,6 @@ if __name__ == '__main__':
     num_data = 0
     container = OrderedDict()
     collisions = OrderedDict()
+    burr_change = OrderedDict()
 
     main(args)
