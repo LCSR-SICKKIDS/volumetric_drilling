@@ -204,7 +204,7 @@ def timer_callback(_):
 
 def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
-    collisions['sim_time'].append(rm_vox_msg.header.stamp.to_sec())
+    collisions['time_stamp'].append(rm_vox_msg.header.stamp.to_sec())
     collisions['voxel_removed'].append(voxel)
     int_vox_color = [round(elem * 255) for elem in rm_vox_msg.voxel_color]
     collisions['voxel_color'].append(int_vox_color)
@@ -212,15 +212,17 @@ def rm_vox_callback(rm_vox_msg):
 
 def burr_change_callback(burr_change_msg):
     global burr_change
-    burr_change['sim_time'].append(burr_change_msg.header.stamp.to_sec())
+    burr_change['time_stamp'].append(burr_change_msg.header.stamp.to_sec())
     burr_change['burr_size'].append(burr_change_msg.number.data)
+
 
 def volume_prop_callback(volume_prop_msg):
     global voxel_volume
     dimensions = volume_prop_msg.dimensions
     voxelCount = volume_prop_msg.voxelCount
-    resolution = np.divide(dimensions, voxelCount)
-    voxel_volume = np.prod(resolution)*np.power((scale*1000), 3)
+    resolution = np.divide(dimensions, voxelCount) * 1000
+    voxel_volume = np.prod(resolution) * scale ** 3
+
 
 def setup_subscriber(args):
     active_topics = [n for [n, _] in rospy.get_published_topics()]
@@ -274,7 +276,7 @@ def setup_subscriber(args):
     if args.rm_vox_topic != 'None':
         if args.rm_vox_topic in active_topics:
             rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
-            collisions['sim_time'] = []
+            collisions['time_stamp'] = []
             collisions['voxel_removed'] = []
             collisions['voxel_color'] = []
         else:
@@ -284,7 +286,7 @@ def setup_subscriber(args):
     if args.burr_change_topic != 'None':
         if args.burr_change_topic in active_topics:
             rospy.Subscriber(args.burr_change_topic, UInt8Stamped, burr_change_callback)
-            burr_change['sim_time'] = []
+            burr_change['time_stamp'] = []
             burr_change['burr_size'] = []
         else:
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.burr_change_topic)
