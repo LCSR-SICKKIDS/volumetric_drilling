@@ -4,6 +4,8 @@
 #include "ros/ros.h"
 #include <string>
 #include <vdrilling_msgs/points.h>
+#include <vdrilling_msgs/UInt8Stamped.h>
+#include <vdrilling_msgs/VolumeProp.h>
 
 
 class DrillingPublisher{
@@ -13,17 +15,17 @@ public:
     void init(std::string a_namespace, std::string a_plugin);
     ros::NodeHandle* m_rosNode;
 
-    void voxelsRemoved(double ray[3], int vcolor[4], double time);
+    void voxelsRemoved(double ray[3], float vcolor[4], double time);
+    void burrChange(int burrSize, double time);
+    void volumeProp(float dimensions[3], int voxelCount[3]);
 private:
     ros::Publisher m_voxelsRemovedPub;
-    vdrilling_msgs::points msg;
+    ros::Publisher m_burrChangePub;
+    ros::Publisher m_volumePropPub;
+    vdrilling_msgs::points voxel_msg;
+    vdrilling_msgs::UInt8Stamped burr_msg;
+    vdrilling_msgs::VolumeProp volume_msg;
+
 };
 
 #endif //VOLUMETRIC_PLUGIN_COLLISION_PUBLISHER_H
-
-/*
-std_msgs/Header header
-float64 sim_time
-geometry_msgs/Point voxel_removed
-int32[] voxel_color
-*/

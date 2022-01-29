@@ -190,7 +190,7 @@ if __name__ == '__main__':
     parser.add_argument('--clipping_plane', nargs='+', default=[0.3, 50.0], help='[near, far], meters, for accuracy\n'
                                                                                  'set far plane as far as possible')
     parser.add_argument('--res', nargs='+', default=[640, 480], help='image [width, height]')
-    parser.add_argument('--image_interval', type=int, default=20, help='Publish every nth scene update')
+    parser.add_argument('--image_interval', type=int, default=5, help='Publish every nth scene update')
 
     args = parser.parse_args()
     main(args)

@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import pickle
 import sys
 import time
 from argparse import ArgumentParser
@@ -24,11 +25,10 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
 
 try:
-    from vdrilling_msgs.msg import points
+    from vdrilling_msgs.msg import points, UInt8Stamped, VolumeProp
 except ImportError:
     print("\nvdrilling_msgs.msg: cannot open shared message file. " +
           "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
-from utils import init_ambf
 
 
 def depth_gen(depth_msg):
@@ -79,13 +79,10 @@ def pose_gen(pose_msg):
 
 
 def init_hdf5(args, stereo):
-    adf = args.world_adf
-
-    world_adf = open(adf, "r")
+    world_adf = open(args.world_adf, "r")
     world_params = yaml.safe_load(world_adf)
     world_adf.close()
 
-    s = world_params["conversion factor"]
     main_camera = world_params["main_camera"]
 
     # perspective camera intrinsics
@@ -98,11 +95,19 @@ def init_hdf5(args, stereo):
     c_y = img_height / 2
     intrinsic = np.array([[focal, 0, c_x], [0, focal, c_y], [0, 0, 1]])
 
+    # conversion factor
+    nrrd_header = open(args.nrrd_header, "rb")
+    header = pickle.load(nrrd_header)
+    directions = header['space directions']
+    sizes = header['sizes']
+    largest_dim = np.argmax(sizes)
+    s = np.linalg.norm(directions[largest_dim]) * sizes[largest_dim] / 1000.0
+
     # Create hdf5 file with date
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    file = h5py.File("./data/" + time_str + ".hdf5", "w")
+    file = h5py.File(args.output_dir + '/' + time_str + ".hdf5", "w")
 
     metadata = file.create_group("metadata")
     metadata.create_dataset("camera_intrinsic", data=intrinsic)
@@ -123,6 +128,7 @@ def init_hdf5(args, stereo):
 
     file.create_group("data")
     file.create_group("voxels_removed")
+    file.create_group("burr_change")
 
     return file, img_height, img_width, s
 
@@ -160,7 +166,9 @@ def callback(*inputs):
 
 
 def write_to_hdf5():
-    containers = [(f["data"], container), (f["voxels_removed"], collisions)]
+    hdf5_vox_vol = f['metadata'].create_dataset("voxel_volume", data=voxel_volume)
+    hdf5_vox_vol.attrs['units'] = "mm^3, millimeters cubed"
+    containers = [(f["data"], container), (f["voxels_removed"], collisions), (f["burr_change"], burr_change)]
     for group, data in containers:
         for key, value in data.items():
             if len(value) > 0:
@@ -196,9 +204,24 @@ def timer_callback(_):
 
 def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
-    collisions['sim_time'].append(rm_vox_msg.sim_time)
+    collisions['time_stamp'].append(rm_vox_msg.header.stamp.to_sec())
     collisions['voxel_removed'].append(voxel)
-    collisions['voxel_color'].append(rm_vox_msg.voxel_color)
+    int_vox_color = [round(elem * 255) for elem in rm_vox_msg.voxel_color]
+    collisions['voxel_color'].append(int_vox_color)
+
+
+def burr_change_callback(burr_change_msg):
+    global burr_change
+    burr_change['time_stamp'].append(burr_change_msg.header.stamp.to_sec())
+    burr_change['burr_size'].append(burr_change_msg.number.data)
+
+
+def volume_prop_callback(volume_prop_msg):
+    global voxel_volume
+    dimensions = volume_prop_msg.dimensions
+    voxelCount = volume_prop_msg.voxelCount
+    resolution = np.divide(dimensions, voxelCount) * 1000
+    voxel_volume = np.prod(resolution) * scale ** 3
 
 
 def setup_subscriber(args):
@@ -252,12 +275,28 @@ def setup_subscriber(args):
 
     if args.rm_vox_topic != 'None':
         if args.rm_vox_topic in active_topics:
-            rm_vox_sub = rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
-            collisions['sim_time'] = []
+            rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
+            collisions['time_stamp'] = []
             collisions['voxel_removed'] = []
             collisions['voxel_color'] = []
         else:
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.rm_vox_topic)
+            exit()
+
+    if args.burr_change_topic != 'None':
+        if args.burr_change_topic in active_topics:
+            rospy.Subscriber(args.burr_change_topic, UInt8Stamped, burr_change_callback)
+            burr_change['time_stamp'] = []
+            burr_change['burr_size'] = []
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.burr_change_topic)
+            exit()
+
+    if args.volume_prop_topic != 'None':
+        if args.volume_prop_topic in active_topics:
+            rospy.Subscriber(args.volume_prop_topic, VolumeProp, volume_prop_callback)
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.volume_prop_topic)
             exit()
 
     # poses
@@ -328,6 +367,8 @@ if __name__ == '__main__':
         '--world_adf', default='../ADF/world/world.yaml', type=str)
     parser.add_argument(
         '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
+    parser.add_argument(
+        '--nrrd_header', default='../resources/volumes/nrrd_header.pkl', type=str)
 
     parser.add_argument(
         '--stereoL_topic', default='/ambf/env/cameras/stereoL/ImageData', type=str)
@@ -339,6 +380,10 @@ if __name__ == '__main__':
         '--segm_topic', default='/ambf/env/cameras/segmentation_camera/ImageData', type=str)
     parser.add_argument(
         '--rm_vox_topic', default='/ambf/volumetric_drilling/voxels_removed', type=str)
+    parser.add_argument(
+        '--burr_change_topic', default='/ambf/volumetric_drilling/burr_change', type=str)
+    parser.add_argument(
+        '--volume_prop_topic', default='/ambf/volumetric_drilling/volume_prop', type=str)
     parser.add_argument(
         '--objects', default=['mastoidectomy_drill', 'main_camera'], type=str, nargs='+')
 
@@ -384,5 +429,7 @@ if __name__ == '__main__':
     num_data = 0
     container = OrderedDict()
     collisions = OrderedDict()
+    burr_change = OrderedDict()
+    voxel_volume = 0
 
     main(args)
