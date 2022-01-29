@@ -107,7 +107,7 @@ def init_hdf5(args, stereo):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    file = h5py.File("./data/" + time_str + ".hdf5", "w")
+    file = h5py.File(args.output_dir + '/' + time_str + ".hdf5", "w")
 
     metadata = file.create_group("metadata")
     metadata.create_dataset("camera_intrinsic", data=intrinsic)
@@ -206,8 +206,9 @@ def rm_vox_callback(rm_vox_msg):
     voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
     collisions['sim_time'].append(rm_vox_msg.header.stamp.to_sec())
     collisions['voxel_removed'].append(voxel)
-    int_vox_color = [round(elem*255) for elem in rm_vox_msg.voxel_color]
+    int_vox_color = [round(elem * 255) for elem in rm_vox_msg.voxel_color]
     collisions['voxel_color'].append(int_vox_color)
+
 
 def burr_change_callback(burr_change_msg):
     global burr_change
