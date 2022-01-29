@@ -193,6 +193,19 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     // Set up voxels_removed publisher
     m_drillingPub = new DrillingPublisher("ambf", "volumetric_drilling");
 
+    // Volume Properties
+    float dim[3];
+    dim[0] = m_volumeObject->getDimensions().get(0);
+    dim[1]= m_volumeObject->getDimensions().get(1);
+    dim[2] = m_volumeObject->getDimensions().get(2);
+
+    int voxelCount[3];
+    voxelCount[0] = m_volumeObject->getVoxelCount().get(0);
+    voxelCount[1]= m_volumeObject->getVoxelCount().get(1);
+    voxelCount[2] = m_volumeObject->getVoxelCount().get(2);
+
+    m_drillingPub -> volumeProp(dim, voxelCount);
+
     return 1;
 }
 

@@ -25,7 +25,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
 
 try:
-    from vdrilling_msgs.msg import points, UInt8Stamped
+    from vdrilling_msgs.msg import points, UInt8Stamped, VolumeProp
 except ImportError:
     print("\nvdrilling_msgs.msg: cannot open shared message file. " +
           "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
@@ -166,6 +166,8 @@ def callback(*inputs):
 
 
 def write_to_hdf5():
+    hdf5_vox_vol = f['metadata'].create_dataset("voxel_volume", data=voxel_volume)
+    hdf5_vox_vol.attrs['units'] = "mm^3, millimeters cubed"
     containers = [(f["data"], container), (f["voxels_removed"], collisions), (f["burr_change"], burr_change)]
     for group, data in containers:
         for key, value in data.items():
@@ -212,6 +214,12 @@ def burr_change_callback(burr_change_msg):
     burr_change['sim_time'].append(burr_change_msg.header.stamp.to_sec())
     burr_change['burr_size'].append(burr_change_msg.number.data)
 
+def volume_prop_callback(volume_prop_msg):
+    global voxel_volume
+    dimensions = volume_prop_msg.dimensions
+    voxelCount = volume_prop_msg.voxelCount
+    resolution = np.divide(dimensions, voxelCount)
+    voxel_volume = np.prod(resolution)*np.power((scale*1000), 3)
 
 def setup_subscriber(args):
     active_topics = [n for [n, _] in rospy.get_published_topics()]
@@ -279,6 +287,13 @@ def setup_subscriber(args):
             burr_change['burr_size'] = []
         else:
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.burr_change_topic)
+            exit()
+
+    if args.volume_prop_topic != 'None':
+        if args.volume_prop_topic in active_topics:
+            rospy.Subscriber(args.volume_prop_topic, VolumeProp, volume_prop_callback)
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.volume_prop_topic)
             exit()
 
     # poses
@@ -365,6 +380,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--burr_change_topic', default='/ambf/volumetric_drilling/burr_change', type=str)
     parser.add_argument(
+        '--volume_prop_topic', default='/ambf/volumetric_drilling/volume_prop', type=str)
+    parser.add_argument(
         '--objects', default=['mastoidectomy_drill', 'main_camera'], type=str, nargs='+')
 
     parser.add_argument('--sync', action='store_true')
@@ -410,5 +427,6 @@ if __name__ == '__main__':
     container = OrderedDict()
     collisions = OrderedDict()
     burr_change = OrderedDict()
+    voxel_volume = 0
 
     main(args)

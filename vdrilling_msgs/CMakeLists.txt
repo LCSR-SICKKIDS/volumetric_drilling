@@ -17,6 +17,7 @@ add_message_files(
   FILES
   points.msg
   UInt8Stamped.msg
+  VolumeProp.msg
 )
 
 generate_messages(
