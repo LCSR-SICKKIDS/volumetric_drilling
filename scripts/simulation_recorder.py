@@ -29,6 +29,7 @@ class recording_class:
         self.step = 0
         self.captureRate = 10 # Should be 10 # 10 fps is the default value  every 10 ms)
         self.currentIndex = 0
+        self.buttonUpdated = 0
 
         # Initialize global widget variables
         self.root = Tk()
@@ -46,6 +47,7 @@ class recording_class:
         self.step = 0
         self.captureRate= 10
         self.currentIndex = 0
+        self.recordButton = None
 
         # Set up the python client connection
         bridge = CvBridge()
@@ -111,7 +113,7 @@ class recording_class:
         self.createButton(saveImage, self.save)
 
         # Start main loop
-        self.root.after(self.captureRate,self.recordDrillPos) #10 fps (100 ms)
+        self.root.after(self.captureRate, self.recordDrillPos) #10 fps (100 ms)
         self.root.mainloop()
     
     def recordDrillPos(self):
@@ -194,8 +196,12 @@ class recording_class:
         This function initializes a button with an image and a callback function on
         the UI
         """
-        button = Button(self.root, image=imagePath, command=commandName)
-        button.pack(side='left')
+        if 'recordButtonClicked' in str(commandName):
+            self.recordButton = Button(self.root, image=imagePath, command=commandName)
+            self.recordButton.pack(side='left')
+        else:
+            button = Button(self.root, image=imagePath, command=commandName)
+            button.pack(side='left')
 
     def rewind(self):
         """
@@ -245,19 +251,40 @@ class recording_class:
         This function initiates the position recording
         """
         self.recording_flag = True
+        self.updateButtonImage()
+        #self.resetDrillPos() #TODO: ask how to release the drill pos from the object handle to fix error on multiple recording
         print('Recording started.')
+
 
     def stopRecording(self):
         """
         This function stops the position recording and converts the Pos and Rpy lists int       o np arrays
         """
         self.recording_flag = False
+        self.updateButtonImage()
         print('Recording stopped.')
 
         # Convert the lists into numpy arrays
         self.drillPos_arr = np.asarray(self.drillPos_list)
         self.drillRpy_arr = np.asarray(self.drillRpy_list)
         self.updateSliderWidget()
+
+    def updateButtonImage(self):
+        """
+        This function updates the button image on the record button.
+        :return:
+        """
+        path = os.getcwd()
+        if self.recording_flag == True:
+            stopButtonImage = self.createButtonImage(path + "/Icons/Stop.png")
+            self.recordButton.configure(image=stopButtonImage)
+            self.recordButton.image = stopButtonImage
+            self.root.update()
+        elif self.recording_flag == False:
+            recordButtonImage = self.createButtonImage(path + "/Icons/Record.png")
+            self.recordButton.configure(image=recordButtonImage)
+            self.recordButton.image = recordButtonImage
+            self.root.update()
 
     def updateSliderWidget(self):
         """
@@ -266,10 +293,15 @@ class recording_class:
         # Check if there is already a sliderWidget in the UI
         if self.sliderDefined is True:
             # Avoid multiple slider widgets
-            self.sliderWidget.destroy()
-            self.sliderLabel.destroy()
-            self.posEntry.destroy()
-            self.moveToLabel.destroy()
+            if self.sliderWidget is not None:
+                self.sliderWidget.destroy()
+            if self.sliderLabel is not None:
+                self.sliderLabel.destroy()
+            if self.posEntry is not None:
+                self.posEntry.destroy()
+            if self.moveToLabel is not None:
+                self.moveToLabel.destroy()
+            self.sliderDefined = False
 
         # Define the range of the slider widget based on the length of the recorded data
         if self.drillRpy_arr is not None:
@@ -336,6 +368,7 @@ class recording_class:
         """
         This function puts the drill at the position indicated by the slider widget
         """
+
         pos = int(float(index)) - 1 # Convert the current slider position to the correct index
 
         mDrill_obj = self._client.get_obj_handle(self.mDrill_name)
@@ -350,6 +383,14 @@ class recording_class:
         else:
             # Update the label in frame
             self.sliderLabel.configure(text="Frame {}/{}".format(pos, len(self.drillPos_arr)))
+
+    def resetDrillPos(self):
+        #This function should release the drill from the set pos and rpy - ask how to do this
+        mDrill_obj = self._client.get_obj_handle(self.mDrill_name)
+        drill_Pos = mDrill_obj.get_pos()
+        mDrill_obj.set_pos(drill_Pos.x, drill_Pos.y, drill_Pos.z)
+        drill_Rpy = mDrill_obj.get_rpy()
+        mDrill_obj.set_rpy(drill_Rpy[0], drill_Rpy[1], drill_Rpy[2])
 
     def updateStepValue(self,selectedStep):
         """
