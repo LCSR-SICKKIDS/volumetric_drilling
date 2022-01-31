@@ -39,16 +39,21 @@ protected:
     void checkShaftCollision(void);
 
     // update position of drill mesh
-    void drillPosUpdate(void);
+    void drillPoseUpdateFromCursors(void);
 
     // toggles size of the drill burr
     void changeDrillSize(void);
+
+    bool getOverrideDrillControl(){return m_overrideDrillControl;}
+
+    void setOverrideDrillControl(bool val){m_overrideDrillControl = val;}
 
 private:
     cTransform T_d; // Drills target pose
     cTransform T_i; // Input device transform
     cVector3d V_i; // Input device linear velocity
 
+    bool m_overrideDrillControl = false;
 
     cVoxelObject* m_voxelObj;
 
@@ -115,6 +120,7 @@ private:
     // panel to display current drill size
     cPanel* m_drillSizePanel;
     cLabel* m_drillSizeText;
+    cLabel* m_drillControlModeText;
 
     // current and maximum distance between proxy and goal spheres
     double m_currError = 0;

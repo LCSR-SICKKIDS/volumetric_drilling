@@ -181,11 +181,18 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_mainCamera->getFrontLayer()->addChild(m_drillSizePanel);
 
     m_drillSizeText = new cLabel(font);
-    m_drillSizeText->setLocalPos(50,70);
+    m_drillSizeText->setLocalPos(20,70);
     m_drillSizeText->m_fontColor.setBlack();
     m_drillSizeText->setFontScale(.75);
     m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
     m_mainCamera->getFrontLayer()->addChild(m_drillSizeText);
+
+    m_drillControlModeText = new cLabel(font);
+    m_drillControlModeText->setLocalPos(20,30);
+    m_drillControlModeText->m_fontColor.setGreen();
+    m_drillControlModeText->setFontScale(.5);
+    m_drillControlModeText->setText("Drill Control Mode = Haptic Device / Keyboard");
+    m_mainCamera->getFrontLayer()->addChild(m_drillControlModeText);
 
     // Get drills initial pose
     T_d = m_drillRigidBody->getLocalTransform();
@@ -231,7 +238,10 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     bool clutch;
 
     // If a valid haptic device is found, then it should be available
-    if (m_hapticDevice->isDeviceAvailable()){
+    if (getOverrideDrillControl()){
+        T_d = m_drillRigidBody->getLocalTransform();
+    }
+    else if(m_hapticDevice->isDeviceAvailable()){
         m_hapticDevice->getTransform(T_i);
         m_hapticDevice->getLinearVelocity(V_i);
         m_hapticDevice->getUserSwitch(0, clutch);
@@ -239,23 +249,16 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         T_d.setLocalPos(T_d.getLocalPos() + V_i);
         T_d.setLocalRot(m_mainCamera->getLocalRot() * T_i.getLocalRot());
     }
-    else{
-        T_d = m_drillRigidBody->getLocalTransform();
-    }
 
     toolCursorsPosUpdate(T_d);
 
     // check for shaft collision
     checkShaftCollision();
 
-    if (m_hapticDevice->isDeviceAvailable()){
-
+    if (getOverrideDrillControl() == false){
         // updates position of drill mesh
-        drillPosUpdate();
+        drillPoseUpdateFromCursors();
     }
-
-     // read user switch
-    int userSwitches = m_toolCursorList[0]->getUserSwitches();
 
     if (m_toolCursorList[0]->isInContact(m_voxelObj) && m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
@@ -425,7 +428,9 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     /////////////////////////////////////////////////////////////////////////
 
     // send forces to haptic device
-    m_toolCursorList[0]->applyToDevice();
+    if (getOverrideDrillControl() == false){
+        m_toolCursorList[0]->applyToDevice();
+    }
 
 }
 
@@ -485,9 +490,6 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 ///
 void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
     T_d.setLocalPos(T_d.getLocalPos() + a_vel);
-    if(m_hapticDevice->isDeviceAvailable() == false){
-        m_drillRigidBody->setLocalTransform(T_d);
-    }
 }
 
 
@@ -500,9 +502,6 @@ void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
     R_cmd = T_d.getLocalRot() * R_cmd;
     T_d.setLocalRot(R_cmd);
-    if(m_hapticDevice->isDeviceAvailable() == false){
-       m_drillRigidBody->setLocalTransform(T_d);
-    }
 }
 
 ///
@@ -551,12 +550,15 @@ void afVolmetricDrillingPlugin::checkShaftCollision(){
 /// After obtaining g_targetToolCursor, the drill mesh adjust it's position and rotation
 /// such that it follows the proxy position of the g_targetToolCursor.
 ///
-void afVolmetricDrillingPlugin::drillPosUpdate(){
+void afVolmetricDrillingPlugin::drillPoseUpdateFromCursors(){
+    cMatrix3d newDrillRot;
+    newDrillRot = m_toolCursorList[0]->getDeviceLocalRot();
+//    cerr << newDrillRot.str(2) << endl;
 
     if(m_targetToolCursorIdx == 0){
         cTransform T_tip;
         T_tip.setLocalPos(m_toolCursorList[0]->m_hapticPoint->getLocalPosProxy());
-        T_tip.setLocalRot(m_toolCursorList[0]->getDeviceLocalRot());
+        T_tip.setLocalRot(newDrillRot);
         m_drillRigidBody->setLocalTransform(T_tip);
     }
     else if(cDistance(m_targetToolCursor->m_hapticPoint->getLocalPosProxy(), m_targetToolCursor->m_hapticPoint->getLocalPosGoal()) <= 0.001)
@@ -565,7 +567,6 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
         cVector3d xDir = m_drillRigidBody->getLocalRot().getCol0();
 
         cVector3d newDrillPos;
-        cMatrix3d newDrillRot;
 
         // drill mesh will make a sudden jump towards the followSphere
         if(!m_suddenJump)
@@ -588,8 +589,6 @@ void afVolmetricDrillingPlugin::drillPosUpdate(){
 //        else{
 //            newDrillRot = afUtils::getRotBetweenVectors<cMatrix3d>(L, cVector3d(1, 0, 0));
 //        }
-
-        newDrillRot = m_toolCursorList[0]->getDeviceLocalRot();
 
         cTransform trans;
         trans.setLocalPos(newDrillPos);
@@ -692,6 +691,19 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
             cVector3d dir = m_mainCamera->getLookVector() * m_drillRate;
             incrementDevicePos(dir);
+        }
+
+        else if (a_key == GLFW_KEY_O) {
+
+            setOverrideDrillControl(!getOverrideDrillControl());
+            if (getOverrideDrillControl()){
+                m_drillControlModeText->m_fontColor.setRed();
+                m_drillControlModeText->setText("Drill Control Mode = External afComm");
+            }
+            else{
+                m_drillControlModeText->m_fontColor.setGreen();
+                m_drillControlModeText->setText("Drill Control Mode = Haptic Device / Keyboard");
+            }
         }
 
         else if (a_key == GLFW_KEY_C) {

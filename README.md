@@ -137,12 +137,14 @@ The virtual drill can be manipulated via a keyboard or haptic devices such as th
 
 
 | # | Miscellaneous | Description                                                                        |
-|---|----------|------------------------------------------------------------------------------------|
+|---|---------------|------------------------------------------------------------------------------------|
+| 1 | [Ctrl+O (letter o)]      | Toggle the drill's control mode between Haptic Device / Keyboard to ROS Comm       |
 | 1 | [C]      | Changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)       |
-| 2 | [Ctrl+N] | Resets the shape of the volume                                                     |
-| 3 | [Alt+R]  | Resets the whole world and this plugin                                             |
-| 2 | [X]      | Toggles the functionality of sudden jumping of drill mesh towards the followSphere |
-| 3 | [B]      | Toggles the visibility of drill mesh in the scene                                  |
+| 2 | [Ctrl+N]      | Resets the shape of the volume                                                     |
+| 3 | [Alt+R]       | Resets the whole world and this plugin                                             |
+| 2 | [X]           | Toggles the functionality of sudden jumping of drill mesh towards the followSphere |
+| 3 | [B]           | Toggles the visibility of drill mesh in the scene                                  |
+| 4 | [Ctrl+C] | Toggles the visbility of collision spheres | 
 
 #### 2.4.2 Geomagic Touch/Phantom Omni
 
