@@ -138,12 +138,13 @@ The virtual drill can be manipulated via a keyboard or haptic devices such as th
 
 | # | Miscellaneous | Description                                                                        |
 |---|---------------|------------------------------------------------------------------------------------|
-| 1 | [Ctrl+O]      | Toggle the drill's control mode between Haptic Device / Keyboard to ROS Comm       |
-| 1 | [Ctrl+C]      | Changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)       |
+| 1 | [Ctrl+O (letter o)]      | Toggle the drill's control mode between Haptic Device / Keyboard to ROS Comm       |
+| 1 | [C]      | Changes the size of drill burr/ radius of tip sphere (2 mm, 4 mm, and, 6 mm)       |
 | 2 | [Ctrl+N]      | Resets the shape of the volume                                                     |
 | 3 | [Alt+R]       | Resets the whole world and this plugin                                             |
 | 2 | [X]           | Toggles the functionality of sudden jumping of drill mesh towards the followSphere |
 | 3 | [B]           | Toggles the visibility of drill mesh in the scene                                  |
+| 4 | [Ctrl+C] | Toggles the visbility of collision spheres | 
 
 #### 2.4.2 Geomagic Touch/Phantom Omni
 
@@ -160,7 +161,7 @@ Navigation using mouse shortcuts in AMBF is described here: https://github.com/W
 
 
 ### 2.6 Data Recording
-A python script (`scripts/data_record.py`) is provided to record data based on the user's configuration. By default, the left and right stereo images, depth point cloud, segmentation mask, and drill/camera poses are recorded. The data is stored as a convenient and well-organized hdf5 file.
+A python script (`scripts/data_record.py`) is provided to record data based on the user's configuration. By default, the left and right stereo images, depth point cloud, segmentation mask,drill/camera poses, removed voxels and drill burr changes are recorded. The data is stored as a convenient and well-organized hdf5 file.
 NOTE: 
-- Source the ambf environment in terminal before running the script.
+- Source the ambf and vdrilling_msgs environment in terminal before running the script.
 - By default, data recording should be launched after the simulator. We perform sanity check on this to make sure topics subscribed are meaningful.
