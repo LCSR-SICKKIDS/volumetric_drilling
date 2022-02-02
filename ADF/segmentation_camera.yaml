@@ -19,6 +19,7 @@ segmentation_camera:
   parent: main_camera
   # multipass: true
   publish image: true
+  visible: False
   preprocessing shaders:
     path: ./shaders/preprocessing/
     vertex: shader.vs
