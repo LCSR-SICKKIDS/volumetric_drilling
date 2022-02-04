@@ -52,7 +52,7 @@ class recording_class:
         # Set up the python client connection
         bridge = CvBridge()
         self._client = Client()
-        self._client.connect()
+        #self._client.connect()
 
         # Define object name
         self.mDrill_name = '/ambf/env/mastoidectomy_drill'
@@ -254,6 +254,9 @@ class recording_class:
         self.updateButtonImage()
         #self.resetDrillPos() #TODO: ask how to release the drill pos from the object handle to fix error on multiple recording
         print('Recording started.')
+        # Start with clean up first (in case the control mode is switched)
+        self._client.clean_up()
+        self._client.connect()
 
 
     def stopRecording(self):
