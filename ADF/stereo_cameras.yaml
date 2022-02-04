@@ -18,6 +18,7 @@ stereoL:
   monitor: 0
   # multipass: true
   publish image: true
+  visible: False
   # preprocessing shaders:
   #   path: ../../../ambf_shaders/preprocessing/
   #   vertex: shader.vs
@@ -44,6 +45,7 @@ stereoR:
   monitor: 0
   # multipass: true
   publish image: true
+  visible: False
   # preprocessing shaders:
   #   path: ../../../ambf_shaders/preprocessing/
   #   vertex: shader.vs
