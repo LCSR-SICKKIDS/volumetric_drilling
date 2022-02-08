@@ -263,45 +263,46 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     if (m_toolCursorList[0]->isInContact(m_voxelObj) && m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
 
-        // retrieve contact event
-        cCollisionEvent* contact = m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
+        for (int ci = 0 ; ci < 3 ; ci++){
+            // retrieve contact event
+            cCollisionEvent* contact = m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(ci);
 
-        cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
-        cVector3d ray = orig;
+            cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
 
-        m_voxelObj->m_texture->m_image->getVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), m_storedColor);
+            m_voxelObj->m_texture->m_image->getVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_storedColor);
 
-        //if the tool comes in contact with the critical region, instantiate the warning message
-        if(m_storedColor != m_boneColor && m_storedColor != m_zeroColor)
-        {
-            m_warningPopup->setShowPanel(true);
-            m_warningText->setShowEnabled(true);
+            //if the tool comes in contact with the critical region, instantiate the warning message
+            if(m_storedColor != m_boneColor && m_storedColor != m_zeroColor)
+            {
+                m_warningPopup->setShowPanel(true);
+                m_warningText->setShowEnabled(true);
+            }
+
+            m_voxelObj->m_texture->m_image->setVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_zeroColor);
+
+            //Publisher for voxels removed
+            if(m_storedColor != m_zeroColor)
+            {
+                double sim_time = m_drillRigidBody->getCurrentTimeStamp();
+
+                double voxel_array[3] = {orig.get(0), orig.get(1), orig.get(2)};
+
+                cColorf color_glFloat = m_storedColor.getColorf();
+                float color_array[4];
+                color_array[0] = color_glFloat.getR();
+                color_array[1] = color_glFloat.getG();
+                color_array[2] = color_glFloat.getB();
+                color_array[3] = color_glFloat.getA();
+
+
+                m_drillingPub -> voxelsRemoved(voxel_array,color_array,sim_time);
+            }
+
+            m_mutexVoxel.acquire();
+            m_volumeUpdate.enclose(cVector3d(uint(orig.x()), uint(orig.y()), uint(orig.z())));
+            m_mutexVoxel.release();
+            // mark voxel for update
         }
-
-        m_voxelObj->m_texture->m_image->setVoxelColor(uint(ray.x()), uint(ray.y()), uint(ray.z()), m_zeroColor);
-
-        //Publisher for voxels removed
-        if(m_storedColor != m_zeroColor)
-        {
-        double sim_time = m_drillRigidBody->getCurrentTimeStamp();
-
-        double voxel_array[3] = {ray.get(0), ray.get(1), ray.get(2)};
-
-        cColorf color_glFloat = m_storedColor.getColorf();
-        float color_array[4];
-        color_array[0] = color_glFloat.getR();
-        color_array[1] = color_glFloat.getG();
-        color_array[2] = color_glFloat.getB();
-        color_array[3] = color_glFloat.getA();
-
-
-        m_drillingPub -> voxelsRemoved(voxel_array,color_array,sim_time);
-        }
-
-        m_mutexVoxel.acquire();
-        m_volumeUpdate.enclose(cVector3d(uint(ray.x()), uint(ray.y()), uint(ray.z())));
-        m_mutexVoxel.release();
-        // mark voxel for update
 
         m_flagMarkVolumeForUpdate = true;
     }
