@@ -146,6 +146,11 @@ private:
     cColorb m_storedColor;
 
     HapticStates m_controlMode = HAPTIC_IDLE;
+
+    bool m_enableVolumeSmoothing = false;
+    int m_volumeSmoothingLevel = 2;
+
+    cLabel* m_volumeSmoothingText;
 };
 
 

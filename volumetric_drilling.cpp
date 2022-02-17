@@ -194,6 +194,13 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_drillControlModeText->setText("Drill Control Mode = Haptic Device / Keyboard");
     m_mainCamera->getFrontLayer()->addChild(m_drillControlModeText);
 
+    m_volumeSmoothingText = new cLabel(font);
+    m_volumeSmoothingText->setLocalPos(1000,1300);
+    m_volumeSmoothingText->m_fontColor.setBlue();
+    m_volumeSmoothingText->setFontScale(1.);
+    m_volumeSmoothingText->setText("Volume Smoothing: DISABLED");
+    m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingText);
+
     // Get drills initial pose
     T_d = m_drillRigidBody->getLocalTransform();
 
@@ -211,7 +218,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     voxelCount[1]= m_volumeObject->getVoxelCount().get(1);
     voxelCount[2] = m_volumeObject->getVoxelCount().get(2);
 
-    m_drillingPub -> volumeProp(dim, voxelCount);
+    m_drillingPub->volumeProp(dim, voxelCount);
 
     return 1;
 }
@@ -245,7 +252,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         m_hapticDevice->getTransform(T_i);
         m_hapticDevice->getLinearVelocity(V_i);
         m_hapticDevice->getUserSwitch(0, clutch);
-        V_i =  m_mainCamera->getLocalRot() * (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor());
+        V_i =  m_mainCamera->getLocalRot() * (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor() * 0.4);
         T_d.setLocalPos(T_d.getLocalPos() + V_i);
         T_d.setLocalRot(m_mainCamera->getLocalRot() * T_i.getLocalRot());
     }
@@ -732,6 +739,34 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             cerr << "INFO! RESETTING THE VOLUME" << endl;
             m_volumeObject->reset();
         }
+    }
+    else if(a_mods = GLFW_MOD_ALT){
+        // Toggle Volume Smoothing
+        if (a_key == GLFW_KEY_S){
+            m_enableVolumeSmoothing = !m_enableVolumeSmoothing;
+            cerr << "INFO! ENABLE VOLUME SMOOTHING: " << m_enableVolumeSmoothing << endl;
+            m_volumeObject->getShaderProgram()->setUniformi("uSmoothVolume", m_enableVolumeSmoothing);
+            m_volumeObject->getShaderProgram()->setUniformi("uSmoothingLevel", m_volumeSmoothingLevel);
+
+        }
+        else if(a_key == GLFW_KEY_UP){
+            m_volumeSmoothingLevel = cClamp(m_volumeSmoothingLevel+1, 1, 10);
+            cerr << "INFO! SETTING SMOOTHING LEVEL " << m_volumeSmoothingLevel << endl;
+            m_volumeObject->getShaderProgram()->setUniformi("uSmoothingLevel", m_volumeSmoothingLevel);
+        }
+        else if(a_key == GLFW_KEY_DOWN){
+            m_volumeSmoothingLevel = cClamp(m_volumeSmoothingLevel-1, 1, 10);
+            cerr << "INFO! SETTING SMOOTHING LEVEL " << m_volumeSmoothingLevel << endl;
+            m_volumeObject->getShaderProgram()->setUniformi("uSmoothingLevel", m_volumeSmoothingLevel);
+        }
+
+        std::string text = "Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
+        m_volumeSmoothingText->m_fontColor.setRed();
+        if (m_enableVolumeSmoothing){
+            text+= " ( LEVEL: " + to_string(m_volumeSmoothingLevel) + ")";
+            m_volumeSmoothingText->m_fontColor.setGreen();
+        }
+        m_volumeSmoothingText->setText(text);
     }
     else{
 

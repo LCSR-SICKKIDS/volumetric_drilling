@@ -7,6 +7,8 @@ uniform float uIsosurface;
 uniform float uResolution;
 
 varying vec4 vPosition;
+uniform bool uSmoothVolume;
+uniform int uSmoothingLevel;
 
 vec3 dx = vec3(uGradientDelta.x, 0.0, 0.0);
 vec3 dy = vec3(0.0, uGradientDelta.y, 0.0);
@@ -30,6 +32,10 @@ float entry(vec3 e1, vec3 d)
 }
 
 
+float isoValue(vec3 tc){
+  return texture3D(uVolume, tc).a;
+}
+
 //----------------------------------------------------------------------
 // Estimates the intensity gradient of the volume in model space
 //----------------------------------------------------------------------
@@ -37,9 +43,9 @@ float entry(vec3 e1, vec3 d)
 vec3 gradient(vec3 tc)
 {
     vec3 nabla = vec3(
-        texture3D(uVolume, tc + dx).a - texture3D(uVolume, tc - dx).a,
-        texture3D(uVolume, tc + dy).a - texture3D(uVolume, tc - dy).a,
-        texture3D(uVolume, tc + dz).a - texture3D(uVolume, tc - dz).a
+        isoValue(tc + dx) - isoValue(tc - dx),
+        isoValue(tc + dy) - isoValue(tc - dy),
+        isoValue(tc + dz) - isoValue(tc - dz)
     );
 
     return (nabla / uGradientDelta) * uTextureScale;
@@ -109,13 +115,33 @@ void main(void)
     for (float t = t_entry; t < 0.0; t += t_step, tc += tc_step)
     {
         // sample the volume for intensity (red channel)
-        float intensity = texture3D(uVolume, tc).a;
-
+        float intensity = isoValue(tc);
+        vec3 nabla;
         if (intensity > uIsosurface)
         {
             vec3 tcr = refine(tc - tc_step, tc, uIsosurface, 1.0);
-            // vec3 tcr = tc;
-            vec3 nabla = gradient(tcr);
+
+            if (uSmoothVolume){
+              // //Smoothing
+              nabla = vec3(0., 0., 0.);
+              vec3 tr;
+              int cnt = uSmoothingLevel;
+              vec3 half = vec3(1., 1., 1.) * float(cnt)/2.0;
+              // vec3 tcr = tc;
+              for (int x = 0 ; x < cnt ; x++){
+                for (int y = 0 ; y < cnt ; y++){
+                  for (int z = 0 ; z < cnt ; z++){
+                    tr[0] = tcr[0] + (float(x) - half[0]) * uGradientDelta[0];
+                    tr[1] = tcr[1] + (float(y) - half[1]) * uGradientDelta[1];
+                    tr[2] = tcr[2] + (float(z) - half[2]) * uGradientDelta[2];
+                    nabla += gradient(tr);
+                  }
+                }
+              }
+            }
+            else{
+              nabla = gradient(tcr);
+            }
 
             float dt = length(tcr - tc) / length(tc_step);
             vec3 position = vPosition.xyz + (t - dt * t_step) * raydir;
