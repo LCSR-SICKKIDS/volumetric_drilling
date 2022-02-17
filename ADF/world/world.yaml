@@ -13,7 +13,7 @@ gravity: {x: 0.0, y: 0.0, z: -0.0}
 light1:
   namespace: lights/
   name: light1
-  location: {x: -13.0, y: 1.0, z: 5.0}
+  location: {x: -10.0, y: 2.5, z: 2.0}
   direction: {x: 0.0, y: 0.0, z: -1.0}
   spot exponent: 0.3
   shadow quality: 5
