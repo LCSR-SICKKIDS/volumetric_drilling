@@ -172,4 +172,5 @@ NOTE:
 - Enter user name and data in the entries to specify how the file is stored
 - Recordings are saved in the folder (`scripts/Recorded_Sessions`) - a sample recording is included to test 
 the simulation player. 
+- User needs to toggle drill control mode between recording and playback (should be in Haptic device / keyboard for recording and External afComm for playback)
  
