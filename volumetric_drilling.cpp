@@ -220,6 +220,40 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     m_drillingPub->volumeProp(dim, voxelCount);
 
+    string file_path = __FILE__;
+    string cur_path = file_path.substr(0, file_path.rfind("/"));
+    string volumeMatcapFilepath = cur_path + "/resources/matcap/00ShinyWhite.jpg";
+    cTexture2dPtr volMatCap = cTexture2d::create();
+    if(volMatCap->loadFromFile(volumeMatcapFilepath)){
+        m_volumeObject->getInternalVolume()->m_aoTexture = volMatCap;
+        m_volumeObject->getInternalVolume()->m_aoTexture->setTextureUnit(GL_TEXTURE5);
+        cerr << "SUCCESFULLY LOADED MATCAP TEXTURE" << endl;
+    }
+    else{
+        cerr << "FAILED TO LOAD MATCAP TEXTURE" << endl;
+    }
+
+    string drillMatcapFilepat = cur_path + "/resources/matcap/image.jpg";
+    cTexture2dPtr drillMatCap = cTexture2d::create();
+    if(drillMatCap->loadFromFile(drillMatcapFilepat)){
+        for (int mi = 0 ; mi < m_drillRigidBody->getVisualObject()->getNumMeshes(); mi++){
+            m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture = drillMatCap;
+            m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture->setTextureUnit(GL_TEXTURE3);
+        }
+        m_drillRigidBody->getShaderProgram()->setUniformi("matcapMap", C_TU_METALLIC);
+        cerr << "SUCCESFULLY LOADED MATCAP2 TEXTURE" << endl;
+    }
+    else{
+        cerr << "FAILED TO LOAD MATCAP2 TEXTURE" << endl;
+    }
+
+    cBackground* background = new cBackground();
+    background->setCornerColors(cColorf(1.0f, 1.0f, 1.0f),
+                                cColorf(1.0f, 1.0f, 1.0f),
+                                cColorf(0.6f, 0.6f, 0.6f),
+                                cColorf(0.6f, 0.6f, 0.6f));
+    m_mainCamera->getBackLayer()->addChild(background);
+
     return 1;
 }
 
@@ -236,6 +270,7 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
         ((cTexture3d*)m_voxelObj->m_texture.get())->markForPartialUpdate(min, max);
         m_flagMarkVolumeForUpdate = false;
     }
+    m_volumeObject->getShaderProgram()->setUniformi("aoMap", C_TU_AO);
 }
 
 void afVolmetricDrillingPlugin::physicsUpdate(double dt){
