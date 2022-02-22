@@ -233,18 +233,20 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         cerr << "FAILED TO LOAD MATCAP TEXTURE" << endl;
     }
 
-    string drillMatcapFilepat = cur_path + "/resources/matcap/image.jpg";
     cTexture2dPtr drillMatCap = cTexture2d::create();
-    if(drillMatCap->loadFromFile(drillMatcapFilepat)){
-        for (int mi = 0 ; mi < m_drillRigidBody->getVisualObject()->getNumMeshes(); mi++){
-            m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture = drillMatCap;
-            m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture->setTextureUnit(GL_TEXTURE3);
+    if (m_drillRigidBody->getShaderProgram()){
+        string drillMatcapFilepath = cur_path + "/resources/matcap/metal_anisotropic.png";
+        if(drillMatCap->loadFromFile(drillMatcapFilepath)){
+            for (int mi = 0 ; mi < m_drillRigidBody->getVisualObject()->getNumMeshes(); mi++){
+                m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture = drillMatCap;
+                m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture->setTextureUnit(GL_TEXTURE3);
+            }
+            m_drillRigidBody->getShaderProgram()->setUniformi("matcapMap", C_TU_METALLIC);
+            cerr << "SUCCESFULLY LOADED MATCAP2 TEXTURE" << endl;
         }
-        m_drillRigidBody->getShaderProgram()->setUniformi("matcapMap", C_TU_METALLIC);
-        cerr << "SUCCESFULLY LOADED MATCAP2 TEXTURE" << endl;
-    }
-    else{
-        cerr << "FAILED TO LOAD MATCAP2 TEXTURE" << endl;
+        else{
+            cerr << "FAILED TO LOAD MATCAP2 TEXTURE" << endl;
+        }
     }
 
     cBackground* background = new cBackground();
