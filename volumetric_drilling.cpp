@@ -202,7 +202,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingText);
 
     // Get drills initial pose
-    T_d = m_drillRigidBody->getLocalTransform();
+    m_T_d = m_drillRigidBody->getLocalTransform();
 
     // Set up voxels_removed publisher
     m_drillingPub = new DrillingPublisher("ambf", "volumetric_drilling");
@@ -279,22 +279,32 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     m_worldPtr->getChaiWorld()->computeGlobalPositions(true);
 
-    bool clutch;
-
+    cTransform T_c_w = m_mainCamera->getLocalTransform();
     // If a valid haptic device is found, then it should be available
     if (getOverrideDrillControl()){
-        T_d = m_drillRigidBody->getLocalTransform();
+        m_T_d = m_drillRigidBody->getLocalTransform();
     }
     else if(m_hapticDevice->isDeviceAvailable()){
-        m_hapticDevice->getTransform(T_i);
-        m_hapticDevice->getLinearVelocity(V_i);
-        m_hapticDevice->getUserSwitch(0, clutch);
-        V_i =  m_mainCamera->getLocalRot() * (V_i * !clutch / m_toolCursorList[0]->getWorkspaceScaleFactor() * 0.4);
-        T_d.setLocalPos(T_d.getLocalPos() + V_i);
-        T_d.setLocalRot(m_mainCamera->getLocalRot() * T_i.getLocalRot());
+        bool device_clutch, cam_clutch;
+        m_hapticDevice->getUserSwitch(0, device_clutch);
+        m_hapticDevice->getUserSwitch(1, cam_clutch);
+
+        m_hapticDevice->getTransform(m_T_i);
+        m_hapticDevice->getLinearVelocity(m_V_i);
+        m_V_i = T_c_w.getLocalRot() * (m_V_i / m_toolCursorList[0]->getWorkspaceScaleFactor());
+        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.4 * !device_clutch * !cam_clutch));
+        m_T_d.setLocalRot(T_c_w.getLocalRot() * m_T_i.getLocalRot());
+
+        // set zero forces when manipulating objects
+        if (device_clutch || cam_clutch){
+            if (cam_clutch){
+                 m_mainCamera->setView(T_c_w.getLocalPos() + m_V_i, m_mainCamera->getTargetPosLocal(), m_mainCamera->getUpVector());
+            }
+            m_toolCursorList[0]->setDeviceLocalForce(0.0, 0.0, 0.0);
+        }
     }
 
-    toolCursorsPosUpdate(T_d);
+    toolCursorsPosUpdate(m_T_d);
 
     // check for shaft collision
     checkShaftCollision();
@@ -303,6 +313,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         // updates position of drill mesh
         drillPoseUpdateFromCursors();
     }
+
 
     if (m_toolCursorList[0]->isInContact(m_voxelObj) && m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
@@ -339,7 +350,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
                 color_array[3] = color_glFloat.getA();
 
 
-                m_drillingPub -> voxelsRemoved(voxel_array,color_array,sim_time);
+                m_drillingPub->voxelsRemoved(voxel_array,color_array,sim_time);
             }
 
             m_mutexVoxel.acquire();
@@ -363,7 +374,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     // check if device remains stuck inside voxel object
     // Also orient the force to match the camera rotation
-    cVector3d force = cTranspose(m_mainCamera->getLocalRot()) * m_targetToolCursor->getDeviceLocalForce();
+    cVector3d force = cTranspose(T_c_w.getLocalRot()) * m_targetToolCursor->getDeviceLocalForce();
     m_toolCursorList[0]->setDeviceLocalForce(force);
 
     if (m_flagStart)
@@ -387,85 +398,6 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         {
             m_flagStart = true;
         }
-    }
-
-
-    /////////////////////////////////////////////////////////////////////////
-    // MANIPULATION
-    /////////////////////////////////////////////////////////////////////////
-
-    // compute transformation from world to tool (haptic device)
-    cTransform world_T_tool = m_toolCursorList[0]->getDeviceLocalTransform();
-
-    // get status of user switch
-    bool button = m_toolCursorList[0]->getUserSwitch(1);
-    //
-    // STATE 1:
-    // Idle mode - user presses the user switch
-    //
-    if ((m_controlMode == HAPTIC_IDLE) && (button == true))
-    {
-        // check if at least one contact has occurred
-        if (m_toolCursorList[0]->m_hapticPoint->getNumCollisionEvents() > 0)
-        {
-            // get contact event
-            cCollisionEvent* collisionEvent = m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
-
-            // get object from contact event
-            m_selectedObject = collisionEvent->m_object;
-        }
-        else
-        {
-            m_selectedObject = m_voxelObj;
-        }
-
-        // get transformation from object
-        cTransform world_T_object = m_selectedObject->getLocalTransform();
-
-        // compute inverse transformation from contact point to object
-        cTransform tool_T_world = world_T_tool;
-        tool_T_world.invert();
-
-        // store current transformation tool
-        m_tool_T_object = tool_T_world * world_T_object;
-
-        // update state
-        m_controlMode = HAPTIC_SELECTION;
-    }
-
-
-    //
-    // STATE 2:
-    // Selection mode - operator maintains user switch enabled and moves object
-    //
-    else if ((m_controlMode == HAPTIC_SELECTION) && (button == true))
-    {
-        // compute new transformation of object in global coordinates
-        cTransform world_T_object = world_T_tool * m_tool_T_object;
-
-        // compute new transformation of object in local coordinates
-        cTransform parent_T_world = m_selectedObject->getParent()->getLocalTransform();
-        parent_T_world.invert();
-        cTransform parent_T_object = parent_T_world * world_T_object;
-
-        // assign new local transformation to object
-        if (m_selectedObject == m_voxelObj){
-            m_volumeObject->setLocalTransform(parent_T_object);
-        }
-
-        // set zero forces when manipulating objects
-        m_toolCursorList[0]->setDeviceLocalForce(0.0, 0.0, 0.0);
-
-        m_toolCursorList[0]->initialize();
-    }
-
-    //
-    // STATE 3:
-    // Finalize Selection mode - operator releases user switch.
-    //
-    else
-    {
-        m_controlMode = HAPTIC_IDLE;
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -522,7 +454,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
      }
 
     // Initialize the start pose of the tool cursors
-    toolCursorsPosUpdate(T_d);
+    toolCursorsPosUpdate(m_T_d);
     for (int i = 0 ;  i < m_toolCursorList.size() ; i++){
         m_toolCursorList[i]->initialize();
     }
@@ -534,7 +466,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 /// \param a_vel
 ///
 void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
-    T_d.setLocalPos(T_d.getLocalPos() + a_vel);
+    m_T_d.setLocalPos(m_T_d.getLocalPos() + a_vel);
 }
 
 
@@ -545,8 +477,8 @@ void afVolmetricDrillingPlugin::incrementDevicePos(cVector3d a_vel){
 void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
     cMatrix3d R_cmd;
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
-    R_cmd = T_d.getLocalRot() * R_cmd;
-    T_d.setLocalRot(R_cmd);
+    R_cmd = m_T_d.getLocalRot() * R_cmd;
+    m_T_d.setLocalRot(R_cmd);
 }
 
 ///
@@ -1040,7 +972,7 @@ void afVolmetricDrillingPlugin::mouseScrollUpdate(GLFWwindow *a_window, double x
 
 void afVolmetricDrillingPlugin::reset(){
     cerr << "INFO! PLUGIN RESET CALLED" << endl;
-    T_d = m_drillRigidBody->getLocalTransform();
+    m_T_d = m_drillRigidBody->getLocalTransform();
 }
 
 bool afVolmetricDrillingPlugin::close()
