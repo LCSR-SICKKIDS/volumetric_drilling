@@ -709,7 +709,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             m_volumeObject->reset();
         }
     }
-    else if(a_mods = GLFW_MOD_ALT){
+    else if(a_mods == GLFW_MOD_ALT){
         // Toggle Volume Smoothing
         if (a_key == GLFW_KEY_S){
             m_enableVolumeSmoothing = !m_enableVolumeSmoothing;
