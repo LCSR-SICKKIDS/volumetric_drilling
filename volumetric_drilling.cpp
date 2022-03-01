@@ -55,6 +55,15 @@ using namespace std;
 
 //------------------------------------------------------------------------------
 
+afVolmetricDrillingPlugin::afVolmetricDrillingPlugin(){
+    m_drillBurrSizes[0] = make_pair<double, string>(0.02014, "2 mm");
+    m_drillBurrSizes[1] = make_pair<double, string>(0.04030, "4 mm");
+    m_drillBurrSizes[2] = make_pair<double, string>(0.06041, "6 mm");
+
+    // Set the 2nd drill burr type as the active one.
+    m_activeBurrIdx = 1;
+}
+
 int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
 
     namespace p_opt = boost::program_options;
@@ -95,7 +104,16 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_worldPtr = a_afWorld;
 
     // Get first camera
-    m_mainCamera = m_worldPtr->getCameras()[0];
+    m_mainCamera = m_worldPtr->getCamera("main_camera");
+    if (m_mainCamera){
+        cerr << "INFO! GOT CAMERA: " << m_mainCamera->getName() << endl;
+    }
+    else{
+        cerr << "WARNING! COULD NOT FIND main_camera" << endl;
+        m_mainCamera = m_worldPtr->getCameras()[0];
+    }
+
+
 
     // Initializing tool's rotation matrix as an identity matrix
     m_toolRotMat.identity();
@@ -108,8 +126,8 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         return -1;
     }
     else{
-        m_burrMesh = new cShapeSphere(0.043); // 2mm by default with 1 AMBF unit = 0.049664 m
-        m_burrMesh->setRadius(0.043);
+        m_burrMesh = new cShapeSphere(m_drillBurrSizes[m_activeBurrIdx].first);
+        m_burrMesh->setRadius(m_drillBurrSizes[m_activeBurrIdx].first);
         m_burrMesh->m_material->setBlack();
         m_burrMesh->m_material->setShininess(0);
         m_burrMesh->m_material->m_specular.set(0, 0, 0);
@@ -184,7 +202,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_drillSizeText->setLocalPos(20,70);
     m_drillSizeText->m_fontColor.setBlack();
     m_drillSizeText->setFontScale(.75);
-    m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
+    m_drillSizeText->setText("Drill Size: " + m_drillBurrSizes[m_activeBurrIdx].second);
     m_mainCamera->getFrontLayer()->addChild(m_drillSizeText);
 
     m_drillControlModeText = new cLabel(font);
@@ -442,7 +460,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 
             // if the haptic device has a gripper, enable it as a user switch
             m_hapticDevice->setEnableGripperUserSwitch(true);
-            m_toolCursorList[i]->setRadius(0.043); // Set the correct radius for the tip which is not from the list of cursor radii
+            m_toolCursorList[i]->setRadius(m_drillBurrSizes[m_activeBurrIdx].first); // Set the correct radius for the tip which is not from the list of cursor radii
         }
         else
         {
@@ -581,48 +599,19 @@ void afVolmetricDrillingPlugin::drillPoseUpdateFromCursors(){
 /// \brief This method changes the size of the tip tool cursor.
 /// Currently, the size of the tip tool cursor can be set to 2mm, 4mm, and 6mm.
 ///
-void afVolmetricDrillingPlugin::changeDrillSize(){
+void afVolmetricDrillingPlugin::changeBurrSize(int burrType){
+    if (m_drillBurrSizes.find(burrType) != m_drillBurrSizes.end()){
+        m_toolCursorList[0]->setRadius(m_drillBurrSizes[burrType].first);
+        m_burrMesh->setRadius(m_drillBurrSizes[burrType].first);
+        cout << "Drill Size changed to " << m_drillBurrSizes[burrType].second << endl;
+        m_drillSizeText->setText("Drill Size: " + m_drillBurrSizes[burrType].second);
 
-    m_drillSizeIdx++;
-
-    if(m_drillSizeIdx > 2)
-    {
-        m_drillSizeIdx = 0;
+        double sim_time = m_drillRigidBody->getCurrentTimeStamp();
+        m_drillingPub->burrChange(m_drillBurrSizes[burrType].first, sim_time);
     }
-
-    switch(m_drillSizeIdx)
-    {
-    // Drill bit size is in diameters i.e. for 2mm drill bit, 1mm * (1 ambf unit/49.664mm) = 0.02014
-        case 0:
-            m_toolCursorList[0]->setRadius(0.02014);
-            m_burrMesh->setRadius(0.02014);
-            cout << "Drill Size changed to 2 mm" << endl;
-            m_currDrillSize = 2;
-            m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
-            break;
-
-        case 1:
-            m_toolCursorList[0]->setRadius(0.04030);
-            m_burrMesh->setRadius(0.04030);
-            cout << "Drill Size changed to 4 mm" << endl;
-            m_currDrillSize = 4;
-            m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
-            break;
-
-        case 2:
-            m_toolCursorList[0]->setRadius(0.06041);
-            m_burrMesh->setRadius(0.06041);
-            cout << "Drill Size changed to 6 mm" << endl;
-            m_currDrillSize = 6;
-            m_drillSizeText->setText("Drill Size: " + cStr(m_currDrillSize) + " mm");
-            break;
-
-        default:
-            break;
+    else{
+        cerr << "ERROR! DRILL BURR AT INDEX " << burrType << " DOES NOT EXIST" << endl;
     }
-
-    double sim_time = m_drillRigidBody->getCurrentTimeStamp();
-    m_drillingPub -> burrChange(m_currDrillSize, sim_time);
 }
 
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
@@ -955,7 +944,8 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
         // toggles size of drill burr/tip tool cursor
         else if (a_key == GLFW_KEY_C){
-            changeDrillSize();
+            m_activeBurrIdx = (m_activeBurrIdx + 1) % 3;
+            changeBurrSize(m_activeBurrIdx);
         }
     }
 

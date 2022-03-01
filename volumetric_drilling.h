@@ -7,6 +7,8 @@ using namespace std;
 using namespace ambf;
 
 class afVolmetricDrillingPlugin: public afSimulatorPlugin{
+public:
+    afVolmetricDrillingPlugin();
     virtual int init(int argc, char** argv, const afWorldPtr a_afWorld) override;
     virtual void keyboardUpdate(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, int a_mods) override;
     virtual void mouseBtnsUpdate(GLFWwindow* a_window, int a_button, int a_action, int a_modes) override;
@@ -36,7 +38,7 @@ protected:
     void drillPoseUpdateFromCursors(void);
 
     // toggles size of the drill burr
-    void changeDrillSize(void);
+    void changeBurrSize(int burrType);
 
     bool getOverrideDrillControl(){return m_overrideDrillControl;}
 
@@ -126,10 +128,10 @@ private:
     bool m_suddenJump = true;
 
     // index of current drill size
-    int m_drillSizeIdx = 0;
+    int m_activeBurrIdx = 0;
 
-    // current drill size
-    int m_currDrillSize = 2;
+    // A map of drill burr indices, radius and description
+    map<int, pair<double, string>> m_drillBurrSizes;
 
     // color property of bone
     cColorb m_boneColor;
