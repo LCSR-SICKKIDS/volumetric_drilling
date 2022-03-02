@@ -316,7 +316,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         // set zero forces when manipulating objects
         if (device_clutch || cam_clutch){
             if (cam_clutch){
-                 m_mainCamera->setView(T_c_w.getLocalPos() + m_V_i, m_mainCamera->getTargetPosLocal(), m_mainCamera->getUpVector());
+                 m_mainCamera->setView(T_c_w.getLocalPos() + m_V_i * !device_clutch, m_mainCamera->getTargetPosLocal(), m_mainCamera->getUpVector());
             }
             m_toolCursorList[0]->setDeviceLocalForce(0.0, 0.0, 0.0);
         }
