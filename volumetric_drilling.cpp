@@ -275,6 +275,27 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
                                 cColorf(0.6f, 0.6f, 0.6f));
     m_mainCamera->getBackLayer()->addChild(background);
 
+    m_drillAudioDevice = new cAudioDevice();
+    m_mainCamera->getInternalCamera()->attachAudioDevice(m_drillAudioDevice);
+
+    m_drillAudioBuffer = new cAudioBuffer();
+    string drillAudioFilepath = cur_path + "/resources/sounds/drill.wav";
+    if (m_drillAudioBuffer->loadFromFile(drillAudioFilepath)){
+        m_drillAudioSource = new cAudioSource();
+//        m_drillAudioBuffer->convertToMono();
+        m_drillAudioSource->setAudioBuffer(m_drillAudioBuffer);
+        m_drillAudioSource->setLoop(true);
+        m_drillAudioSource->setGain(5.0);
+        m_drillAudioSource->play();
+    }
+    else{
+        delete m_drillAudioSource;
+        delete m_drillAudioBuffer;
+        m_drillAudioSource = nullptr;
+        m_drillAudioBuffer = nullptr;
+        cerr << "FAILED TO LOAD DRILL AUDIO FROM " << drillAudioFilepath << endl;
+    }
+
     return 1;
 }
 
@@ -395,6 +416,10 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // Also orient the force to match the camera rotation
     cVector3d force = cTranspose(T_c_w.getLocalRot()) * m_targetToolCursor->getDeviceLocalForce();
     m_toolCursorList[0]->setDeviceLocalForce(force);
+    double force_mag = cClamp(force.length(), 0.0, m_hapticDevice->getSpecifications().m_maxLinearForce);
+    if (m_drillAudioSource){
+        m_drillAudioSource->setPitch(3.0 - force_mag / m_hapticDevice->getSpecifications().m_maxLinearForce);
+    }
 
     if (m_flagStart)
     {
@@ -592,6 +617,7 @@ void afVolmetricDrillingPlugin::drillPoseUpdateFromCursors(){
 
 //        g_drillRigidBody->setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
         m_drillRigidBody->setLocalTransform(trans);
+        m_drillAudioSource->setSourcePos(newDrillPos);
     }
 }
 
@@ -990,6 +1016,16 @@ bool afVolmetricDrillingPlugin::close()
         tool->stop();
     }
 
+    if (m_drillAudioSource){
+        delete m_drillAudioSource;
+    }
+    if (m_drillAudioBuffer){
+        delete m_drillAudioBuffer;
+    }
+    if (m_drillAudioDevice){
+        m_mainCamera->getInternalCamera()->detachAudioDevice();
+        delete m_drillAudioDevice;
+    }
     delete m_deviceHandler;
 
     return true;

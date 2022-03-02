@@ -143,6 +143,10 @@ private:
     int m_volumeSmoothingLevel = 2;
 
     cLabel* m_volumeSmoothingText;
+
+    cAudioSource* m_drillAudioSource = nullptr;
+    cAudioBuffer* m_drillAudioBuffer = nullptr;
+    cAudioDevice* m_drillAudioDevice = nullptr;
 };
 
 
