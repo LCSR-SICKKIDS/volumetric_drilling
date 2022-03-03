@@ -28,6 +28,8 @@ protected:
 
     void incrementDeviceRot(cVector3d a_rot);
 
+    void toolCursorsInitialize();
+
     // update position of shaft tool cursors
     void toolCursorsPosUpdate(cTransform a_devicePose);
 
@@ -45,7 +47,7 @@ protected:
     void setOverrideDrillControl(bool val){m_overrideDrillControl = val;}
 
 private:
-    cTransform m_T_d; // Drills target pose
+    cTransform m_T_d, m_T_d_init; // Drills target pose
     cTransform m_T_i; // Input device transform
     cVector3d m_V_i; // Input device linear velocity
 

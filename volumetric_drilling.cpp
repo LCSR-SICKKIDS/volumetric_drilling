@@ -221,7 +221,8 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingText);
 
     // Get drills initial pose
-    m_T_d = m_drillRigidBody->getLocalTransform();
+    m_T_d_init = m_drillRigidBody->getLocalTransform();
+    m_T_d = m_T_d_init;
 
     // Set up voxels_removed publisher
     m_drillingPub = new DrillingPublisher("ambf", "volumetric_drilling");
@@ -426,7 +427,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         if (force.length() != 0.0)
         {
 
-            m_toolCursorList[0]->initialize();
+            toolCursorsInitialize();
             m_counter = 0;
         }
         else
@@ -499,9 +500,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 
     // Initialize the start pose of the tool cursors
     toolCursorsPosUpdate(m_T_d);
-    for (int i = 0 ;  i < m_toolCursorList.size() ; i++){
-        m_toolCursorList[i]->initialize();
-    }
+    toolCursorsInitialize();
 }
 
 
@@ -523,6 +522,15 @@ void afVolmetricDrillingPlugin::incrementDeviceRot(cVector3d a_rot){
     R_cmd.setExtrinsicEulerRotationDeg(a_rot(0), a_rot(1), a_rot(2), C_EULER_ORDER_XYZ);
     R_cmd = m_T_d.getLocalRot() * R_cmd;
     m_T_d.setLocalRot(R_cmd);
+}
+
+///
+/// \brief afVolmetricDrillingPlugin::toolCursorsInitialize
+///
+void afVolmetricDrillingPlugin::toolCursorsInitialize(){
+    for (int i = 0 ;  i < m_toolCursorList.size() ; i++){
+        m_toolCursorList[i]->initialize();
+    }
 }
 
 ///
@@ -1006,7 +1014,10 @@ void afVolmetricDrillingPlugin::mouseScrollUpdate(GLFWwindow *a_window, double x
 
 void afVolmetricDrillingPlugin::reset(){
     cerr << "INFO! PLUGIN RESET CALLED" << endl;
-    m_T_d = m_drillRigidBody->getLocalTransform();
+    m_T_d = m_T_d_init;
+    toolCursorsPosUpdate(m_T_d);
+    toolCursorsInitialize();
+    drillPoseUpdateFromCursors();
 }
 
 bool afVolmetricDrillingPlugin::close()
