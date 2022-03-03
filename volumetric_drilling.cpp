@@ -426,8 +426,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     {
         if (force.length() != 0.0)
         {
-
-            toolCursorsInitialize();
+        //    resetDrill();
             m_counter = 0;
         }
         else
@@ -544,6 +543,13 @@ void afVolmetricDrillingPlugin::toolCursorsPosUpdate(cTransform a_targetPose){
         m_toolCursorList[i]->setDeviceLocalPos(P);
         m_toolCursorList[i]->setDeviceLocalRot(a_targetPose.getLocalRot());
     }
+}
+
+void afVolmetricDrillingPlugin::resetDrill(){
+    m_T_d = m_T_d_init;
+    toolCursorsPosUpdate(m_T_d);
+    toolCursorsInitialize();
+    drillPoseUpdateFromCursors();
 }
 
 ///
@@ -1014,10 +1020,7 @@ void afVolmetricDrillingPlugin::mouseScrollUpdate(GLFWwindow *a_window, double x
 
 void afVolmetricDrillingPlugin::reset(){
     cerr << "INFO! PLUGIN RESET CALLED" << endl;
-    m_T_d = m_T_d_init;
-    toolCursorsPosUpdate(m_T_d);
-    toolCursorsInitialize();
-    drillPoseUpdateFromCursors();
+    resetDrill();
 }
 
 bool afVolmetricDrillingPlugin::close()

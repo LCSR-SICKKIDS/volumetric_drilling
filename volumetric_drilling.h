@@ -33,6 +33,8 @@ protected:
     // update position of shaft tool cursors
     void toolCursorsPosUpdate(cTransform a_devicePose);
 
+    void resetDrill();
+
     // check for shaft collision
     void checkShaftCollision(void);
 
