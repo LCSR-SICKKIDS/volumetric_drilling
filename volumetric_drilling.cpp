@@ -546,6 +546,7 @@ void afVolmetricDrillingPlugin::toolCursorsPosUpdate(cTransform a_targetPose){
 }
 
 void afVolmetricDrillingPlugin::resetDrill(){
+    m_hapticDevice->setForce(cVector3d(0., 0., 0.));
     m_T_d = m_T_d_init;
     toolCursorsPosUpdate(m_T_d);
     toolCursorsInitialize();
@@ -737,6 +738,12 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         else if (a_key == GLFW_KEY_N){
             cerr << "INFO! RESETTING THE VOLUME" << endl;
             m_volumeObject->reset();
+        }
+
+        // Reset the drill pose
+        if (a_key == GLFW_KEY_R){
+            cerr << "INFO! RESETTING THE DRILL" << endl;
+            resetDrill();
         }
     }
     else if(a_mods == GLFW_MOD_ALT){
