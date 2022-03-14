@@ -92,9 +92,9 @@ class playback_class:
         # Additional labels/ slider widgets
         label = Label(self.root, text='Capture rate (fps):')
         label.pack(side='left')
-        self.speedComboBox = ttk.Combobox(self.root, values=["100", "200", "300"], width=3)
+        self.speedComboBox = ttk.Combobox(self.root, values=["0.001", "0.01", "0.1"], width=4)
         self.speedComboBox.pack(side='left')
-        self.speedComboBox.set('100')
+        self.speedComboBox.set('0.01')
         self.stepComboBox = ttk.Combobox(self.root, values=["Frames", "Seconds"], width=7)
         self.stepComboBox.pack(side='left')
         self.stepComboBox.bind("<<ComboboxSelected>>", self.updateStepValue)
@@ -184,7 +184,7 @@ class playback_class:
         """
         selectedSpeed = self.speedComboBox.get()
         selectedSpeed = float(selectedSpeed)
-        selectedSpeed = selectedSpeed / 1000
+        #selectedSpeed = selectedSpeed / 1000
         return selectedSpeed
 
     def moveToPreviousPos(self):

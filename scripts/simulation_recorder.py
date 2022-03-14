@@ -78,7 +78,7 @@ class recording_class:
         # Play button
         playButtonImage = self.createButtonImage(path + "/Icons/Play.png")
         self.createButton(playButtonImage, self.play)#playbackRecording)
-        
+
         # Pause button
         pauseButtonImage = self.createButtonImage(path + "/Icons/Pause.png")
         self.createButton(pauseButtonImage, self.pause)
@@ -86,17 +86,17 @@ class recording_class:
         # Next button
         nextImage = self.createButtonImage(path + "/Icons/Next.png")
         self.createButton(nextImage, self.moveToNextPos)
-    
+
         # Fast forward button
         ffButtonImage = self.createButtonImage(path + "/Icons/FF.png")
         self.createButton(ffButtonImage, self.fastForward)
 
         # Additional labels/ slider widgets
-        label = Label(self.root, text='Capture rate (fps):')
+        label = Label(self.root, text='Capture rate (s):')
         label.pack(side='left')
-        self.speedComboBox = ttk.Combobox(self.root, values=["100", "200", "300"], width=3)
+        self.speedComboBox = ttk.Combobox(self.root, values=["0.001", "0.01", "0.1"], width=4)
         self.speedComboBox.pack(side='left')
-        self.speedComboBox.set('100')
+        self.speedComboBox.set('0.01')
         self.stepComboBox = ttk.Combobox(self.root, values=["Frames", "Seconds"], width=7)
         self.stepComboBox.pack(side='left')
         self.stepComboBox.bind("<<ComboboxSelected>>", self.updateStepValue)
@@ -115,7 +115,7 @@ class recording_class:
         # Start main loop
         self.root.after(self.captureRate, self.recordDrillPos) #10 fps (100 ms)
         self.root.mainloop()
-    
+
     def recordDrillPos(self):
         """
         This function records the drill position  when the record button is pressed
@@ -123,6 +123,7 @@ class recording_class:
         """
 
         selectedSpeed = self.updateSpeed()
+        #selectedSpeed = 0.001
 
         # Enter this statement if recording is active
         if self.recording_flag:
@@ -133,7 +134,7 @@ class recording_class:
                 self.drillRpy_arr = None
                 self.drillPos_list = []
                 self.drillRpy_list = []
-            
+
             # Get the object handle
             mDrill_obj = self._client.get_obj_handle(self.mDrill_name)
 
@@ -141,7 +142,7 @@ class recording_class:
             drill_Pos = mDrill_obj.get_pos()
             self.drillPos_list.append([drill_Pos.x, drill_Pos.y, drill_Pos.z])
 
-            # Get and store the drill Rpy 
+            # Get and store the drill Rpy
             drill_Rpy = mDrill_obj.get_rpy()
             self.drillRpy_list.append([drill_Rpy[0], drill_Rpy[1], drill_Rpy[2]])
 
@@ -160,13 +161,13 @@ class recording_class:
                 if self.currentIndex == len(self.drillPos_arr): # end of the recording
                     self.currentIndex = 0 # Reset to the beginning
                 self.currentIndex = self.currentIndex + 1 # iterate the counter
-                
+
                 # Fast forward settings
                 if self.fast is True:
                     time.sleep(selectedSpeed/5)
                 else:
                     time.sleep(selectedSpeed)
-            
+
             # Rewind recording
             if self.forward is False:
                 if self.currentIndex == 0: # Beginning of the recording
@@ -210,16 +211,16 @@ class recording_class:
         self.forward = False
         self.fast = True
         self.playing = True
-    
+
     def updateSpeed(self):
         """
         This function takes the set speed from the UI and updates the selected speed accordinly
         """
         selectedSpeed = self.speedComboBox.get()
         selectedSpeed = float(selectedSpeed)
-        selectedSpeed = selectedSpeed/1000
+        #selectedSpeed = selectedSpeed/100000
         return selectedSpeed
-    
+
     def moveToPreviousPos(self):
         """
         This function enables stepping backward in the recording
@@ -233,7 +234,7 @@ class recording_class:
                 self.sliderWidget.pack()
                 self.root.update()
                 self.currentIndex = prevPos
-    
+
     def recordButtonClicked(self):
         """
         This function is used to toggle the record button state
@@ -321,7 +322,7 @@ class recording_class:
         if self.recording_flag:
             print('Cannot play while recording')
             return
-        
+
         self.playing = True
         self.fast = False
         self.forward = True
@@ -347,11 +348,11 @@ class recording_class:
     def rewind(self):
         """
         This function replays the full recording from end to beginning quickly
-        """ 
+        """
         self.forward = False
         self.fast = True
         self.playing = True
-    
+
     def moveToNextPos(self):
         """
         This function enables stepping forward in the recording
@@ -365,7 +366,7 @@ class recording_class:
                 self.sliderWidget.pack()
                 self.root.update()
                 self.currentIndex = nextPos
-   
+
 
     def playSliderPos(self,index):
         """
@@ -437,4 +438,3 @@ class recording_class:
 
 p = recording_class()
 p.initialize_widget()
-
