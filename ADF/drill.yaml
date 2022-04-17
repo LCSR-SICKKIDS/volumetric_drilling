@@ -19,7 +19,7 @@ BODY mastoidectomy_drill:
   scale: 1.0 # this is probably not the right scale now, need to double check?
   location:
     position:
-      x: -13.0
+      x: -5.0
       y: 0.0
       z: 0.0
     orientation:
