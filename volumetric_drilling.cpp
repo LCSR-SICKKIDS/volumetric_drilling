@@ -71,7 +71,10 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     cmd_opts.add_options()
             ("info", "Show Info")
             ("nt", p_opt::value<int>()->default_value(8), "Number Tool Cursors to Load. Default 8")
-            ("ds", p_opt::value<float>()->default_value(0.026), "Offset between shaft tool cursors. Default 0.026");
+            ("ds", p_opt::value<float>()->default_value(0.026), "Offset between shaft tool cursors. Default 0.026")
+            ("vm", p_opt::value<string>()->default_value("00ShinyWhite.jpg"), "Volume's Matcap Filename (Should be placed in the ./resources/matcap/ folder)")
+            ("dm", p_opt::value<string>()->default_value("dark_metal_brushed.jpg"), "Drill's Matcap Filename (Should be placed in ./resources/matcap/ folder)")
+            ("mute", p_opt::value<bool>()->default_value(false), "Mute");
 
     p_opt::variables_map var_map;
     p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).allow_unregistered().run(), var_map);
@@ -84,6 +87,9 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     int nt = var_map["nt"].as<int>();
     float ds = var_map["ds"].as<float>();
+    string volume_matcap = var_map["vm"].as<string>();
+    string drill_matcap = var_map["dm"].as<string>();
+    bool mute = var_map["mute"].as<bool>();
 
     if (nt > 0 && nt <= 8){
         m_toolCursorList.resize(nt);
@@ -242,7 +248,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     string file_path = __FILE__;
     string cur_path = file_path.substr(0, file_path.rfind("/"));
-    string volumeMatcapFilepath = cur_path + "/resources/matcap/00ShinyWhite.jpg";
+    string volumeMatcapFilepath = cur_path + "/resources/matcap/" + volume_matcap;
     cTexture2dPtr volMatCap = cTexture2d::create();
     if(volMatCap->loadFromFile(volumeMatcapFilepath)){
         m_volumeObject->getInternalVolume()->m_aoTexture = volMatCap;
@@ -255,7 +261,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     cTexture2dPtr drillMatCap = cTexture2d::create();
     if (m_drillRigidBody->getShaderProgram()){
-        string drillMatcapFilepath = cur_path + "/resources/matcap/metal_anisotropic.png";
+        string drillMatcapFilepath = cur_path + "/resources/matcap/" + drill_matcap;
         if(drillMatCap->loadFromFile(drillMatcapFilepath)){
             for (int mi = 0 ; mi < m_drillRigidBody->getVisualObject()->getNumMeshes(); mi++){
                 m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture = drillMatCap;
@@ -287,7 +293,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         m_drillAudioSource->setAudioBuffer(m_drillAudioBuffer);
         m_drillAudioSource->setLoop(true);
         m_drillAudioSource->setGain(5.0);
-        m_drillAudioSource->play();
+        if (!mute) m_drillAudioSource->play();
     }
     else{
         delete m_drillAudioSource;
