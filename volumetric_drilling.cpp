@@ -213,7 +213,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_mainCamera->getFrontLayer()->addChild(m_drillSizeText);
 
     m_drillControlModeText = new cLabel(font);
-    m_drillControlModeText->setLocalPos(20,30);
+    m_drillControlModeText->setLocalPos(20,35);
     m_drillControlModeText->m_fontColor.setGreen();
     m_drillControlModeText->setFontScale(.5);
     m_drillControlModeText->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
