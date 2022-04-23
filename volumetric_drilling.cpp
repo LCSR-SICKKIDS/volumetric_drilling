@@ -200,7 +200,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_drillSizePanel = new cPanel();
     m_drillSizePanel->setSize(170, 50);
     m_drillSizePanel->setCornerRadius(10, 10, 10, 10);
-    m_drillSizePanel->setLocalPos(40,60);
+    m_drillSizePanel->setLocalPos(15,60);
     m_drillSizePanel->setColor(cColorf(1, 1, 1));
     m_drillSizePanel->setTransparencyLevel(0.8);
     m_mainCamera->getFrontLayer()->addChild(m_drillSizePanel);
@@ -216,14 +216,14 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_drillControlModeText->setLocalPos(20,30);
     m_drillControlModeText->m_fontColor.setGreen();
     m_drillControlModeText->setFontScale(.5);
-    m_drillControlModeText->setText("Drill Control Mode = Haptic Device / Keyboard");
+    m_drillControlModeText->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
     m_mainCamera->getFrontLayer()->addChild(m_drillControlModeText);
 
     m_volumeSmoothingText = new cLabel(font);
-    m_volumeSmoothingText->setLocalPos(1000,1300);
-    m_volumeSmoothingText->m_fontColor.setBlue();
-    m_volumeSmoothingText->setFontScale(1.);
-    m_volumeSmoothingText->setText("Volume Smoothing: DISABLED");
+    m_volumeSmoothingText->setLocalPos(20,10);
+    m_volumeSmoothingText->m_fontColor.setRed();
+    m_volumeSmoothingText->setFontScale(.5);
+    m_volumeSmoothingText->setText("[ALT+S] Volume Smoothing: DISABLED");
     m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingText);
 
     // Get drills initial pose
@@ -712,11 +712,11 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             setOverrideDrillControl(!getOverrideDrillControl());
             if (getOverrideDrillControl()){
                 m_drillControlModeText->m_fontColor.setRed();
-                m_drillControlModeText->setText("Drill Control Mode = External afComm");
+                m_drillControlModeText->setText("[CTRL+O] Drill Control Mode = External afComm");
             }
             else{
                 m_drillControlModeText->m_fontColor.setGreen();
-                m_drillControlModeText->setText("Drill Control Mode = Haptic Device / Keyboard");
+                m_drillControlModeText->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
             }
         }
 
@@ -772,7 +772,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             m_volumeObject->getShaderProgram()->setUniformi("uSmoothingLevel", m_volumeSmoothingLevel);
         }
 
-        std::string text = "Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
+        std::string text = "[ALT+S] Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
         m_volumeSmoothingText->m_fontColor.setRed();
         if (m_enableVolumeSmoothing){
             text+= " ( LEVEL: " + to_string(m_volumeSmoothingLevel) + ")";
