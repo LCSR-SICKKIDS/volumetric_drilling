@@ -39,3 +39,7 @@ BODY mastoidectomy_drill:
   publish children names: false
   publish joint names: false
   publish joint positions: false
+  shaders:
+    path: ./shaders/matcap/
+    vertex: shader.vs
+    fragment: shader.fs
