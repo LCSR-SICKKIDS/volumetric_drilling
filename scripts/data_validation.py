@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 
 import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -98,13 +99,19 @@ def verify_sphere(depth, K, RT, pose_cam, pose_primitive, time_stamps):
 
 def pose_depth_test(K, pose, depth, segm, u, v, target_color):
     for i in range(depth.shape[0] - 1):
+        if np.all(np.equal(pose[i + 1], pose[i])):
+            continue
         # iproj
         d = depth[i, v, u]
         X0 = np.linalg.inv(K) @ np.array([u, v, 1]) * d  # in camera coordinate
 
         # transform
         X0_one = np.concatenate([X0, np.ones([1])], axis=-1)[..., None]
-        X1_one = np.linalg.inv(pose[i + 1]) @ pose[i] @ X0_one  # T_i+1,wc^-1 @ T_i,wc
+        d_pose = pose[i + 1] @ np.linalg.inv(pose[i])
+        # rvec = R.from_matrix(d_pose[:3, :3]).as_euler('XYZ')
+        # tvec = d_pose[:3, 3]
+        # print(rvec, tvec)
+        X1_one = d_pose @ X0_one  # T_j,ct @ T_i,tc
         X1 = X1_one[:3, 0]
         uvz = K @ X1
         uv = uvz[:2] / uvz[2]
@@ -112,6 +119,14 @@ def pose_depth_test(K, pose, depth, segm, u, v, target_color):
         # update uv
         v_new = np.rint(uv[1]).astype(int)
         u_new = np.rint(uv[0]).astype(int)
+
+        plt.subplot(211)
+        plt.imshow(limg[i])
+        plt.plot(u, v, 'r+')
+        plt.subplot(212)
+        plt.imshow(limg[i + 1])
+        plt.plot(u_new, v_new, 'b+')
+        plt.show()
 
         if not np.all(pose[i + 1] == pose[i]):
             # check if within image
@@ -130,8 +145,7 @@ def pose_depth_test(K, pose, depth, segm, u, v, target_color):
                     v_new -= 1
                 elif np.all(segm[i + 1, v_new, u_new - 1] == target_color, axis=-1):
                     u_new -= 1
-                print("can't find target class any more")
-                break
+                raise Exception("can't find target class any more")
 
             d_new = depth[i + 1, v_new, u_new]
             assert np.isclose(uvz[2], d_new, rtol=0.01)
@@ -149,7 +163,7 @@ def verify_drilling(K, pose_cam, pose_drill, segm, depth):
         v = np.random.randint(np.min(y), np.max(y))
         if tool[v, u]:
             break
-    poses = np.linalg.inv(pose_drill) @ pose_cam
+    poses = np.linalg.inv(pose_cam) @ pose_drill  # T_cw @ T_wt = T_ct
     pose_depth_test(K, poses, depth, segm, u, v, target_color=np.array([33, 32, 34]))
 
     if args.no_drilling:
@@ -161,18 +175,9 @@ def verify_drilling(K, pose_cam, pose_drill, segm, depth):
             v = np.random.randint(np.min(y), np.max(y))
             if mastoid[v, u]:
                 break
-        pose_depth_test(K, pose_cam, depth, segm, u, v, target_color=np.array([219, 249, 255]))
+        poses = np.linalg.inv(pose_cam) @ pose_patient  # T_cw @ T_wt = T_ct
+        pose_depth_test(K, poses, depth, segm, u, v, target_color=np.array([219, 249, 255]))
     print("All test passed :)")
-    return
-
-
-def verify_cube(depth, K, RT, poses):
-    # TODO
-    return
-
-
-def verify_cylinder(depth, K, RT, poses):
-    # TODO
     return
 
 
@@ -205,5 +210,7 @@ if __name__ == "__main__":
             verify_sphere(depth, intrinsic, extrinsic, pose_cam, pose_sphere, time_stamps)
         elif args.setting == 'drilling':
             segm = f['data']['segm'][()]
+            limg = f['data']['l_img'][()]
             pose_drill = pose_to_matrix(f['data']['pose_mastoidectomy_drill'][()])
+            pose_patient = pose_to_matrix(f['data']['pose_mastoidectomy_volume'][()])
             verify_drilling(intrinsic, pose_cam, pose_drill, segm, depth)

@@ -1,9 +1,9 @@
 import os
 
-from ambf_client import Client
-
 
 def init_ambf(node_name='default'):
+    from ambf_client import Client
+
     # Generate all objects in scene, even ones that may not be needed
     _client = Client(node_name)
     _client.connect()
