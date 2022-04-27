@@ -6,13 +6,9 @@
 using namespace std;
 using namespace ambf;
 
-enum HapticStates
-{
-    HAPTIC_IDLE,
-    HAPTIC_SELECTION
-};
-
 class afVolmetricDrillingPlugin: public afSimulatorPlugin{
+public:
+    afVolmetricDrillingPlugin();
     virtual int init(int argc, char** argv, const afWorldPtr a_afWorld) override;
     virtual void keyboardUpdate(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, int a_mods) override;
     virtual void mouseBtnsUpdate(GLFWwindow* a_window, int a_button, int a_action, int a_modes) override;
@@ -32,8 +28,12 @@ protected:
 
     void incrementDeviceRot(cVector3d a_rot);
 
+    void toolCursorsInitialize();
+
     // update position of shaft tool cursors
     void toolCursorsPosUpdate(cTransform a_devicePose);
+
+    void resetDrill();
 
     // check for shaft collision
     void checkShaftCollision(void);
@@ -42,16 +42,16 @@ protected:
     void drillPoseUpdateFromCursors(void);
 
     // toggles size of the drill burr
-    void changeDrillSize(void);
+    void changeBurrSize(int burrType);
 
     bool getOverrideDrillControl(){return m_overrideDrillControl;}
 
     void setOverrideDrillControl(bool val){m_overrideDrillControl = val;}
 
 private:
-    cTransform T_d; // Drills target pose
-    cTransform T_i; // Input device transform
-    cVector3d V_i; // Input device linear velocity
+    cTransform m_T_d, m_T_d_init; // Drills target pose
+    cTransform m_T_i; // Input device transform
+    cVector3d m_V_i; // Input device linear velocity
 
     bool m_overrideDrillControl = false;
 
@@ -74,8 +74,6 @@ private:
     int m_counter = 0;
 
     cGenericObject* m_selectedObject = NULL;
-
-    cTransform m_tool_T_object;
 
     // a haptic device handler
     cHapticDeviceHandler* m_deviceHandler;
@@ -101,7 +99,7 @@ private:
     double m_dX = 0.03;
 
     // camera to render the world
-    afCameraPtr m_mainCamera;
+    afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR;
 
     bool m_showDrill = true;
 
@@ -134,10 +132,10 @@ private:
     bool m_suddenJump = true;
 
     // index of current drill size
-    int m_drillSizeIdx = 0;
+    int m_activeBurrIdx = 0;
 
-    // current drill size
-    int m_currDrillSize = 2;
+    // A map of drill burr indices, radius and description
+    map<int, pair<double, string>> m_drillBurrSizes;
 
     // color property of bone
     cColorb m_boneColor;
@@ -145,12 +143,14 @@ private:
     // get color of voxels at (x,y,z)
     cColorb m_storedColor;
 
-    HapticStates m_controlMode = HAPTIC_IDLE;
-
     bool m_enableVolumeSmoothing = false;
     int m_volumeSmoothingLevel = 2;
 
     cLabel* m_volumeSmoothingText;
+
+    cAudioSource* m_drillAudioSource = nullptr;
+    cAudioBuffer* m_drillAudioBuffer = nullptr;
+    cAudioDevice* m_drillAudioDevice = nullptr;
 };
 
 
