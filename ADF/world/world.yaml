@@ -6,6 +6,7 @@ environment: ./checkered_floor.yaml
 namespace: /ambf/env/
 max iterations: 50
 gravity: {x: 0.0, y: 0.0, z: -0.0}
+conversion factor: 0.049664
 # shaders:
 #   path: ../../ambf_shaders/normal_map
 #   vertex: shader.vs
@@ -14,7 +15,7 @@ gravity: {x: 0.0, y: 0.0, z: -0.0}
 light1:
   namespace: lights/
   name: light1
-  location: {x: -10.0, y: 2.5, z: 2.0}
+  location: {x: 0.0, y: 2.5, z: 2.0}
   direction: {x: 0.0, y: 0.0, z: -1.0}
   spot exponent: 0.3
   shadow quality: 5
@@ -23,7 +24,7 @@ light1:
 light2:
   namespace: lights/
   name: light2
-  location: {x: -13.0, y: -1.0, z: -5.0}
+  location: {x: -3.0, y: -1.0, z: -5.0}
   direction: {x: 0.0, y: 0.0, z: 1.0}
   spot exponent: 0.3
   shadow quality: 0
@@ -44,11 +45,11 @@ main_camera:
   namespace: cameras/
   name: main_camera
   location: {x: 0.0, y: 0.0, z: 0.0}
-  look at: {x: -15.000805412371134, y: 0.0, z: 0.0}
+  look at: {x: -6.040592783505154, y: 0.0, z: 0.0}
   # up: {x: 0.0, y: 0.4, z: 1.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
-  field view angle: 0.0959263737541534 # so that focal length is approximately 1000px and phantom is 250 mm away
+  clipping plane: {near: 2.0135309278350517, far: 1006.7654639175257}
+  field view angle: 0.17951634837990105 # so that focal length is approximately 1000px and phantom is 250 mm away
   monitor: 0
   # multipass: true
   visible: true

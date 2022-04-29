@@ -15,7 +15,7 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 yaml.boolean_representation = [u'false', u'true']
 
-SENSOR_SIZE = [0.036, 0.024]  # meters
+SENSOR_SIZE = [0.0048, 0.0036]  # meters
 
 
 def camera_config(params, args, name):
@@ -59,8 +59,8 @@ def camera_config(params, args, name):
     if args.focal is None:
         camera['field view angle'] = args.fov
     else:
-        focal = args.focal / args.scale
-        sensor_height = SENSOR_SIZE[1] / args.scale
+        focal = args.focal
+        sensor_height = SENSOR_SIZE[1]
         # convert focal length in meters to fov
         fov = 2 * math.atan(sensor_height / 2 / focal)
         camera['field view angle'] = fov
@@ -173,21 +173,21 @@ if __name__ == '__main__':
                              'AMBF unit = Meter / scale')
 
     # volume parameters
-    parser.add_argument('--volume_location', nargs='?', default=[-0.745, 0.0, 0.0], help='volume location (meters)')
+    parser.add_argument('--volume_location', nargs='?', default=[-0.3, 0.0, 0.0], help='volume location (meters)')
 
     # stereo parameters
     parser.add_argument('--baseline', type=float, nargs='?', default=0.025, help='meters')
 
     # main camera parameters
     parser.add_argument('--fov', type=float, nargs='+', default=None, help='vertical field of view in radians')
-    parser.add_argument('--focal', type=float, nargs='+', default=0.25, help='focal length in meters (fx)')
+    parser.add_argument('--focal', type=float, nargs='+', default=0.02, help='focal length in meters (fx)')
     parser.add_argument('--location', nargs='+', default=[0.0, 0.0, 0.0], help='camera center location (meters)')
     parser.add_argument('--up', nargs='+', default=[0.0, 0.0, 1.0],
                         help='vertical up direction of camera (unit vector), negative y of pixel coordinate')
     parser.add_argument('--look_at', nargs='+', default=None,
                         help='outwards direction of camera (unit vector), positive z of pixel coordinate.\n'
                              'Default set to the location of the volume.')
-    parser.add_argument('--clipping_plane', nargs='+', default=[0.3, 50.0], help='[near, far], meters, for accuracy\n'
+    parser.add_argument('--clipping_plane', nargs='+', default=[0.1, 50.0], help='[near, far], meters, for accuracy\n'
                                                                                  'set far plane as far as possible')
     parser.add_argument('--res', nargs='+', default=[640, 480], help='image [width, height]')
     parser.add_argument('--image_interval', type=int, default=5, help='Publish every nth scene update')
