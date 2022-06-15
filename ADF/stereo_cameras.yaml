@@ -13,12 +13,12 @@ stereoL:
   location: {x: 0.0, y: 0.0, z: 0.0}
   look at: {x: -1.0, y: 0.0, z: 0.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
-  field view angle: 0.0959263737541534
+  clipping plane: {near: 2.0135309278350517, far: 1006.7654639175257}
+  field view angle: 0.17951634837990105
   monitor: 0
   # multipass: true
   publish image: true
-  visible: False
+  visible: false
   # preprocessing shaders:
   #   path: ../../../ambf_shaders/preprocessing/
   #   vertex: shader.vs
@@ -40,12 +40,12 @@ stereoR:
   location: {x: 0.0, y: 0.5033827319587629, z: 0.0}
   look at: {x: -1.0, y: 0.5033827319587629, z: 0.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
-  field view angle: 0.0959263737541534
+  clipping plane: {near: 2.0135309278350517, far: 1006.7654639175257}
+  field view angle: 0.17951634837990105
   monitor: 0
   # multipass: true
   publish image: true
-  visible: False
+  visible: false
   # preprocessing shaders:
   #   path: ../../../ambf_shaders/preprocessing/
   #   vertex: shader.vs

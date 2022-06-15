@@ -1,10 +1,12 @@
 enclosure size: {length: 10.0, width: 10.0, height: 3.0}
 lights: [light1, light2]
 cameras: [main_camera]
+# cameras: [main_camera, cameraL, cameraR]
 environment: ./checkered_floor.yaml
 namespace: /ambf/env/
 max iterations: 50
 gravity: {x: 0.0, y: 0.0, z: -0.0}
+conversion factor: 0.049664
 # shaders:
 #   path: ../../ambf_shaders/normal_map
 #   vertex: shader.vs
@@ -13,7 +15,7 @@ gravity: {x: 0.0, y: 0.0, z: -0.0}
 light1:
   namespace: lights/
   name: light1
-  location: {x: -10.0, y: 2.5, z: 2.0}
+  location: {x: 0.0, y: 2.5, z: 2.0}
   direction: {x: 0.0, y: 0.0, z: -1.0}
   spot exponent: 0.3
   shadow quality: 5
@@ -22,7 +24,7 @@ light1:
 light2:
   namespace: lights/
   name: light2
-  location: {x: -13.0, y: -1.0, z: -5.0}
+  location: {x: -3.0, y: -1.0, z: -5.0}
   direction: {x: 0.0, y: 0.0, z: 1.0}
   spot exponent: 0.3
   shadow quality: 0
@@ -43,13 +45,14 @@ main_camera:
   namespace: cameras/
   name: main_camera
   location: {x: 0.0, y: 0.0, z: 0.0}
-  look at: {x: -15.000805412371134, y: 0.0, z: 0.0}
+  look at: {x: -6.040592783505154, y: 0.0, z: 0.0}
   # up: {x: 0.0, y: 0.4, z: 1.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
-  field view angle: 0.0959263737541534 # so that focal length is approximately 1000px and phantom is 250 mm away
+  clipping plane: {near: 2.0135309278350517, far: 1006.7654639175257}
+  field view angle: 0.17951634837990105 # so that focal length is approximately 1000px and phantom is 250 mm away
   monitor: 0
   # multipass: true
+  visible: true
   # publish image: true
   # preprocessing shaders:
   #    path: ../shaders/preprocessing/
@@ -66,3 +69,57 @@ main_camera:
   #    fragment: shader.fs
 
   # multipass: true
+
+cameraL:
+  namespace: cameras/
+  name: cameraL
+  location: {x: 0.0, y: -0.3, z: 0.0}
+  look at: {x: -15.0, y: 0.0, z: 0.0}
+  up: {x: 0.0, y: 0.0, z: 1.0}
+  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
+  field view angle: 0.0959263737541534
+  monitor: 0
+  # multipass: true
+  publish image: true
+  # visible: False
+  # preprocessing shaders:
+  #   path: ../../../ambf_shaders/preprocessing/
+  #   vertex: shader.vs
+  #   fragment: shader.fs
+  publish image interval: 5    # Publish every nth scene update
+  # publish depth: true
+  # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
+  # publish depth interval: 1 # Publish every nth scene update
+  publish image resolution: {width: 640, height: 480}
+  # depth compute shaders:
+  #    path: ../../../ambf_shaders/depth
+  #    vertex: shader.vs
+  #    fragment: shader.fs
+  parent: main_camera
+
+cameraR:
+  namespace: cameras/
+  name: cameraR
+  location: {x: 0.0, y: 0.3, z: 0.0}
+  look at: {x: -15.0, y: 0.0, z: 0.0}
+  up: {x: 0.0, y: 0.0, z: 1.0}
+  clipping plane: {near: 6.040592783505154, far: 1006.7654639175257}
+  field view angle: 0.0959263737541534
+  monitor: 0
+  # multipass: true
+  # publish image: true
+  # visible: False
+  # preprocessing shaders:
+  #   path: ../../../ambf_shaders/preprocessing/
+  #   vertex: shader.vs
+  #   fragment: shader.fs
+  publish image interval: 5    # Publish every nth scene update
+  #/publish depth: true
+  # # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
+  # publish depth interval: 1 # Publish every nth scene update
+  publish image resolution: {width: 640, height: 480}
+  # depth compute shaders:
+  #    path: ../../../ambf_shaders/depth
+  #    vertex: shader.vs
+  #    fragment: shader.fs
+  parent: main_camera

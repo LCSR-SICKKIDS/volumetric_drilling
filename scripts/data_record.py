@@ -31,6 +31,22 @@ except ImportError:
           "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
 
 
+def rpy_to_quat(roll, pitch, yaw):
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    return x, y, z, w
+
+
 def depth_gen(depth_msg):
     """
     generate depth
@@ -96,12 +112,27 @@ def init_hdf5(args, stereo):
     intrinsic = np.array([[focal, 0, c_x], [0, focal, c_y], [0, 0, 1]])
 
     # conversion factor
-    nrrd_header = open(args.nrrd_header, "rb")
-    header = pickle.load(nrrd_header)
-    directions = header['space directions']
-    sizes = header['sizes']
-    largest_dim = np.argmax(sizes)
-    s = np.linalg.norm(directions[largest_dim]) * sizes[largest_dim] / 1000.0
+    if sys.version_info[0] >= 3:
+        nrrd_header = open(args.nrrd_header, "rb")
+        header = pickle.load(nrrd_header)
+        directions = header['space directions']
+        sizes = header['sizes']
+        largest_dim = np.argmax(sizes)
+        s = np.linalg.norm(directions[largest_dim]) * sizes[largest_dim] / 1000.0
+    else:
+        s = world_params["conversion factor"]
+
+    # volume pose, which is fixed
+    volume_adf = open(args.volume_adf, "r")
+    volume_params = yaml.safe_load(volume_adf)
+    volume_adf.close()
+    volume_name = volume_params["volumes"][0]
+    volume_loc = volume_params[volume_name]["location"]
+    volume_position = [volume_loc["position"]["x"] * s, volume_loc["position"]["y"] * s,
+                       volume_loc["position"]["z"] * s]
+    volume_orientation = rpy_to_quat(volume_loc["orientation"]["r"], volume_loc["orientation"]["p"],
+                                     volume_loc["orientation"]["y"])  # ZYX needs to be capitalized
+    volume_pose = np.concatenate([volume_position, volume_orientation])
 
     # Create hdf5 file with date
     if not os.path.exists(args.output_dir):
@@ -130,7 +161,7 @@ def init_hdf5(args, stereo):
     file.create_group("voxels_removed")
     file.create_group("burr_change")
 
-    return file, img_height, img_width, s
+    return file, img_height, img_width, s, volume_pose
 
 
 def callback(*inputs):
@@ -147,7 +178,7 @@ def callback(*inputs):
     data = dict(time=inputs[0].header.stamp.to_sec())
 
     if num_data % 5 == 0:
-        print("Recording data: " + '#' * (num_data // 10), end='\r')
+        print("Recording data: " + '#' * (num_data // 10))
 
     for idx, key in enumerate(keys[1:]):  # skip time
         if 'l_img' == key or 'r_img' == key or 'segm' == key:
@@ -177,6 +208,13 @@ def write_to_hdf5():
                 log.log(logging.INFO, (key, group[key].shape))
             data[key] = []  # reset list to empty memory
 
+    # write volume pose
+    key = "pose_mastoidectomy_volume"
+    num_samples = len(f["data"][f["data"].keys()[0]])
+    f["data"].create_dataset(key, data=np.stack([volume_pose] * num_samples, axis=0),
+                             compression='gzip')  # write to disk
+    log.log(logging.INFO, (key, f["data"][key].shape))
+
     f.close()
 
     return
@@ -198,7 +236,7 @@ def timer_callback(_):
     if num_data >= chunk:
         log.log(logging.INFO, "\nWrite data to disk")
         write_to_hdf5()
-        f, _, _, _ = init_hdf5(args, stereo)
+        f, _, _, _, _ = init_hdf5(args, stereo)
         num_data = 0
 
 
@@ -366,6 +404,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--world_adf', default='../ADF/world/world.yaml', type=str)
     parser.add_argument(
+        '--volume_adf', default='../ADF/volume_171.yaml', type=str)
+    parser.add_argument(
         '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
     parser.add_argument(
         '--nrrd_header', default='../resources/volumes/nrrd_header.pkl', type=str)
@@ -421,7 +461,7 @@ if __name__ == '__main__':
         stereo = True
     else:
         stereo = False
-    f, h, w, scale = init_hdf5(args, stereo)
+    f, h, w, scale, volume_pose = init_hdf5(args, stereo)
 
     # initialize queue for multi-threading
     chunk = args.chunk_size

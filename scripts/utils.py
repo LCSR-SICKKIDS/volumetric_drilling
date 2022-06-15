@@ -1,9 +1,9 @@
 import os
 
-from ambf_client import Client
-
 
 def init_ambf(node_name='default'):
+    from ambf_client import Client
+
     # Generate all objects in scene, even ones that may not be needed
     _client = Client(node_name)
     _client.connect()
@@ -24,6 +24,7 @@ def init_ambf(node_name='default'):
 
     return _client, objects_dict
 
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -37,7 +38,7 @@ class bcolors:
 
 
 def toStr(f):
-    return f"{f:.3f}"
+    return "{:.3f}".format(f)
 
 
 def WARN_STR(val):
