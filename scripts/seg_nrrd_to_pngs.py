@@ -44,17 +44,62 @@ from PIL import Image
 import numpy as np
 import nrrd
 from argparse import ArgumentParser
+import re
+
+
+class RGBA:
+    def __init__(self, rgba):
+        self.R = rgba[0]
+        self.G = rgba[1]
+        self.B = rgba[2]
+        try:
+            self.A = rgba[3]
+        except:
+            # only three values provided, just set alpha to 1.0
+            self.A = 1.0
+
+    def print_color(self):
+        print('RGBA: ', self.R, self.G, self.B, self.A)
+
+    def to_str(self):
+        string = str(self.R) + ', ' + str(self.G) + ', ' + str(self.B) + ', ' + str(self.A)
+        return string
+
+
+class SegmentInfo:
+    def __init__(self):
+        self.index = None
+        self.name = ''
+        self.layer = None
+        self.label = None
+        self.color = None
+
+    def fill(self, index, name, layer, label, color):
+        self.index = index
+        self.name = name
+        self.layer = layer
+        self.label = label
+        self.color = RGBA(color)
+
+    def print_info(self):
+        print('Layer No.: ', self.layer)
+        print('Segmentation Idx: ', self.index)
+        print('Segmentation Name: ', self.name)
+        print('Segmentation Label: ', self.label)
+        print('Segmentation Color: ', self.color.to_str())
 
 
 class NrrdConverter:
     def __init__(self, x_ratio, y_ratio, z_ratio):
         self._images_matrix = None
-        self.num_segments = 0 # Number of segmentations, could be zero
+        self.num_layers = 1 # Number of layers, could be 1
+        self.num_segments = 0 # Number of segmentations, could be 1
         self.num_channels = 1 # Number of color channels, 1 for Grayscale and 4 for RGBA
         self.x_dim = 0
         self.y_dim = 0
         self.z_dim = 0
         self._segments_colors = None # Color of each segment that can be extracted from NRRD header
+        self._segments_infos = []
         self.nrrd_data = None
         self.nrrd_hdr = None
         self.x_dim_ratio = x_ratio
@@ -73,12 +118,12 @@ class NrrdConverter:
         # Create a 3D block where the first index refers to individual images,
         # The second index refers to x_dim, the third to y_dim and the fourth to z_dim(e.g. Z)
 
-        self.num_segments = self.nrrd_data.shape[0]
+        self.num_layers = self.nrrd_data.shape[0]
         self.x_dim = self.nrrd_data.shape[1]
         self.y_dim = self.nrrd_data.shape[2]
         self.z_dim = self.nrrd_data.shape[3]
 
-        if self.num_segments > 0:
+        if self.num_layers > 0:
             self.num_channels = 4
         else:
             self.num_channels = 1
@@ -87,36 +132,85 @@ class NrrdConverter:
             self._images_matrix = np.zeros([self.x_dim, self.y_dim,  self.z_dim])
         if self.num_channels == 4:
             self._images_matrix = np.zeros([self.x_dim, self.y_dim, self.z_dim, self.num_channels])
-            self._segments_colors = np.ones([self.num_segments, self.num_channels])
         else:
             # Throw some error or warning
             pass
 
-    def create_segments_color_array_from_header(self):
-        if self.num_channels > 0:
-            for i in range(self.num_segments):
-                query_str = 'Segment' + str(i) + '_Color'
+    def initialize_segments_infos(self):
+        self.num_segments = self.find_number_of_segments(self.nrrd_hdr)
+        for i in range(self.num_segments):
+            self._segments_infos.append(SegmentInfo())
+
+        for k, i in self.nrrd_hdr.items():
+            key_str = '_ID'
+            if k.find(key_str) != -1:
+                prefix = k.split(key_str)[0]
+                name_str = prefix + '_Name'
+                layer_str = prefix + '_Layer'
+                color_str = prefix + '_Color'
+                label_str = prefix + '_LabelValue'
+
+                idx = int(re.findall(r'\d+', k)[0])
+                name = self.nrrd_hdr[name_str]
                 try:
-                    color_str = self.nrrd_hdr[query_str]
-                    self._segments_colors[i, 0:3] = np.fromstring(color_str, dtype=float, sep=' ')
-                except KeyError:
-                    raise KeyError
-        else:
-            # No need to create a color array for Grayscale
-            pass
+                    label = int(self.nrrd_hdr[label_str])
+                except:
+                    print('WARN! For segmentation ', name, ' no label data specified, setting to 1')
+                    label = 1
+
+                try:
+                    layer = int(self.nrrd_hdr[layer_str])
+                except:
+                    print('WARN! For segmentation ', name, ' no layer data specified, setting to ', idx)
+                    layer = idx
+
+                color_data_str = self.nrrd_hdr[color_str]
+                color_data = np.fromstring(color_data_str, dtype=float, sep=' ')
+
+                self._segments_infos[idx].fill(idx, name, layer, label, color_data)
+
+    def print_segments_infos(self):
+        for i in range(self.num_segments):
+            print('No. ', i)
+            self._segments_infos[i].print_info()
+            print('-------------------')
 
     def copy_volume_to_image_matrix(self):
+        are_label_maps_collapsed = self.are_labelmaps_collapsed(self.nrrd_hdr)
         if self.num_channels == 4:
-            for ns in range(self.num_segments):
-                seg_data = self.nrrd_data[ns, :, :, :]
-                print('Segment Number: ', ns)
-                R = seg_data * self._segments_colors[ns, 0]
+            # for nl in range(self.num_layers):
+            #     seg_data = self.nrrd_data[nl, :, :, :]
+            #     print('Layer Number: ', nl)
+            #     R = seg_data * self._segments_colors[nl, 0]
+            #     print('\tStep: ', 1)
+            #     G = seg_data * self._segments_colors[nl, 1]
+            #     print ('\tStep: ', 2)
+            #     B = seg_data * self._segments_colors[nl, 2]
+            #     print('\tStep: ', 3)
+            #     A = seg_data * self._segments_colors[nl, 3]
+            #     print('\tStep: ', 4)
+            #     RGBA = np.stack((R, G, B, A), axis=-1)
+            #     print('\tStep: ', 5)
+            #     self._images_matrix += RGBA
+            #     print('\tStep: ', 6)
+
+            for seg_info in self._segments_infos:
+                seg_data = self.nrrd_data[seg_info.layer, :, :, :]
+                if are_label_maps_collapsed:
+                    label = seg_info.label
+                    print('Processing Segmentation')
+                    seg_info.print_info()
+                    data = (seg_data == label).astype(int)
+                else:
+                    data = seg_data
+                print('Layer Number: ', seg_info.layer)
+                R = data * seg_info.color.R
                 print('\tStep: ', 1)
-                G = seg_data * self._segments_colors[ns, 1]
-                print ('\tStep: ', 2)
-                B = seg_data * self._segments_colors[ns, 2]
+                G = data * seg_info.color.G
+                print('\tStep: ', 2)
+                B = data * seg_info.color.B
                 print('\tStep: ', 3)
-                A = seg_data * self._segments_colors[ns, 3] * 0.7
+                A = data * seg_info.color.A
                 print('\tStep: ', 4)
                 RGBA = np.stack((R, G, B, A), axis=-1)
                 print('\tStep: ', 5)
@@ -150,6 +244,23 @@ class NrrdConverter:
             im_name = im_prefix + '0' + str(nz) + '.png'
             self.save_image(self._images_matrix[:, :, nz, :], im_name)
 
+    @staticmethod
+    def are_labelmaps_collapsed(h):
+        if h['Segmentation_ConversionParameters'].find('Collapse labelmaps|1|') != -1:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def find_number_of_segments(h):
+        num_segs = 0
+        for k,i in h.items():
+            if re.findall(r'Segment\d+_Color', k):
+                segment_idx = int(re.findall(r'\d+', k)[0])
+                if segment_idx > num_segs:
+                    num_segs = segment_idx
+        return num_segs + 1
+
 
 def main():
     # Begin Argument Parser Code
@@ -166,7 +277,9 @@ def main():
     nrrd_converter = NrrdConverter(int(parsed_args.x_skip), int(parsed_args.y_skip), int(parsed_args.z_skip))
     nrrd_converter.read_nrrd(parsed_args.nrrd_file)
     nrrd_converter.initialize_image_matrix()
-    nrrd_converter.create_segments_color_array_from_header()
+    nrrd_converter.initialize_segments_infos()
+    nrrd_converter.print_segments_infos()
+
     nrrd_converter.copy_volume_to_image_matrix()
     # nrrd_converter.normalize_image_matrix_data()
     nrrd_converter.scale_image_matrix_data(255)
