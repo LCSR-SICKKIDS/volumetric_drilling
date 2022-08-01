@@ -150,6 +150,15 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     }
     else{
         m_voxelObj = m_volumeObject->getInternalVolume();
+
+        m_maxVolCorner = m_voxelObj->m_maxCorner;
+        m_minVolCorner = m_voxelObj->m_minCorner;
+        m_maxTexCoord = m_voxelObj->m_maxTextureCoord;
+        m_minTexCoord = m_voxelObj->m_minTextureCoord;
+
+        m_textureCoordScale(0) = (m_maxTexCoord.x() - m_minTexCoord.x()) / (m_maxVolCorner.x() - m_minVolCorner.x());
+        m_textureCoordScale(1) = (m_maxTexCoord.y() - m_minTexCoord.y()) / (m_maxVolCorner.y() - m_minVolCorner.y());
+        m_textureCoordScale(2) = (m_maxTexCoord.z() - m_minTexCoord.z()) / (m_maxVolCorner.z() - m_minVolCorner.z());
     }
 
     // create a haptic device handler
@@ -662,6 +671,40 @@ void afVolmetricDrillingPlugin::changeBurrSize(int burrType){
     }
 }
 
+void afVolmetricDrillingPlugin::sliceVolume(int axisIdx, double delta)
+{
+    string axis_str = "";
+    if (axisIdx == 0){
+        axis_str = "X";
+    }
+    else if (axisIdx == 1){
+        axis_str = "Y";
+    }
+    else if (axisIdx == 2){
+        axis_str = "Z";
+    }
+    else{
+        cerr << "ERROR! Volume axis index should be either 0, 1 or 2" << endl;
+        return;
+    }
+
+    string delta_dir_str = "";
+    if (delta > 0){
+        delta_dir_str = "Increase";
+    }
+    else{
+        delta_dir_str = "Decrease";
+    }
+
+    double value = cClamp((m_voxelObj->m_maxCorner(axisIdx) + delta), 0.01, m_maxVolCorner(axisIdx));
+    m_voxelObj->m_maxCorner(axisIdx) = value;
+    m_voxelObj->m_minCorner(axisIdx) = -value;
+    m_voxelObj->m_maxTextureCoord(axisIdx) = 0.5 + value * m_textureCoordScale(axisIdx);
+    m_voxelObj->m_minTextureCoord(axisIdx) = 0.5 - value * m_textureCoordScale(axisIdx);
+
+    cerr << "> " << delta_dir_str << " Volume size along " << axis_str << " axis.                            \r";
+}
+
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
     if (a_mods == GLFW_MOD_CONTROL){
 
@@ -784,62 +827,32 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
         // option - reduce size along X axis
         if (a_key == GLFW_KEY_4) {
-            double value = cClamp((m_voxelObj->m_maxCorner.x() - 0.005), 0.01, 0.5);
-            m_voxelObj->m_maxCorner.x(value);
-            m_voxelObj->m_minCorner.x(-value);
-            m_voxelObj->m_maxTextureCoord.x(0.5 + value);
-            m_voxelObj->m_minTextureCoord.x(0.5 - value);
-            cout << "> Reduce size along X axis.                            \r";
+            sliceVolume(0, -0.005);
         }
 
         // option - increase size along X axis
         else if (a_key == GLFW_KEY_5) {
-            double value = cClamp((m_voxelObj->m_maxCorner.x() + 0.005), 0.01, 0.5);
-            m_voxelObj->m_maxCorner.x(value);
-            m_voxelObj->m_minCorner.x(-value);
-            m_voxelObj->m_maxTextureCoord.x(0.5 + value);
-            m_voxelObj->m_minTextureCoord.x(0.5 - value);
-            cout << "> Increase size along X axis.                            \r";
+            sliceVolume(0, 0.005);
         }
 
         // option - reduce size along Y axis
         else if (a_key == GLFW_KEY_6) {
-            double value = cClamp((m_voxelObj->m_maxCorner.y() - 0.005), 0.01, 0.5);
-            m_voxelObj->m_maxCorner.y(value);
-            m_voxelObj->m_minCorner.y(-value);
-            m_voxelObj->m_maxTextureCoord.y(0.5 + value);
-            m_voxelObj->m_minTextureCoord.y(0.5 - value);
-            cout << "> Reduce size along Y axis.                            \r";
+            sliceVolume(1, -0.005);
         }
 
         // option - increase size along Y axis
         else if (a_key == GLFW_KEY_7) {
-            double value = cClamp((m_voxelObj->m_maxCorner.y() + 0.005), 0.01, 0.5);
-            m_voxelObj->m_maxCorner.y(value);
-            m_voxelObj->m_minCorner.y(-value);
-            m_voxelObj->m_maxTextureCoord.y(0.5 + value);
-            m_voxelObj->m_minTextureCoord.y(0.5 - value);
-            cout << "> Increase size along Y axis.                            \r";
+            sliceVolume(1, 0.005);
         }
 
         // option - reduce size along Z axis
         else if (a_key == GLFW_KEY_8) {
-            double value = cClamp((m_voxelObj->m_maxCorner.z() - 0.005), 0.01, 0.5);
-            m_voxelObj->m_maxCorner.z(value);
-            m_voxelObj->m_minCorner.z(-value);
-            m_voxelObj->m_maxTextureCoord.z(0.5 + value);
-            m_voxelObj->m_minTextureCoord.z(0.5 - value);
-            cout << "> Reduce size along Z axis.                            \r";
+            sliceVolume(2, -0.005);
         }
 
         // option - increase size along Z axis
         else if (a_key == GLFW_KEY_9) {
-            double value = cClamp((m_voxelObj->m_maxCorner.z() + 0.005), 0.01, 0.5);
-            m_voxelObj->m_maxCorner.z(value);
-            m_voxelObj->m_minCorner.z(-value);
-            m_voxelObj->m_maxTextureCoord.z(0.5 + value);
-            m_voxelObj->m_minTextureCoord.z(0.5 - value);
-            cout << "> Increase size along Z axis.                            \r";
+            sliceVolume(2, 0.005);
         }
         // option - decrease quality of graphic rendering
         else if (a_key == GLFW_KEY_L) {
