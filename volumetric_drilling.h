@@ -48,6 +48,8 @@ protected:
 
     void setOverrideDrillControl(bool val){m_overrideDrillControl = val;}
 
+    void sliceVolume(int axisIdx, double delta);
+
 private:
     cTransform m_T_d, m_T_d_init; // Drills target pose
     cTransform m_T_i; // Input device transform
@@ -151,6 +153,11 @@ private:
     cAudioSource* m_drillAudioSource = nullptr;
     cAudioBuffer* m_drillAudioBuffer = nullptr;
     cAudioDevice* m_drillAudioDevice = nullptr;
+
+
+    cVector3d m_maxVolCorner, m_minVolCorner;
+    cVector3d m_maxTexCoord, m_minTexCoord;
+    cVector3d m_textureCoordScale; // Scale between volume corners extent and texture coordinates extent
 };
 
 
