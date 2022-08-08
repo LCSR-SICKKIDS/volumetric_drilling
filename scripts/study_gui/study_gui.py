@@ -29,8 +29,8 @@ class Ui(QtWidgets.QMainWindow):
             print(icon_path_str)
             pixmap = QPixmap(icon_path_str)
             label = QtWidgets.QLabel(self)
-            label.setText('Label')
-            label.setPixmap(pixmap)
+            label.resize(150, 150)
+            label.setPixmap(pixmap.scaled(label.width(), label.height(), Qt.KeepAspectRatio))
             self.volumes_grid.addWidget(radio_button, i, 0)
             self.volumes_grid.addWidget(label, i, 1)
             if i == 0:

@@ -4,16 +4,16 @@ launch_file_path: "../../launch.yaml"
 pupil_executable_path: "pupil_capture"
 
 volume1:
-  icon_path: ./assets/plane0069.png
+  icon_path: ./assets/Anatomy a.png
   adf_path: ../../ADF/volume_171.yaml
   name: 'Anatomy a'
 
 volume2:
-  icon_path: ./assets/plane0069.png
+  icon_path: ./assets/Anatomy b.png
   adf_path: ../../ADF/volume_256.yaml
   name: 'Anatomy b'
 
 volume3:
-  icon_path: ./assets/plane0069.png
+  icon_path: ./assets/Anatomy c.png
   adf_path: ../../ADF/volume_512.yaml
   name: 'Anatomy c'

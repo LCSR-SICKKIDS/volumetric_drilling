@@ -23,10 +23,10 @@ class SetupGUI:
         self.ambf_executable_path = self.yaml_data["ambf_executable_path"]
         self.pupil_executable_path = self.yaml_data["pupil_executable_path"]
         self.launch_file = pathlib.Path(self.yaml_data["launch_file_path"]).resolve()
-        self.volumes_info = []
         volumes_data = self.yaml_data['volumes']
+        self.volumes_info = []
         for v in volumes_data:
-            adf_path = pathlib.Path(self.file_path / self.yaml_data[v]['adf_path']).resolve()
+            adf_path = pathlib.Path(self.yaml_data[v]['adf_path']).resolve()
             icon_path = pathlib.Path(self.yaml_data[v]['icon_path']).resolve()
             name = self.yaml_data[v]['name']
             # print('Parsing: ', v, ' ADF Path: ', adf_path, ' Icon Path: ', icon_path)
