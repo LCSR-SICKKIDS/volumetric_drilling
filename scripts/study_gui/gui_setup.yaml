@@ -1,0 +1,19 @@
+volumes: [volume1, volume2, volume3]
+ambf_executable_path: "/home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator"
+launch_file_path: "../../launch.yaml"
+pupil_executable_path: "pupil_capture"
+
+volume1:
+  icon_path: ./assets/plane0069.png
+  adf_path: ../../ADF/volume_171.yaml
+  name: 'Anatomy a'
+
+volume2:
+  icon_path: ./assets/plane0069.png
+  adf_path: ../../ADF/volume_256.yaml
+  name: 'Anatomy b'
+
+volume3:
+  icon_path: ./assets/plane0069.png
+  adf_path: ../../ADF/volume_512.yaml
+  name: 'Anatomy c'
