@@ -1,8 +1,10 @@
-volumes: [volume1, volume2, volume3]
-ambf_executable_path: "/home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator"
-launch_file_path: "../../launch.yaml"
+# ambf_executable_path: "/home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator"
+ambf_executable_path: "../../../ambf/bin/lin-x86_64/ambf_simulator"
 pupil_executable_path: "pupil_capture"
+launch_file_path: "../../launch.yaml"
+recording_base_path: "../../../Volumetric Drilling Userstudy/"
 
+volumes: [volume1, volume2, volume3]
 volume1:
   icon_path: ./assets/Anatomy a.png
   adf_path: ../../ADF/volume_171.yaml

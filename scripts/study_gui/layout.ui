@@ -35,7 +35,7 @@
     </size>
    </property>
    <property name="title">
-    <string>GroupBox</string>
+    <string>Case Subjects (Anatomies)</string>
    </property>
    <property name="flat">
     <bool>false</bool>

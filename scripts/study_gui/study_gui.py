@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt
 import sys
 from study_manager import StudyManager
 from gui_setup import SetupGUI
+import datetime
 
 
 class Ui(QtWidgets.QMainWindow):
@@ -46,6 +47,7 @@ class Ui(QtWidgets.QMainWindow):
         self.button_record_study.clicked.connect(self.pressed_record_study)
 
         self.text_participant_name = self.findChild(QtWidgets.QTextEdit, 'textEdit_participant_name')
+        self.recording_button = self.findChild(QtWidgets.QPushButton, 'button_record_study')
         self.show()
 
     def pressed_start_simulation(self):
@@ -64,6 +66,12 @@ class Ui(QtWidgets.QMainWindow):
         if button.isChecked():
             print('Active Volume is ', button.volume_name)
             self.active_volume_adf = button.volume_adf
+
+    def pressed_record_study(self):
+        base_path = str(self.gui_setup.recording_base_path)
+        participant_name = '/' + self.text_participant_name.toPlainText()
+        date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.study_manager.start_recording(base_path + participant_name + date_time)
 
     def closeEvent(self, event):
         print('Terminate Called')

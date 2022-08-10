@@ -20,8 +20,9 @@ class SetupGUI:
         self.yaml_file = open('gui_setup.yaml', 'r')
 
         self.yaml_data = yaml.safe_load(self.yaml_file)
-        self.ambf_executable_path = self.yaml_data["ambf_executable_path"]
-        self.pupil_executable_path = self.yaml_data["pupil_executable_path"]
+        self.ambf_executable_path = pathlib.Path(self.yaml_data["ambf_executable_path"]).resolve()
+        self.pupil_executable_path = pathlib.Path(self.yaml_data["pupil_executable_path"])
+        self.recording_base_path = pathlib.Path(self.yaml_data['recording_base_path']).resolve()
         self.launch_file = pathlib.Path(self.yaml_data["launch_file_path"]).resolve()
         volumes_data = self.yaml_data['volumes']
         self.volumes_info = []

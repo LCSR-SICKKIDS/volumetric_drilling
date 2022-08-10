@@ -1,10 +1,11 @@
+import os
 import subprocess
 
 
 class StudyManager:
     def __init__(self, ambf_executable_path, pupil_executable_path):
-        self.ambf_executable_path = ambf_executable_path
-        self.pupil_executable_path = pupil_executable_path
+        self.ambf_executable_path = str(ambf_executable_path)
+        self.pupil_executable_path = str(pupil_executable_path)
         self.ambf_handle = None
         self.pupil_service_handle = None
 
@@ -50,6 +51,9 @@ class StudyManager:
         if self.pupil_service_handle:
             self.pupil_service_handle.terminate()
             self.pupil_service_handle = None
+
+    def start_recording(self, path):
+        os.makedirs(path)
 
     def close(self):
         self.close_simulation()
