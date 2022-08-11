@@ -101,7 +101,7 @@ private:
     double m_dX = 0.03;
 
     // camera to render the world
-    afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR;
+    afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR, m_stereoCameraLandR;
 
     bool m_showDrill = true;
 

@@ -121,6 +121,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     m_stereoCameraL = m_worldPtr->getCamera("cameraL");
     m_stereoCameraR = m_worldPtr->getCamera("cameraR");
+    m_stereoCameraLandR = m_worldPtr->getCamera("stereoLR");
 
     // Initializing tool's rotation matrix as an identity matrix
     m_toolRotMat.identity();
@@ -1022,6 +1023,11 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             if (m_stereoCameraR){
                 m_stereoCameraR->setLocalPos(m_stereoCameraR->getLocalPos() + cVector3d(0., 0.001, 0.));
             }
+
+            if (m_stereoCameraLandR){
+                double stereo_sep = m_stereoCameraLandR->getInternalCamera()->getStereoEyeSeparation();
+                m_stereoCameraLandR->getInternalCamera()->setStereoEyeSeparation(stereo_sep + 0.002);
+            }
         }
         else if (a_key == GLFW_KEY_KP_SUBTRACT){
             if (m_stereoCameraL){
@@ -1029,6 +1035,11 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             }
             if (m_stereoCameraR){
                 m_stereoCameraR->setLocalPos(m_stereoCameraR->getLocalPos() - cVector3d(0., 0.001, 0.));
+            }
+
+            if (m_stereoCameraLandR){
+                double stereo_sep = m_stereoCameraLandR->getInternalCamera()->getStereoEyeSeparation();
+                m_stereoCameraLandR->getInternalCamera()->setStereoEyeSeparation(stereo_sep - 0.002);
             }
         }
     }
