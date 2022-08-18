@@ -123,6 +123,10 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_stereoCameraR = m_worldPtr->getCamera("cameraR");
     m_stereoCameraLandR = m_worldPtr->getCamera("stereoLR");
 
+    if (m_stereoCameraLandR){
+        makeVRWindowFullscreen(m_stereoCameraLandR);
+    }
+
     // Initializing tool's rotation matrix as an identity matrix
     m_toolRotMat.identity();
     m_toolRotMat = m_mainCamera->getLocalRot() * m_toolRotMat;
@@ -705,6 +709,38 @@ void afVolmetricDrillingPlugin::sliceVolume(int axisIdx, double delta)
 
     cerr << "> " << delta_dir_str << " Volume size along " << axis_str << " axis.                            \r";
 }
+
+
+void afVolmetricDrillingPlugin::makeVRWindowFullscreen(afCameraPtr vrCam, int monitor_number)
+{
+    int count;
+    GLFWmonitor** monitors = glfwGetMonitors(&count);
+
+    if (monitor_number >= 0){
+        if (monitor_number >= count){
+            cerr << "WARNING! SPECIFIED MONITOR NUMBER " << monitor_number <<
+                    " FOR VR IS GREATER THAN NUMBER OF DISPLAYS. IGNORING" << endl;
+            return;
+        }
+        vrCam->m_monitor = monitors[monitor_number];
+    }
+
+    for (int cnt = 0 ; cnt < count ; cnt++){
+        string monitor_name = glfwGetMonitorName(monitors[cnt]);
+        cerr << "\t Monitor Number: " << cnt << " | Name: " << monitor_name << endl;
+    }
+
+
+    const GLFWvidmode* mode = glfwGetVideoMode(vrCam->m_monitor);
+
+    int xpos, ypos;
+    glfwGetMonitorPos(vrCam->m_monitor, &xpos, &ypos);
+    glfwSetWindowPos(vrCam->m_window, xpos, ypos);
+    glfwSetWindowSize(vrCam->m_window, mode->width, mode->height);
+    glfwSwapInterval(0);
+    cerr << "\t\t Setting the Window on the VR Monitor to fullscreen \n" ;
+}
+
 
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
     if (a_mods == GLFW_MOD_CONTROL){

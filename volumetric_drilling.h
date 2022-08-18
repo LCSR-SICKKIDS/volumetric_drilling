@@ -50,6 +50,8 @@ protected:
 
     void sliceVolume(int axisIdx, double delta);
 
+    void makeVRWindowFullscreen(afCameraPtr vrCam, int monitor_number=-1);
+
 private:
     cTransform m_T_d, m_T_d_init; // Drills target pose
     cTransform m_T_i; // Input device transform
