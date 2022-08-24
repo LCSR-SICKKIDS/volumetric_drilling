@@ -788,12 +788,11 @@ void afVolmetricDrillingPlugin::updateButtons(){
 
     if (m_footpedal.isAvailable()){
         m_camClutch = m_footpedal.isCamClutchPressed();
+        m_deviceClutch = m_footpedal.isDeviceClutchPressed();
+
     }
     else if (m_hapticDevice->isDeviceAvailable()){
         m_hapticDevice->getUserSwitch(1, m_camClutch);
-    }
-
-    if (m_hapticDevice->isDeviceAvailable()){
         m_hapticDevice->getUserSwitch(0, m_deviceClutch);
     }
 }
@@ -1182,7 +1181,7 @@ bool FootPedal::isDrillOn()
 
 bool FootPedal::isChangeBurrSizePressed(){
     bool val = false;
-    bool burrChangeBtnCurrState = getButtonState(static_cast<int>(m_changeBurrButton));
+    bool burrChangeBtnCurrState = getButtonState(static_cast<int>(FootPedalButtonMap::CHANGE_BURR_SIZE));
     if (m_burrChangeBtnPrevState == false && burrChangeBtnCurrState == true){
         val = true;
     }
@@ -1190,7 +1189,10 @@ bool FootPedal::isChangeBurrSizePressed(){
     return val;
 }
 
-bool FootPedal::isCamClutchPressed()
-{
-    return getButtonState(static_cast<int>(m_camClutchButton));
+bool FootPedal::isCamClutchPressed(){
+    return getButtonState(static_cast<int>(FootPedalButtonMap::CAM_CLUTCH));
+}
+
+bool FootPedal::isDeviceClutchPressed(){
+    return getButtonState(static_cast<int>(FootPedalButtonMap::DEVICE_CLUTCH));
 }

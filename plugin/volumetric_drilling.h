@@ -9,7 +9,8 @@ using namespace ambf;
 
 enum class FootPedalButtonMap{
     CAM_CLUTCH = 0,
-    CHANGE_BURR_SIZE = 1
+    CHANGE_BURR_SIZE = 1,
+    DEVICE_CLUTCH = 2
 };
 
 enum class AudioState{
@@ -25,10 +26,7 @@ public:
 
     bool isCamClutchPressed();
 
-private:
-    const FootPedalButtonMap m_changeBurrButton = FootPedalButtonMap::CHANGE_BURR_SIZE;
-
-    const FootPedalButtonMap m_camClutchButton = FootPedalButtonMap::CAM_CLUTCH;
+    bool isDeviceClutchPressed();
 
     bool m_burrChangeBtnPrevState = false;
 };
