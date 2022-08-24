@@ -74,6 +74,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
             ("ds", p_opt::value<float>()->default_value(0.026), "Offset between shaft tool cursors. Default 0.026")
             ("vm", p_opt::value<string>()->default_value("00ShinyWhite.jpg"), "Volume's Matcap Filename (Should be placed in the ./resources/matcap/ folder)")
             ("dm", p_opt::value<string>()->default_value("dark_metal_brushed.jpg"), "Drill's Matcap Filename (Should be placed in ./resources/matcap/ folder)")
+            ("fp", p_opt::value<string>()->default_value("/dev/input/js0"), "Footpedal joystick input file description E.g. /dev/input/js0)")
             ("mute", p_opt::value<bool>()->default_value(false), "Mute");
 
     p_opt::variables_map var_map;
@@ -90,6 +91,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     string volume_matcap = var_map["vm"].as<string>();
     string drill_matcap = var_map["dm"].as<string>();
     bool mute = var_map["mute"].as<bool>();
+    string footpedal_fd = var_map["fp"].as<string>();
 
     if (nt > 0 && nt <= 8){
         m_toolCursorList.resize(nt);
@@ -318,7 +320,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         cerr << "FAILED TO LOAD DRILL AUDIO FROM " << drillAudioFilepath << endl;
     }
 
-    if (m_footpedal.init("/dev/input/js1")){
+    if (m_footpedal.init(footpedal_fd)){
         cerr << "SUCCESFULLY FOUND FOOTPEDAL \n";
     }
 
@@ -340,27 +342,7 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
     }
     m_volumeObject->getShaderProgram()->setUniformi("aoMap", C_TU_AO);
 
-//    if (m_footpedal.isChangeBurrSizePressed()){
-//        m_activeBurrIdx = (m_activeBurrIdx + 1) % 3;
-//        changeBurrSize(m_activeBurrIdx);
-//    }
-
-    m_drillOn = m_footpedal.isDrillOn();
-
-    if (m_drillOn){
-        if (m_audtioState == AudioState::STOPPED){
-            m_drillAudioSource->play();
-            m_audtioState = AudioState::PLAYING;
-        }
-    }
-    else{
-        if (m_audtioState == AudioState::PLAYING){
-            m_drillAudioSource->stop();
-            m_audtioState = AudioState::STOPPED;
-        }
-    }
-
-    m_footpedal.update();
+    updateButtons();
 }
 
 void afVolmetricDrillingPlugin::physicsUpdate(double dt){
@@ -373,20 +355,16 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         m_T_d = m_drillRigidBody->getLocalTransform();
     }
     else if(m_hapticDevice->isDeviceAvailable()){
-        bool device_clutch, cam_clutch;
-        m_hapticDevice->getUserSwitch(0, device_clutch);
-        m_hapticDevice->getUserSwitch(1, cam_clutch);
-
         m_hapticDevice->getTransform(m_T_i);
         m_hapticDevice->getLinearVelocity(m_V_i);
         m_V_i = T_c_w.getLocalRot() * (m_V_i / m_toolCursorList[0]->getWorkspaceScaleFactor());
-        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.4 * !device_clutch * !cam_clutch));
+        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.4 * !m_deviceClutch * !m_camClutch));
         m_T_d.setLocalRot(T_c_w.getLocalRot() * m_T_i.getLocalRot());
 
         // set zero forces when manipulating objects
-        if (device_clutch || cam_clutch){
-            if (cam_clutch){
-                 m_mainCamera->setView(T_c_w.getLocalPos() + m_V_i * !device_clutch, m_mainCamera->getTargetPosLocal(), m_mainCamera->getUpVector());
+        if (m_deviceClutch || m_camClutch){
+            if (m_camClutch){
+                 m_mainCamera->setView(T_c_w.getLocalPos() + m_V_i * !m_deviceClutch, m_mainCamera->getTargetPosLocal(), m_mainCamera->getUpVector());
             }
             m_toolCursorList[0]->setDeviceLocalForce(0.0, 0.0, 0.0);
         }
@@ -400,6 +378,19 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     if (getOverrideDrillControl() == false){
         // updates position of drill mesh
         drillPoseUpdateFromCursors();
+    }
+
+    if (m_drillOn){
+        if (m_audtioState == AudioState::STOPPED){
+            m_drillAudioSource->play();
+            m_audtioState = AudioState::PLAYING;
+        }
+    }
+    else{
+        if (m_audtioState == AudioState::PLAYING){
+            m_drillAudioSource->stop();
+            m_audtioState = AudioState::STOPPED;
+        }
     }
 
 
@@ -785,6 +776,28 @@ void afVolmetricDrillingPlugin::moveGazeMarker(double dt){
 
 }
 
+void afVolmetricDrillingPlugin::updateButtons(){
+    m_footpedal.poll();
+
+    if (m_footpedal.isChangeBurrSizePressed()){
+        m_activeBurrIdx = (m_activeBurrIdx + 1) % 3;
+        changeBurrSize(m_activeBurrIdx);
+    }
+
+    m_drillOn = m_footpedal.isDrillOn();
+
+    if (m_footpedal.isAvailable()){
+        m_camClutch = m_footpedal.isCamClutchPressed();
+    }
+    else if (m_hapticDevice->isDeviceAvailable()){
+        m_hapticDevice->getUserSwitch(1, m_camClutch);
+    }
+
+    if (m_hapticDevice->isDeviceAvailable()){
+        m_hapticDevice->getUserSwitch(0, m_deviceClutch);
+    }
+}
+
 
 void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, int a_scancode, int a_action, int a_mods) {
     if (a_mods == GLFW_MOD_CONTROL){
@@ -1162,22 +1175,22 @@ bool afVolmetricDrillingPlugin::close()
     return true;
 }
 
-bool FootPedal::init(std::string dev_name)
-{
-    return JoyStick::init(dev_name);
-    m_changeBurrButton = FootPedalButtonMap::CHANGE_BURR_SIZE;
-}
-
-void FootPedal::update()
-{
-    poll();
-}
-
 bool FootPedal::isDrillOn()
 {
     return getPedalState(0) >= 0.0 ? true : false;
 }
 
 bool FootPedal::isChangeBurrSizePressed(){
-    return getButtonState(static_cast<int>(m_changeBurrButton));
+    bool val = false;
+    bool burrChangeBtnCurrState = getButtonState(static_cast<int>(m_changeBurrButton));
+    if (m_burrChangeBtnPrevState == false && burrChangeBtnCurrState == true){
+        val = true;
+    }
+    m_burrChangeBtnPrevState = burrChangeBtnCurrState;
+    return val;
+}
+
+bool FootPedal::isCamClutchPressed()
+{
+    return getButtonState(static_cast<int>(m_camClutchButton));
 }

@@ -8,8 +8,8 @@ using namespace std;
 using namespace ambf;
 
 enum class FootPedalButtonMap{
-    CHANGE_BURR_SIZE = 0,
-    MOVE_CAMERA = 1
+    CAM_CLUTCH = 0,
+    CHANGE_BURR_SIZE = 1
 };
 
 enum class AudioState{
@@ -19,16 +19,18 @@ enum class AudioState{
 
 class FootPedal: public JoyStick{
 public:
-    bool init(std::string dev_name);
-
-    void update();
-
     bool isDrillOn();
 
     bool isChangeBurrSizePressed();
 
+    bool isCamClutchPressed();
+
 private:
-    FootPedalButtonMap m_changeBurrButton;
+    const FootPedalButtonMap m_changeBurrButton = FootPedalButtonMap::CHANGE_BURR_SIZE;
+
+    const FootPedalButtonMap m_camClutchButton = FootPedalButtonMap::CAM_CLUTCH;
+
+    bool m_burrChangeBtnPrevState = false;
 };
 
 class afVolmetricDrillingPlugin: public afSimulatorPlugin{
@@ -78,6 +80,8 @@ protected:
     void makeVRWindowFullscreen(afCameraPtr vrCam, int monitor_number=-1);
 
     void moveGazeMarker(double dt);
+
+    void updateButtons();
 
 private:
     cTransform m_T_d, m_T_d_init; // Drills target pose
@@ -191,8 +195,14 @@ private:
     cVector3d m_textureCoordScale; // Scale between volume corners extent and texture coordinates extent
 
     FootPedal m_footpedal;
+
     AudioState m_audtioState;
+
     bool m_drillOn;
+
+    bool m_camClutch;
+
+    bool m_deviceClutch;
 };
 
 

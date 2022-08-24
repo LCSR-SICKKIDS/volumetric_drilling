@@ -20,6 +20,19 @@
 #include <unistd.h>
 #include <linux/joystick.h>
 #include <string>
+#include <vector>
+
+using namespace std;
+
+struct JoyState{
+
+    JoyState();
+    vector<bool> m_buttons;
+    vector<double> m_axes;
+
+    void print();
+    void reset();
+};
 
 class JoyStick{
 public:
@@ -28,11 +41,15 @@ public:
 
     int init(std::string dev_name);
 
+    bool isAvailable();
+
     bool getButtonState(int button_index);
 
     double getPedalState(int pedal_index);
 
     void poll();
+
+    JoyState m_state;
 
 private:
     int readEvent(int fd, struct js_event *event);

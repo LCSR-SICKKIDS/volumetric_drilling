@@ -2,9 +2,42 @@
 #include <string>
 #include <iostream>
 
-
 using namespace std;
 
+JoyState::JoyState(){
+    m_buttons.resize(3);
+    m_axes.resize(1);
+
+    for (int i = 0 ; i < m_buttons.size(); i++){
+        m_buttons[i] = false;
+    }
+
+    for (int i = 0 ; i < m_axes.size(); i++){
+        m_axes[i] = -1.0;
+    }
+}
+
+void JoyState::print(){
+    for (int i = 0 ; i < m_buttons.size(); i++){
+        printf("\tButton %u %s\n", i, m_buttons[i] ? "pressed" : "released");
+
+    }
+
+    for (int i = 0 ; i < m_axes.size(); i++){
+    printf("\tAxis at (%6d, %6f)\n", i, m_axes[i]);
+
+    }
+}
+
+void JoyState::reset(){
+    for (int i = 0 ; i < m_buttons.size(); i++){
+        m_buttons[i] = false;
+    }
+
+    for (int i = 0 ; i < m_axes.size(); i++){
+        m_axes[i] = -1.0;
+    }
+}
 
 ///
 /// \brief JoyStick::JoyStick
@@ -14,7 +47,7 @@ JoyStick::JoyStick(){
 
 
 ///
-/// \brief FootPedal::~FootPedal
+/// \brief JoyStick::~JoyStick
 ///
 JoyStick::~JoyStick(){
     close(m_js);
@@ -22,7 +55,7 @@ JoyStick::~JoyStick(){
 
 
 ///
-/// \brief FootPedal::init
+/// \brief JoyStick::init
 /// \param dev_name
 /// \return
 ///
@@ -30,8 +63,9 @@ int JoyStick::init(string dev_name){
     m_js = open(dev_name.c_str(), O_RDONLY | O_NONBLOCK);
 
     if (m_js == -1){
-
-        perror("Could not open footpedal");
+        // Since the footpedal is not loaded, set the axes to 0.
+        m_state.m_axes[0] = 0.;
+        perror("Could not open JoyStick");
         return -1;
     }
     else{
@@ -40,9 +74,13 @@ int JoyStick::init(string dev_name){
 
 }
 
+bool JoyStick::isAvailable(){
+    return m_js == -1 ? false : true;
+}
+
 
 ///
-/// \brief FootPedal::readEvent
+/// \brief JoyStick::readEvent
 /// \param fd
 /// \param event
 /// \return
@@ -60,63 +98,43 @@ int JoyStick::readEvent(int fd, struct js_event *event){
 
 
 ///
-/// \brief FootPedal::getButtonState
+/// \brief JoyStick::getButtonState
 /// \param button_index
 /// \return
 ///
 bool JoyStick::getButtonState(int button_index){
-    bool pressed = false;
-    if (m_js != -1){
-        // Only if footpedal is initialized, check for button press. Else return false
-        if (readEvent(m_js, &m_event) == 0){
-            if (m_event.type == JS_EVENT_BUTTON){
-                if (m_event.number == button_index ){
-                    pressed = m_event.value;
-                }
-            }
-            fflush(stdout);
-        }
-    }
-    return pressed;
+    return m_state.m_buttons[button_index];
 }
 
 
 ///
-/// \brief FootPedal::getPedalState
+/// \brief JoyStick::getPedalState
 /// \param pedal_index
 /// \return
 ///
 double JoyStick::getPedalState(int pedal_index){
-    if (m_js != -1){
-        if (readEvent(m_js, &m_event) == 0){
-            if (m_event.type == JS_EVENT_AXIS){
-                if (m_event.number == pedal_index){
-                    m_pedalValue = m_event.value / double(32768);
-                }
-            }
-            fflush(stdout);
-        }
-    }
-    return m_pedalValue;
+    return m_state.m_axes[pedal_index];
 }
 
 void JoyStick::poll()
 {
-    while (readEvent(m_js, &m_event) == 0)
+    if (readEvent(m_js, &m_event) == 0)
+    {
+        switch (m_event.type)
         {
-            switch (m_event.type)
-            {
-                case JS_EVENT_BUTTON:
-                    printf("Button %u %s\n", m_event.number, m_event.value ? "pressed" : "released");
-                    break;
-                case JS_EVENT_AXIS:
-                    printf("Axis at (%6d, %6f)\n", m_event.number, double (m_event.value / 32768.0));
-                    break;
-                default:
-                    /* Ignore init events. */
-                    break;
-            }
-
-            fflush(stdout);
+        case JS_EVENT_BUTTON:
+//            printf("Button %u %s\n", m_event.number, m_event.value ? "pressed" : "released");
+            m_state.m_buttons[m_event.number] = m_event.value;
+            break;
+        case JS_EVENT_AXIS:
+//            printf("Axis at (%6d, %6f)\n", m_event.number, double (m_event.value / 32768.0));
+            m_state.m_axes[m_event.number] = double (m_event.value / 32768.0);
+            break;
+        default:
+            /* Ignore init events. */
+            break;
         }
+
+        fflush(stdout);
+    }
 }
