@@ -262,7 +262,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     string file_path = __FILE__;
     string cur_path = file_path.substr(0, file_path.rfind("/"));
-    string volumeMatcapFilepath = cur_path + "/resources/matcap/" + volume_matcap;
+    string volumeMatcapFilepath = cur_path + "/../resources/matcap/" + volume_matcap;
     cTexture2dPtr volMatCap = cTexture2d::create();
     if(volMatCap->loadFromFile(volumeMatcapFilepath)){
         m_volumeObject->getInternalVolume()->m_aoTexture = volMatCap;
@@ -275,7 +275,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     cTexture2dPtr drillMatCap = cTexture2d::create();
     if (m_drillRigidBody->getShaderProgram()){
-        string drillMatcapFilepath = cur_path + "/resources/matcap/" + drill_matcap;
+        string drillMatcapFilepath = cur_path + "/../resources/matcap/" + drill_matcap;
         if(drillMatCap->loadFromFile(drillMatcapFilepath)){
             for (int mi = 0 ; mi < m_drillRigidBody->getVisualObject()->getNumMeshes(); mi++){
                 m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture = drillMatCap;
@@ -300,14 +300,15 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_mainCamera->getInternalCamera()->attachAudioDevice(m_drillAudioDevice);
 
     m_drillAudioBuffer = new cAudioBuffer();
-    string drillAudioFilepath = cur_path + "/resources/sounds/drill.wav";
+    string drillAudioFilepath = cur_path + "/../resources/sounds/drill.wav";
     if (m_drillAudioBuffer->loadFromFile(drillAudioFilepath)){
         m_drillAudioSource = new cAudioSource();
 //        m_drillAudioBuffer->convertToMono();
         m_drillAudioSource->setAudioBuffer(m_drillAudioBuffer);
         m_drillAudioSource->setLoop(true);
         m_drillAudioSource->setGain(5.0);
-        if (!mute) m_drillAudioSource->play();
+//        if (!mute) m_drillAudioSource->play();
+        m_audtioState = AudioState::STOPPED;
     }
     else{
         delete m_drillAudioSource;
@@ -315,6 +316,10 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         m_drillAudioSource = nullptr;
         m_drillAudioBuffer = nullptr;
         cerr << "FAILED TO LOAD DRILL AUDIO FROM " << drillAudioFilepath << endl;
+    }
+
+    if (m_footpedal.init("/dev/input/js1")){
+        cerr << "SUCCESFULLY FOUND FOOTPEDAL \n";
     }
 
     return 1;
@@ -334,6 +339,28 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
         m_flagMarkVolumeForUpdate = false;
     }
     m_volumeObject->getShaderProgram()->setUniformi("aoMap", C_TU_AO);
+
+//    if (m_footpedal.isChangeBurrSizePressed()){
+//        m_activeBurrIdx = (m_activeBurrIdx + 1) % 3;
+//        changeBurrSize(m_activeBurrIdx);
+//    }
+
+    m_drillOn = m_footpedal.isDrillOn();
+
+    if (m_drillOn){
+        if (m_audtioState == AudioState::STOPPED){
+            m_drillAudioSource->play();
+            m_audtioState = AudioState::PLAYING;
+        }
+    }
+    else{
+        if (m_audtioState == AudioState::PLAYING){
+            m_drillAudioSource->stop();
+            m_audtioState = AudioState::STOPPED;
+        }
+    }
+
+    m_footpedal.update();
 }
 
 void afVolmetricDrillingPlugin::physicsUpdate(double dt){
@@ -394,7 +421,9 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
                 m_warningText->setShowEnabled(true);
             }
 
-            m_voxelObj->m_texture->m_image->setVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_zeroColor);
+            if (m_drillOn){
+                m_voxelObj->m_texture->m_image->setVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_zeroColor);
+            }
 
             //Publisher for voxels removed
             if(m_storedColor != m_zeroColor)
@@ -732,13 +761,28 @@ void afVolmetricDrillingPlugin::makeVRWindowFullscreen(afCameraPtr vrCam, int mo
 
 
     const GLFWvidmode* mode = glfwGetVideoMode(vrCam->m_monitor);
-
+    int w = 0.7 * mode->width;
+    int h = 0.7 * mode->height;
+    int x = 0.5 * (mode->width - w);
+    int y = 0.5 * (mode->height - h);
     int xpos, ypos;
     glfwGetMonitorPos(vrCam->m_monitor, &xpos, &ypos);
-    glfwSetWindowPos(vrCam->m_window, xpos, ypos);
-    glfwSetWindowSize(vrCam->m_window, mode->width, mode->height);
+    x += xpos; y += ypos;
+    glfwSetWindowPos(vrCam->m_window, x, y);
+    glfwSetWindowSize(vrCam->m_window, w, h);
     glfwSwapInterval(0);
     cerr << "\t\t Setting the Window on the VR Monitor to fullscreen \n" ;
+}
+
+void afVolmetricDrillingPlugin::moveGazeMarker(double dt){
+    if (!m_gazeMarker){
+        //
+    }
+
+    cTransform T_m_w = m_gazeMarker->getLocalTransform();
+    cTransform T_c_w = m_mainCamera->getLocalTransform();
+
+
 }
 
 
@@ -1116,4 +1160,24 @@ bool afVolmetricDrillingPlugin::close()
     delete m_deviceHandler;
 
     return true;
+}
+
+bool FootPedal::init(std::string dev_name)
+{
+    return JoyStick::init(dev_name);
+    m_changeBurrButton = FootPedalButtonMap::CHANGE_BURR_SIZE;
+}
+
+void FootPedal::update()
+{
+    poll();
+}
+
+bool FootPedal::isDrillOn()
+{
+    return getPedalState(0) >= 0.0 ? true : false;
+}
+
+bool FootPedal::isChangeBurrSizePressed(){
+    return getButtonState(static_cast<int>(m_changeBurrButton));
 }
