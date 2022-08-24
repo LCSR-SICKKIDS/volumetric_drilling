@@ -1,0 +1,26 @@
+# AMBF Version: (0.1)
+bodies: []
+joints: []
+volumes: [VOLUME mastoidectomy_volume_low]
+high resolution path: ./meshes/high_res/
+low resolution path: ./meshes/low_res/
+ignore inter-collision: true
+namespace: /ambf/env/
+
+VOLUME mastoidectomy_volume_low:
+  name: mastoidectomy_volume_low
+  location:
+    position: {x: -6.040592783505154, y: 0.0, z: 0.0}  # placed 745mm away from camera given 1AU = 0.049664m
+    # orientation: {r: 1.57079, p: 1.4, y: 0}
+    orientation: {r: 1.57079, p: 1.4, y: 0}
+  scale: 1.0
+  dimensions: {x: 1.0, y: 1.0, z: 1.0}
+  images:
+    path: ../resources/volumes/RT143_256/
+    prefix: plane00
+    format: png
+    count: 512
+  shaders:
+    path: ./shaders/volume_matcap/
+    vertex: shader.vs
+    fragment: shader.fs
