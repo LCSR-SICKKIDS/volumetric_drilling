@@ -198,9 +198,9 @@ private:
 
     bool m_drillOn;
 
-    bool m_camClutch;
+    bool m_camClutch = false;
 
-    bool m_deviceClutch;
+    bool m_deviceClutch = false;
 };
 
 

@@ -320,7 +320,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         cerr << "FAILED TO LOAD DRILL AUDIO FROM " << drillAudioFilepath << endl;
     }
 
-    if (m_footpedal.init(footpedal_fd)){
+    if (m_footpedal.init(footpedal_fd) != -1){
         cerr << "SUCCESFULLY FOUND FOOTPEDAL \n";
     }
 
@@ -514,7 +514,7 @@ void afVolmetricDrillingPlugin::toolCursorInit(const afWorldPtr a_afWorld){
 
             // map the physical workspace of the haptic device to a larger virtual workspace.
 
-            m_toolCursorList[i]->setWorkspaceRadius(10.0);
+            m_toolCursorList[i]->setWorkspaceRadius(5.0);
             m_toolCursorList[i]->setWaitForSmallForce(true);
             m_toolCursorList[i]->start();
             m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
@@ -752,10 +752,10 @@ void afVolmetricDrillingPlugin::makeVRWindowFullscreen(afCameraPtr vrCam, int mo
 
 
     const GLFWvidmode* mode = glfwGetVideoMode(vrCam->m_monitor);
-    int w = 0.7 * mode->width;
-    int h = 0.7 * mode->height;
-    int x = 0.5 * (mode->width - w);
-    int y = 0.5 * (mode->height - h);
+    int w = 0.9 * mode->width;
+    int h = 0.9 * mode->height;
+    int x = 0.7 * (mode->width - w);
+    int y = 0.7 * (mode->height - h);
     int xpos, ypos;
     glfwGetMonitorPos(vrCam->m_monitor, &xpos, &ypos);
     x += xpos; y += ypos;
