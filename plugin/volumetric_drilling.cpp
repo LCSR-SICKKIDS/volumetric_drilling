@@ -456,6 +456,9 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // check if device remains stuck inside voxel object
     // Also orient the force to match the camera rotation
     cVector3d force = cTranspose(T_c_w.getLocalRot()) * m_targetToolCursor->getDeviceLocalForce();
+    if (m_drillOn){
+        force += (cVector3d(1.0, 1.0, 1.0) * m_waveGenerator.generate(dt));
+    }
     m_toolCursorList[0]->setDeviceLocalForce(force);
     double force_mag = cClamp(force.length(), 0.0, m_hapticDevice->getSpecifications().m_maxLinearForce);
     if (m_drillAudioSource){
@@ -1195,4 +1198,13 @@ bool FootPedal::isCamClutchPressed(){
 
 bool FootPedal::isDeviceClutchPressed(){
     return getButtonState(static_cast<int>(FootPedalButtonMap::DEVICE_CLUTCH));
+}
+
+WaveGenerator::WaveGenerator(){
+
+}
+
+double WaveGenerator::generate(double dt){
+    m_time += dt;
+    return m_amplitude * sin(m_frequency * m_time);
 }

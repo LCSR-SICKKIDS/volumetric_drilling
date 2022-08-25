@@ -31,6 +31,15 @@ public:
     bool m_burrChangeBtnPrevState = false;
 };
 
+class WaveGenerator{
+public:
+    WaveGenerator();
+    double generate(double dt);
+    double m_amplitude = 0.3;
+    double m_frequency = 5000.0;
+    double m_time = 0.;
+};
+
 class afVolmetricDrillingPlugin: public afSimulatorPlugin{
 public:
     afVolmetricDrillingPlugin();
@@ -195,6 +204,8 @@ private:
     FootPedal m_footpedal;
 
     AudioState m_audtioState;
+
+    WaveGenerator m_waveGenerator;
 
     bool m_drillOn;
 
