@@ -18,3 +18,4 @@ multibody configs:
   - "ADF/segmentation_camera.yaml" #4
   - "ADF/stereo_cameras.yaml" #5
   - "ADF/single_stereo_camera.yaml" #6
+  - "ADF/gaze_marker.yaml" #6

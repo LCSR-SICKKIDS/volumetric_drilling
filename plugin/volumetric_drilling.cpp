@@ -75,7 +75,8 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
             ("vm", p_opt::value<string>()->default_value("00ShinyWhite.jpg"), "Volume's Matcap Filename (Should be placed in the ./resources/matcap/ folder)")
             ("dm", p_opt::value<string>()->default_value("dark_metal_brushed.jpg"), "Drill's Matcap Filename (Should be placed in ./resources/matcap/ folder)")
             ("fp", p_opt::value<string>()->default_value("/dev/input/js0"), "Footpedal joystick input file description E.g. /dev/input/js0)")
-            ("mute", p_opt::value<bool>()->default_value(false), "Mute");
+            ("mute", p_opt::value<bool>()->default_value(false), "Mute")
+            ("gc", p_opt::value<bool>()->default_value(false), "Perform Gaze Calibration");
 
     p_opt::variables_map var_map;
     p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).allow_unregistered().run(), var_map);
@@ -92,6 +93,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     string drill_matcap = var_map["dm"].as<string>();
     bool mute = var_map["mute"].as<bool>();
     string footpedal_fd = var_map["fp"].as<string>();
+    bool perform_gaze_calib = var_map["gc"].as<bool>();
 
     if (nt > 0 && nt <= 8){
         m_toolCursorList.resize(nt);
@@ -324,6 +326,16 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         cerr << "SUCCESFULLY FOUND FOOTPEDAL \n";
     }
 
+    if (perform_gaze_calib){
+        afRigidBodyPtr gazeMarker = a_afWorld->getRigidBody("GazeMarker");
+        if (gazeMarker){
+            m_gazeMarkerController.init(gazeMarker, m_mainCamera, 10.);
+        }
+        else{
+            cerr << "ERROR! GAZE MARKER RIGID BODY NOT FOUND. CAN'T PERFORM GAZE CALIBRATION MOTION" << endl;
+        }
+    }
+
     return 1;
 }
 
@@ -346,6 +358,8 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
 }
 
 void afVolmetricDrillingPlugin::physicsUpdate(double dt){
+
+    m_gazeMarkerController.moveGazeMarker(dt);
 
     m_worldPtr->getChaiWorld()->computeGlobalPositions(true);
 
@@ -768,17 +782,6 @@ void afVolmetricDrillingPlugin::makeVRWindowFullscreen(afCameraPtr vrCam, int mo
     cerr << "\t\t Setting the Window on the VR Monitor to fullscreen \n" ;
 }
 
-void afVolmetricDrillingPlugin::moveGazeMarker(double dt){
-    if (!m_gazeMarker){
-        //
-    }
-
-    cTransform T_m_w = m_gazeMarker->getLocalTransform();
-    cTransform T_c_w = m_mainCamera->getLocalTransform();
-
-
-}
-
 void afVolmetricDrillingPlugin::updateButtons(){
     m_footpedal.poll();
 
@@ -883,6 +886,11 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         else if (a_key == GLFW_KEY_N){
             cerr << "INFO! RESETTING THE VOLUME" << endl;
             m_volumeObject->reset();
+        }
+
+        else if (a_key == GLFW_KEY_G){
+            cerr << "Restarting Gaze Marker Motion" << endl;
+            m_gazeMarkerController.restart();
         }
 
         // Reset the drill pose
@@ -1207,4 +1215,69 @@ WaveGenerator::WaveGenerator(){
 double WaveGenerator::generate(double dt){
     m_time += dt;
     return m_amplitude * sin(m_frequency * m_time);
+}
+
+GazeMarkerController::GazeMarkerController(){
+    m_gazeMarker = nullptr;
+}
+
+int GazeMarkerController::init(afRigidBodyPtr gazeMarker, afCameraPtr camPtr, double duration)
+{
+    m_gazeMarker = gazeMarker;
+    m_camera = camPtr;
+    m_radius = 0.;
+    m_delta_radius = 0.00000005;
+
+    m_T_c_w = m_camera->getLocalTransform();
+    m_T_m_c = cTransform(cVector3d(-4., 0., 0.), cMatrix3d());
+
+    m_T_m_w = m_T_c_w * m_T_m_c;
+    m_gazeMarker->setLocalTransform(m_T_m_w);
+
+    m_time = 0.;
+    m_duration = duration;
+
+    return 1;
+}
+
+void GazeMarkerController::moveGazeMarker(double dt)
+{
+    if (m_time >= m_duration || m_gazeMarker == nullptr){
+        hide(true);
+        return;
+    }
+
+    if (m_time == 0.){
+        hide(false);
+    }
+
+    m_time += dt;
+    cVector3d dP(0., m_radius * sin(m_time), m_radius * cos(m_time));
+
+    m_T_m_w.setLocalPos( m_T_m_w.getLocalPos() + m_T_c_w.getLocalRot() * dP);
+    m_T_m_w.setLocalRot(m_T_c_w.getLocalRot());
+
+    m_gazeMarker->setLocalTransform(m_T_m_w);
+
+//    cerr << m_time << ": " << m_radius << " :: " << m_T_m_w.getLocalPos().str(2) << endl;
+
+    m_radius += m_delta_radius;
+}
+
+void GazeMarkerController::hide(bool val)
+{
+    if (m_gazeMarker != nullptr){
+        m_gazeMarker->getVisualObject()->setShowEnabled(!val);
+    }
+}
+
+void GazeMarkerController::restart()
+{
+    if (m_gazeMarker != nullptr){
+        m_radius = 0.;
+        m_time = 0.;
+        m_gazeMarker->reset();
+        m_T_c_w = m_camera->getLocalTransform();
+        m_T_m_w = m_T_c_w * m_T_m_c;;
+    }
 }

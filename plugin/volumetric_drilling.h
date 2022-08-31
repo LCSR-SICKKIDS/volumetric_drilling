@@ -77,9 +77,35 @@ class WaveGenerator{
 public:
     WaveGenerator();
     double generate(double dt);
-    double m_amplitude = 0.3;
+    double m_amplitude = 0.15;
     double m_frequency = 5000.0;
     double m_time = 0.;
+};
+
+class GazeMarkerController{
+public:
+    GazeMarkerController();
+
+    int init(afRigidBodyPtr gazeMarker, afCameraPtr camPtr, double duration=10.);
+
+    void moveGazeMarker(double dt);
+
+    void hide(bool val);
+
+    void restart();
+
+
+private:
+    double m_radius;
+    double m_delta_radius;
+    cTransform m_T_c_w;
+    cTransform m_T_m_w;
+    cTransform m_T_m_c;
+    double m_time;
+    double m_duration;
+
+    afRigidBodyPtr m_gazeMarker;
+    afCameraPtr m_camera;
 };
 
 class afVolmetricDrillingPlugin: public afSimulatorPlugin{
@@ -127,8 +153,6 @@ protected:
     void sliceVolume(int axisIdx, double delta);
 
     void makeVRWindowFullscreen(afCameraPtr vrCam, int monitor_number=-1);
-
-    void moveGazeMarker(double dt);
 
     void updateButtons();
 
@@ -184,8 +208,6 @@ private:
 
     // camera to render the world
     afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR, m_stereoCameraLandR;
-
-    afRigidBodyPtr m_gazeMarker;
 
     bool m_showDrill = true;
 
@@ -248,6 +270,8 @@ private:
     AudioState m_audtioState;
 
     WaveGenerator m_waveGenerator;
+
+    GazeMarkerController m_gazeMarkerController;
 
     bool m_drillOn;
 
