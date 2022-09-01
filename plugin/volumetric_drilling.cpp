@@ -285,7 +285,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
                 m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture = drillMatCap;
                 m_drillRigidBody->getVisualObject()->getMesh(mi)->m_metallicTexture->setTextureUnit(GL_TEXTURE3);
             }
-            m_drillRigidBody->getShaderProgram()->setUniformi("matcapMap", C_TU_METALLIC);
+            m_drillRigidBody->getShaderProgram()->setUniformi("uMatcapMap", C_TU_METALLIC);
             cerr << "SUCCESFULLY LOADED MATCAP2 TEXTURE" << endl;
         }
         else{
@@ -352,7 +352,8 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
         ((cTexture3d*)m_voxelObj->m_texture.get())->markForPartialUpdate(min, max);
         m_flagMarkVolumeForUpdate = false;
     }
-    m_volumeObject->getShaderProgram()->setUniformi("aoMap", C_TU_AO);
+    m_volumeObject->getShaderProgram()->setUniformi("uMatcapMap", C_TU_AO);
+    m_volumeObject->getShaderProgram()->setUniformi("shadowMap", C_TU_SHADOWMAP);
 
     updateButtons();
 }
@@ -891,6 +892,13 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         else if (a_key == GLFW_KEY_G){
             cerr << "Restarting Gaze Marker Motion" << endl;
             m_gazeMarkerController.restart();
+        }
+
+        else if (a_key == GLFW_KEY_E){
+            static int enableShadow = 0;
+            enableShadow = ! enableShadow;
+            cerr << "INFO! TOGGLING SHADOW MAP " << enableShadow << endl;
+            m_volumeObject->getShaderProgram()->setUniformi("uEnableShadow", enableShadow);
         }
 
         // Reset the drill pose
