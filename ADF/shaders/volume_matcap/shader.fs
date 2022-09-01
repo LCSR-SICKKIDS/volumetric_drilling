@@ -153,7 +153,7 @@ void main(void)
             vec3 normal = -normalize(nabla);
             vec3 view = -raydir;
 
-            vec3 lp = vec3( gl_LightSource[0].position);
+            vec3 lp = vec3( gl_LightSource[0].spotDirection;
             float bias = max(0.01 * (1.0 - dot(normal, lp)), 0.001);
             dpos.xyz = vPosition.xyz + (t - bias - dt * t_step) * raydir;
 
