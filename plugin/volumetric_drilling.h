@@ -77,8 +77,8 @@ class WaveGenerator{
 public:
     WaveGenerator();
     double generate(double dt);
-    double m_amplitude = 0.15;
-    double m_frequency = 5000.0;
+    double m_amplitude = 0.08;
+    double m_frequency = 500.0;
     double m_time = 0.;
 };
 
