@@ -49,7 +49,7 @@ BODY GazeMarker:
   damping:
     angular: 0.1
     linear: 0.04
-  visible: true
+  visible: false
   collision groups: []
   color components:
     ambient:
