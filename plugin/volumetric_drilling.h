@@ -49,6 +49,14 @@
 using namespace std;
 using namespace ambf;
 
+namespace boost{
+    namespace program_options{
+        class variables_map;
+    }
+}
+
+namespace p_opt = boost::program_options;
+
 enum class FootPedalButtonMap{
     CAM_CLUTCH = 0,
     CHANGE_BURR_SIZE = 1,
@@ -86,7 +94,7 @@ class GazeMarkerController{
 public:
     GazeMarkerController();
 
-    int init(afRigidBodyPtr gazeMarker, afCameraPtr camPtr, double duration=10.);
+    int init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map& var_map);
 
     void moveGazeMarker(double dt);
 
@@ -108,6 +116,138 @@ private:
     afCameraPtr m_camera;
 };
 
+
+struct Drill{
+public:
+    afRigidBodyPtr m_rigidBody;
+    string m_name;
+    double m_size;
+};
+
+
+class DrillManager{
+public:
+
+    DrillManager();
+
+    void cleanup();
+
+    int init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::variables_map& opts);
+
+    void update(double dt);
+
+    // Initialize tool cursors
+    void toolCursorInit(const afWorldPtr);
+
+    void incrementDevicePos(cVector3d a_pos);
+
+    void incrementDeviceRot(cVector3d a_rot);
+
+    void toolCursorsInitialize();
+
+    // update position of shaft tool cursors
+    void toolCursorsPosUpdate(cTransform a_devicePose);
+
+    // check for shaft collision
+    void checkShaftCollision(void);
+
+    // toggles size of the drill burr
+    void changeBurrSize(int burrType);
+
+    bool getOverrideControl(){return m_overrideControl;}
+
+    void setOverrideControl(bool val);
+
+    // update position of drill mesh
+    void updatePoseFromCursors(void);
+
+    void reset();
+
+    // a haptic device handler
+    cHapticDeviceHandler* m_deviceHandler;
+
+    // a pointer to the current haptic device
+    cGenericHapticDevicePtr m_hapticDevice;
+
+    DrillingPublisher* m_drillingPub;
+
+    std::map<int, Drill> m_drills;
+
+    afRigidBodyPtr m_drillRigidBody;
+
+    bool m_overrideControl = false;
+
+    // rate of drill movement
+    double m_drillRate = 0.020f;
+
+    // A map of drill burr indices, radius and description
+    map<int, pair<double, string>> m_drillBurrSizes;
+
+    cShapeSphere* m_burrMesh;
+
+    bool m_show = true;
+
+    cTransform m_T_d, m_T_d_init; // Drills target pose
+
+    cTransform m_T_i; // Input device transform
+
+    cVector3d m_V_i; // Input device linear velocity
+
+    // current and maximum distance between proxy and goal spheres
+    double m_currError = 0;
+
+    double m_maxError = 0;
+
+    bool m_camClutch = false;
+
+    bool m_deviceClutch = false;
+
+    // panel to display current drill size
+    cPanel* m_sizePanel;
+
+    cLabel* m_sizeText;
+
+    cLabel* m_controlModeText;
+
+    cAudioSource* m_audioSource = nullptr;
+
+    cAudioBuffer* m_audioBuffer = nullptr;
+
+    cAudioDevice* m_audioDevice = nullptr;
+
+    AudioState m_audioState;
+
+    void setAudioPitch(double pitch);
+
+    bool m_isOn;
+
+    // toggles whether the drill mesh should move slowly towards the followSphere
+    // or make a sudden jump
+    bool m_suddenJump = true;
+
+    // index of current drill size
+    int m_activeBurrIdx = 0;
+
+    bool m_showGoalProxySpheres = false;
+
+    // list of tool cursors
+    vector<cToolCursor*> m_toolCursorList;
+
+    // radius of tool cursors
+    vector<double> m_toolCursorRadius{0.02, 0.013, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025};
+
+    // Local offset between shaft tool cursors
+    double m_dX = 0.03;
+
+    // for storing index of follow sphere
+    int m_targetToolCursorIdx = 0;
+
+    cToolCursor* m_targetToolCursor;
+
+    afCameraPtr m_camera;
+};
+
+
 class afVolmetricDrillingPlugin: public afSimulatorPlugin{
 public:
     afVolmetricDrillingPlugin();
@@ -121,35 +261,7 @@ public:
     virtual void reset() override;
     virtual bool close() override;
 
-    DrillingPublisher* m_drillingPub;
 protected:
-    // Initialize tool cursors
-    void toolCursorInit(const afWorldPtr);
-
-    void incrementDevicePos(cVector3d a_pos);
-
-    void incrementDeviceRot(cVector3d a_rot);
-
-    void toolCursorsInitialize();
-
-    // update position of shaft tool cursors
-    void toolCursorsPosUpdate(cTransform a_devicePose);
-
-    void resetDrill();
-
-    // check for shaft collision
-    void checkShaftCollision(void);
-
-    // update position of drill mesh
-    void drillPoseUpdateFromCursors(void);
-
-    // toggles size of the drill burr
-    void changeBurrSize(int burrType);
-
-    bool getOverrideDrillControl(){return m_overrideDrillControl;}
-
-    void setOverrideDrillControl(bool val){m_overrideDrillControl = val;}
-
     void sliceVolume(int axisIdx, double delta);
 
     void makeVRWindowFullscreen(afCameraPtr vrCam, int monitor_number=-1);
@@ -157,15 +269,8 @@ protected:
     void updateButtons();
 
 private:
-    cTransform m_T_d, m_T_d_init; // Drills target pose
-    cTransform m_T_i; // Input device transform
-    cVector3d m_V_i; // Input device linear velocity
-
-    bool m_overrideDrillControl = false;
 
     cVoxelObject* m_voxelObj;
-
-    cToolCursor* m_targetToolCursor;
 
     int m_renderingMode = 0;
 
@@ -183,67 +288,16 @@ private:
 
     cGenericObject* m_selectedObject = NULL;
 
-    // a haptic device handler
-    cHapticDeviceHandler* m_deviceHandler;
-
-    // a pointer to the current haptic device
-    cGenericHapticDevicePtr m_hapticDevice;
-
     bool m_flagMarkVolumeForUpdate = false;
 
-    afRigidBodyPtr m_drillRigidBody;
-
     afVolumePtr m_volumeObject;
-
-    cShapeSphere* m_burrMesh;
-
-    // tool's rotation matrix
-    cMatrix3d m_toolRotMat;
-
-    // rate of drill movement
-    double m_drillRate = 0.020f;
-
-    // Local offset between shaft tool cursors
-    double m_dX = 0.03;
 
     // camera to render the world
     afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR, m_stereoCameraLandR;
 
-    bool m_showDrill = true;
-
-    bool m_showGoalProxySpheres = false;
-
-    // list of tool cursors
-    vector<cToolCursor*> m_toolCursorList;
-
-    // radius of tool cursors
-    vector<double> m_toolCursorRadius{0.02, 0.013, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025};
-
     // warning pop-up panel
     cPanel* m_warningPopup;
     cLabel* m_warningText;
-
-    // panel to display current drill size
-    cPanel* m_drillSizePanel;
-    cLabel* m_drillSizeText;
-    cLabel* m_drillControlModeText;
-
-    // current and maximum distance between proxy and goal spheres
-    double m_currError = 0;
-    double m_maxError = 0;
-
-    // for storing index of follow sphere
-    int m_targetToolCursorIdx = 0;
-
-    // toggles whether the drill mesh should move slowly towards the followSphere
-    // or make a sudden jump
-    bool m_suddenJump = true;
-
-    // index of current drill size
-    int m_activeBurrIdx = 0;
-
-    // A map of drill burr indices, radius and description
-    map<int, pair<double, string>> m_drillBurrSizes;
 
     // color property of bone
     cColorb m_boneColor;
@@ -252,32 +306,24 @@ private:
     cColorb m_storedColor;
 
     bool m_enableVolumeSmoothing = false;
+
     int m_volumeSmoothingLevel = 2;
 
     cLabel* m_volumeSmoothingText;
 
-    cAudioSource* m_drillAudioSource = nullptr;
-    cAudioBuffer* m_drillAudioBuffer = nullptr;
-    cAudioDevice* m_drillAudioDevice = nullptr;
-
-
     cVector3d m_maxVolCorner, m_minVolCorner;
+
     cVector3d m_maxTexCoord, m_minTexCoord;
+
     cVector3d m_textureCoordScale; // Scale between volume corners extent and texture coordinates extent
 
-    FootPedal m_footpedal;
+    DrillManager m_drillManager;
 
-    AudioState m_audtioState;
+    FootPedal m_footpedal;
 
     WaveGenerator m_waveGenerator;
 
     GazeMarkerController m_gazeMarkerController;
-
-    bool m_drillOn;
-
-    bool m_camClutch = false;
-
-    bool m_deviceClutch = false;
 };
 
 
