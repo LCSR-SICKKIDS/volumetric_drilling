@@ -7,7 +7,7 @@ from gui_setup import SetupGUI
 import datetime
 
 
-class Ui(QtWidgets.QMainWindow):
+class Ui(QtWidgets.QWidget):
     def __init__(self):
         super(Ui, self).__init__()
         uic.loadUi('layout.ui', self)
@@ -22,6 +22,8 @@ class Ui(QtWidgets.QMainWindow):
         for i in range(len(self.gui_setup.volumes_info)):
             vinfo = self.gui_setup.volumes_info[i]
             radio_button = QtWidgets.QRadioButton(vinfo.name)
+            min_height = 400
+            # radio_button.setMinimumHeight(min_height)
             # radio_button.setGeometry(200, 150, 100, 40)
             radio_button.volume_name = vinfo.name
             radio_button.volume_adf = str(vinfo.adf_path)
@@ -30,7 +32,8 @@ class Ui(QtWidgets.QMainWindow):
             print(icon_path_str)
             pixmap = QPixmap(icon_path_str)
             label = QtWidgets.QLabel(self)
-            label.resize(150, 150)
+            label.resize(150, 350)
+            # label.setMinimumHeight(min_height)
             label.setPixmap(pixmap.scaled(label.width(), label.height(), Qt.KeepAspectRatio))
             self.volumes_grid.addWidget(radio_button, i, 0)
             self.volumes_grid.addWidget(label, i, 1)

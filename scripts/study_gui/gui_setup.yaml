@@ -10,6 +10,11 @@ volume1:
   adf_path: ../../ADF/volume_256_RT143.yaml
   name: 'Anatomy a'
 
+volume1:
+  icon_path: ./assets/RT143.png
+  adf_path: ../../ADF/volume_256_RT143.yaml
+  name: 'Anatomy a'
+
 volume2:
   icon_path: ./assets/RT138.png
   adf_path: ../../ADF/volume_256_RT138.yaml

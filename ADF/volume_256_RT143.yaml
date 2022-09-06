@@ -21,6 +21,6 @@ VOLUME mastoidectomy_volume_low:
     format: png
     count: 512
   shaders:
-    path: ./shaders/volume_matcap/
+    path: ./shaders/volume/
     vertex: shader.vs
     fragment: shader.fs
