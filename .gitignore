@@ -7,3 +7,7 @@ build/
 *.pyc
 
 *.autosave
+
+*.old
+
+*.blend1

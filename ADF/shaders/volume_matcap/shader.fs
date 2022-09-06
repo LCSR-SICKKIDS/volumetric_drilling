@@ -153,12 +153,12 @@ void main(void)
             vec3 normal = -normalize(nabla);
             vec3 view = -raydir;
 
-            vec3 lp = vec3( gl_LightSource[0].spotDirection;
+            vec3 lp = vec3(gl_LightSource[0].spotDirection);
             float bias = max(0.01 * (1.0 - dot(normal, lp)), 0.001);
             dpos.xyz = vPosition.xyz + (t - bias - dt * t_step) * raydir;
 
             // vec3 colour = shade(position, view, normal) * texture3D(uVolume, tcr).rgb / uIsosurface;
-            vec3 e = vec3(gl_ModelViewMatrix * vec4(view, 1.0));
+            vec3 e = normalize(vec3(gl_ModelViewMatrix * vec4(view, 1.0)));
             vec3 n = normalize(gl_NormalMatrix * nabla);
             vec3 r = reflect(e, n);
             float m = 2. * sqrt( pow( r.x, 2. ) + pow( r.y, 2. ) + pow( r.z + 1., 2. ) );

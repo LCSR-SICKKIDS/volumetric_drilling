@@ -151,8 +151,10 @@ public:
     // check for shaft collision
     void checkShaftCollision(void);
 
-    // toggles size of the drill burr
-    void changeBurrSize(int burrType);
+    // cycle between drill types
+    void cycleDrillTypes();
+
+    void showOnlyActive();
 
     bool getOverrideControl(){return m_overrideControl;}
 
@@ -171,17 +173,19 @@ public:
 
     DrillingPublisher* m_drillingPub;
 
-    std::map<int, Drill> m_drills;
+    std::vector<Drill*> m_drills;
 
-    afRigidBodyPtr m_drillRigidBody;
+    Drill* m_activeDrill = nullptr;
 
     bool m_overrideControl = false;
 
     // rate of drill movement
     double m_drillRate = 0.020f;
 
-    // A map of drill burr indices, radius and description
-    map<int, pair<double, string>> m_drillBurrSizes;
+    afRigidBodyPtr m_drillReferenceBody;
+
+    // A map of drill burr names and their sizes in simulatio
+    double m_units_mmToSim;
 
     cShapeSphere* m_burrMesh;
 
@@ -226,7 +230,7 @@ public:
     bool m_suddenJump = true;
 
     // index of current drill size
-    int m_activeBurrIdx = 0;
+    int m_activeDrillIdx = 0;
 
     bool m_showGoalProxySpheres = false;
 
