@@ -47,16 +47,25 @@ class Ui(QtWidgets.QWidget):
         self.button_pupil_service.clicked.connect(self.pressed_pupil_service)
 
         self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_drill')
-        self.button_reset_drill.clicked.connect(self.pressed_reset_drill)
+        self.button_reset_drill.clicked.connect(self.study_manager.reset_drill)
 
         self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_volume')
-        self.button_reset_drill.clicked.connect(self.pressed_reset_volume)
+        self.button_reset_drill.clicked.connect(self.study_manager.reset_volume)
+
+        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_toggle_shadows')
+        self.button_reset_drill.clicked.connect(self.study_manager.toggle_shadows)
+
+        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_toggle_vol_smooth')
+        self.button_reset_drill.clicked.connect(self.study_manager.toggle_volume_smoothening)
 
         self.button_record_study = self.findChild(QtWidgets.QPushButton, 'button_record_study')
         self.button_record_study.clicked.connect(self.pressed_record_study)
 
         self.text_participant_name = self.findChild(QtWidgets.QTextEdit, 'textEdit_participant_name')
         self.recording_button = self.findChild(QtWidgets.QPushButton, 'button_record_study')
+
+        self._recording_study = False
+
         self.show()
 
     def pressed_start_simulation(self):
@@ -77,16 +86,19 @@ class Ui(QtWidgets.QWidget):
             self.active_volume_adf = button.volume_adf
 
     def pressed_record_study(self):
-        base_path = str(self.gui_setup.recording_base_path)
-        participant_name = '/' + self.text_participant_name.toPlainText()
-        date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.study_manager.start_recording(base_path + participant_name + date_time)
-
-    def pressed_reset_drill(self):
-        self.study_manager.reset_drill()
-
-    def pressed_reset_volume(self):
-        self.study_manager.reset_volume()
+        if self._recording_study:
+            self.study_manager.stop_recording()
+            self._recording_study = False
+            self.button_record_study.setText("Record Study")
+            self.button_record_study.setStyleSheet("background-color: GREEN")
+        else:
+            base_path = str(self.gui_setup.recording_base_path)
+            participant_name = '/' + self.text_participant_name.toPlainText()
+            date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.study_manager.start_recording(base_path + participant_name + date_time)
+            self._recording_study = True
+            self.button_record_study.setText("STOP RECORDING")
+            self.button_record_study.setStyleSheet("background-color: RED")
 
     def closeEvent(self, event):
         print('Terminate Called')

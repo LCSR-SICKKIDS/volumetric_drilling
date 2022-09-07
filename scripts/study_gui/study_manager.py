@@ -1,11 +1,12 @@
 import os
 import subprocess
-
+from pupil_manager import *
 
 class StudyManager:
     def __init__(self, ambf_executable_path, pupil_executable_path):
         self.ambf_executable_path = str(ambf_executable_path)
         self.pupil_executable_path = str(pupil_executable_path)
+        self.pupil_manager = PupilManager()
         self.ambf_handle = None
         self.pupil_service_handle = None
         self.xdotool_handle = None
@@ -53,26 +54,25 @@ class StudyManager:
             else:
                 self._launch_pupil_service()
 
+    def toggle_volume_smoothening(self):
+        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'alt+s')
+
+    def toggle_shadows(self):
+        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+e')
+
     def reset_drill(self):
-        window_id_str = self._get_ambf_main_window_handle()
-        if window_id_str:
-            self.send_xdotool_keycmd(window_id_str, 'ctrl+r')
-            print("Resetting Drill")
-        else:
-            print("ERROR! AMBF Window Not Launched")
+        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+r')
 
     def reset_volume(self):
-        window_id_str = self._get_ambf_main_window_handle()
-        if window_id_str:
-            self.send_xdotool_keycmd(window_id_str, 'alt+r')
-            print("Resetting Volume")
-        else:
-            print("ERROR! AMBF Window Not Launched")
+        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'alt+r')
 
     def send_xdotool_keycmd(self, window, key_str):
-        cmd_str = self._xdtool_window_key_cmd_prefix + window + ' ' + key_str
-        proc = subprocess.Popen(cmd_str, shell=True)
-        print("Running Command ", cmd_str)
+        if window is None:
+            print("ERROR! AMBF Window Not Launched")
+        else:
+            cmd_str = self._xdtool_window_key_cmd_prefix + window + ' ' + key_str
+            proc = subprocess.Popen(cmd_str, shell=True)
+            print("Running Command ", cmd_str)
 
     def _launch_pupil_service(self):
         self.pupil_service_handle = None
@@ -85,6 +85,11 @@ class StudyManager:
 
     def start_recording(self, path):
         os.makedirs(path)
+        self.pupil_manager.sync_time()
+        self.pupil_manager.start_recording(path)
+
+    def stop_recording(self):
+        self.pupil_manager.stop_recoding()
 
     def close(self):
         self.close_simulation()
