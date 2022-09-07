@@ -8,6 +8,8 @@ class StudyManager:
         self.pupil_executable_path = str(pupil_executable_path)
         self.ambf_handle = None
         self.pupil_service_handle = None
+        self.xdotool_handle = None
+        self._xdtool_window_key_cmd_prefix = 'xdotool key --window '
 
     def start_simulation(self, args):
         if not self.ambf_handle:
@@ -28,6 +30,14 @@ class StudyManager:
         self.ambf_handle = None
         self.ambf_handle = subprocess.Popen(args_list)
 
+    def _get_ambf_main_window_handle(self):
+        xdtool_str = 'xdotool search --class AMBF\ Simulator\ Window\ 1'
+        xdtool_proc = subprocess.Popen(xdtool_str, shell=True, stdout=subprocess.PIPE)
+        window_id = xdtool_proc.communicate()[0]
+        window_id_str = window_id.decode().replace('\n', '')
+        # print("AMBF Main Window ID: ", window_id_str)
+        return window_id_str
+
     def close_simulation(self):
         if self.ambf_handle:
             self.ambf_handle.terminate()
@@ -42,6 +52,27 @@ class StudyManager:
                 print('INFO! Pupil service already running. Close it to reopen again')
             else:
                 self._launch_pupil_service()
+
+    def reset_drill(self):
+        window_id_str = self._get_ambf_main_window_handle()
+        if window_id_str:
+            self.send_xdotool_keycmd(window_id_str, 'ctrl+r')
+            print("Resetting Drill")
+        else:
+            print("ERROR! AMBF Window Not Launched")
+
+    def reset_volume(self):
+        window_id_str = self._get_ambf_main_window_handle()
+        if window_id_str:
+            self.send_xdotool_keycmd(window_id_str, 'alt+r')
+            print("Resetting Volume")
+        else:
+            print("ERROR! AMBF Window Not Launched")
+
+    def send_xdotool_keycmd(self, window, key_str):
+        cmd_str = self._xdtool_window_key_cmd_prefix + window + ' ' + key_str
+        proc = subprocess.Popen(cmd_str, shell=True)
+        print("Running Command ", cmd_str)
 
     def _launch_pupil_service(self):
         self.pupil_service_handle = None

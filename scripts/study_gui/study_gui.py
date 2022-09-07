@@ -46,6 +46,12 @@ class Ui(QtWidgets.QWidget):
         self.button_pupil_service = self.findChild(QtWidgets.QPushButton, 'button_pupil_service')
         self.button_pupil_service.clicked.connect(self.pressed_pupil_service)
 
+        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_drill')
+        self.button_reset_drill.clicked.connect(self.pressed_reset_drill)
+
+        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_volume')
+        self.button_reset_drill.clicked.connect(self.pressed_reset_volume)
+
         self.button_record_study = self.findChild(QtWidgets.QPushButton, 'button_record_study')
         self.button_record_study.clicked.connect(self.pressed_record_study)
 
@@ -75,6 +81,12 @@ class Ui(QtWidgets.QWidget):
         participant_name = '/' + self.text_participant_name.toPlainText()
         date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.study_manager.start_recording(base_path + participant_name + date_time)
+
+    def pressed_reset_drill(self):
+        self.study_manager.reset_drill()
+
+    def pressed_reset_volume(self):
+        self.study_manager.reset_volume()
 
     def closeEvent(self, event):
         print('Terminate Called')
