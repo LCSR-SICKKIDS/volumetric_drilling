@@ -96,6 +96,8 @@ public:
 
     int init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map& var_map);
 
+    void updateLabelPositions();
+
     void moveGazeMarker(double dt);
 
     void hide(bool val);
@@ -114,6 +116,11 @@ private:
 
     afRigidBodyPtr m_gazeMarker;
     afCameraPtr m_camera;
+
+    cPanel* m_textPanel;
+    cLabel* m_textLabel;
+    string m_textStr;
+    double m_textShowDuration;
 };
 
 

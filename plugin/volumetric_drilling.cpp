@@ -86,6 +86,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::va
     // importing drill model
 
     int nt = var_map["nt"].as<int>();
+    bool mute = var_map["mute"].as<bool>();
 
     m_camera = a_cameraPtr;
 
@@ -156,7 +157,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::va
     m_sizeText->setLocalPos(20,70);
     m_sizeText->m_fontColor.setBlack();
     m_sizeText->setFontScale(.75);
-    m_sizeText->setText("Drill: " + m_activeDrill->m_name);
+    m_sizeText->setText("Drill Type: " + m_activeDrill->m_name);
     a_cameraPtr->getFrontLayer()->addChild(m_sizeText);
 
     m_controlModeText = new cLabel(font);
@@ -192,26 +193,27 @@ int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::va
         cerr << "FAILED TO LOAD DRILL'S MATCAP TEXTURE" << endl;
     }
 
-    m_audioDevice = new cAudioDevice();
-    a_cameraPtr->getInternalCamera()->attachAudioDevice(m_audioDevice);
+    if (!mute){
+        m_audioDevice = new cAudioDevice();
+        a_cameraPtr->getInternalCamera()->attachAudioDevice(m_audioDevice);
 
-    m_audioBuffer = new cAudioBuffer();
-    string drillAudioFilepath = g_current_filepath + "/../resources/sounds/drill.wav";
-    if (m_audioBuffer->loadFromFile(drillAudioFilepath)){
-        m_audioSource = new cAudioSource();
-//        m_drillAudioBuffer->convertToMono();
-        m_audioSource->setAudioBuffer(m_audioBuffer);
-        m_audioSource->setLoop(true);
-        m_audioSource->setGain(5.0);
-//        if (!mute) m_drillAudioSource->play();
-        m_audioState = AudioState::STOPPED;
-    }
-    else{
-        delete m_audioSource;
-        delete m_audioBuffer;
-        m_audioSource = nullptr;
-        m_audioBuffer = nullptr;
-        cerr << "FAILED TO LOAD DRILL AUDIO FROM " << drillAudioFilepath << endl;
+        m_audioBuffer = new cAudioBuffer();
+        string drillAudioFilepath = g_current_filepath + "/../resources/sounds/drill.wav";
+        if (m_audioBuffer->loadFromFile(drillAudioFilepath)){
+            m_audioSource = new cAudioSource();
+            //        m_drillAudioBuffer->convertToMono();
+            m_audioSource->setAudioBuffer(m_audioBuffer);
+            m_audioSource->setLoop(true);
+            m_audioSource->setGain(5.0);
+            m_audioState = AudioState::STOPPED;
+        }
+        else{
+            delete m_audioSource;
+            delete m_audioBuffer;
+            m_audioSource = nullptr;
+            m_audioBuffer = nullptr;
+            cerr << "FAILED TO LOAD DRILL AUDIO FROM " << drillAudioFilepath << endl;
+        }
     }
 
     // create a haptic device handler
@@ -264,7 +266,7 @@ void DrillManager::update(double dt)
 
     m_burrMesh->setLocalTransform(m_activeDrill->m_rigidBody->getLocalTransform());
 
-    if (m_isOn){
+    if (m_isOn && m_audioSource){
         if (m_audioState == AudioState::STOPPED){
             m_audioSource->play();
             m_audioState = AudioState::PLAYING;
@@ -311,7 +313,6 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
             ("dm", p_opt::value<string>()->default_value("dark_metal_brushed.jpg"), "Drill's Matcap Filename (Should be placed in ./resources/matcap/ folder)")
             ("fp", p_opt::value<string>()->default_value("/dev/input/js0"), "Footpedal joystick input file description E.g. /dev/input/js0)")
             ("mute", p_opt::value<bool>()->default_value(false), "Mute")
-            ("gc", p_opt::value<bool>()->default_value(false), "Perform Gaze Calibration Marker Motion")
             ("gcdr", p_opt::value<double>()->default_value(15.0), "Gaze Calibration Marker Motion Duration");
 
     p_opt::variables_map var_map;
@@ -764,7 +765,9 @@ void DrillManager::updatePoseFromCursors(){
 
 //        g_drillRigidBody->setLocalPos(g_drillRigidBody->getLocalPos() + newDrillPos);
         m_activeDrill->m_rigidBody->setLocalTransform(trans);
-        m_audioSource->setSourcePos(newDrillPos);
+        if (m_audioSource){
+            m_audioSource->setSourcePos(newDrillPos);
+        }
     }
 }
 
@@ -966,7 +969,6 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         }
 
         else if (a_key == GLFW_KEY_G){
-            cerr << "Restarting Gaze Marker Motion" << endl;
             m_gazeMarkerController.restart();
         }
 
@@ -1280,16 +1282,10 @@ GazeMarkerController::GazeMarkerController(){
     m_gazeMarker = nullptr;
 }
 
-int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map &var_map)
-{
-    if (!var_map["gc"].as<bool>()){
-        return -1;
-    }
-
+int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map &var_map){
     m_gazeMarker = a_worldPtr->getRigidBody("GazeMarker");
     if (!m_gazeMarker){
-        cerr << "ERROR! ASKED TO PERFORM GAZE MARKER MOTION BUT "
-                "GAZE MARKER RIGID BODY NOT FOUND. CAN'T PERFORM GAZE CALIBRATION MOTION" << endl;
+        cerr << "ERROR! GAZE MARKER RIGID BODY NOT FOUND. CAN'T PERFORM GAZE CALIBRATION MOTION" << endl;
         return -1;
     }
 
@@ -1304,25 +1300,59 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt:
     m_T_m_w = m_T_c_w * m_T_m_c;
     m_gazeMarker->setLocalTransform(m_T_m_w);
 
-    m_time = 0.;
-    m_duration = var_map["gcdr"].as<double>();
+    m_textShowDuration = 5.0;
+    m_duration = var_map["gcdr"].as<double>() + m_textShowDuration;
+    m_time = m_duration;
+
+    m_textPanel = new cPanel();
+    m_textPanel->setCornerRadius(0.5, 0.5, 0.5, 0.5);
+    m_textPanel->setTransparencyLevel(0.8);
+    m_textPanel->setColor(cColorf(1, 1, 1));
+    m_camera->getFrontLayer()->addChild(m_textPanel);
+
+    cFontPtr font = NEW_CFONTCALIBRI28();
+    m_textLabel = new cLabel(font);
+    m_textLabel->m_fontColor.setRed();
+    m_textStr = "PLEASE FOCUS ON THE SPIRALLING MARKER \n\n"
+                "             SHOWING MARKER IN : ";
+    m_textLabel->setText(m_textStr);
+    m_textPanel->addChild(m_textLabel);
 
     return 1;
 }
 
-void GazeMarkerController::moveGazeMarker(double dt)
-{
+void GazeMarkerController::updateLabelPositions(){
+    double xpos = (m_camera->m_width - m_textLabel->getTextWidth()) / 2.0;
+    double ypos = (m_camera->m_height - m_textLabel->getTextHeight()) / 2.0;
+    m_textPanel->setLocalPos(xpos, ypos);
+    m_textPanel->setSize(m_textLabel->getWidth() + 0.4, m_textLabel->getHeight() + 0.4);
+    m_textLabel->setLocalPos(0.2, 0.2);
+}
+
+void GazeMarkerController::moveGazeMarker(double dt){
     if (m_time >= m_duration || m_gazeMarker == nullptr){
         hide(true);
         return;
     }
 
     if (m_time == 0.){
+        updateLabelPositions();
         hide(false);
     }
 
     m_time += dt;
-    cVector3d dP(0., m_radius * sin(m_time), m_radius * cos(m_time));
+
+    if (m_time <= m_textShowDuration){
+        string time_str = to_string(int(m_textShowDuration - m_time));
+        m_textLabel->setText(m_textStr + time_str);
+        return;
+    }
+
+    m_textPanel->setShowEnabled(false);
+
+    double offset_time = m_time - m_textShowDuration;
+
+    cVector3d dP(0., m_radius * sin(offset_time), m_radius * cos(offset_time));
 
     m_T_m_w.setLocalPos( m_T_m_w.getLocalPos() + m_T_c_w.getLocalRot() * dP);
     m_T_m_w.setLocalRot(m_T_c_w.getLocalRot());
@@ -1334,16 +1364,16 @@ void GazeMarkerController::moveGazeMarker(double dt)
     m_radius += m_delta_radius;
 }
 
-void GazeMarkerController::hide(bool val)
-{
+void GazeMarkerController::hide(bool val){
     if (m_gazeMarker != nullptr){
         m_gazeMarker->getVisualObject()->setShowEnabled(!val);
+        m_textPanel->setShowEnabled(!val);
     }
 }
 
-void GazeMarkerController::restart()
-{
+void GazeMarkerController::restart(){
     if (m_gazeMarker != nullptr){
+        cerr << "Restarting Gaze Marker Motion" << endl;
         m_radius = 0.;
         m_time = 0.;
         m_gazeMarker->reset();

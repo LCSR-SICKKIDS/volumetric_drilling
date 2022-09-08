@@ -85,6 +85,7 @@ class StudyManager:
 
     def start_recording(self, path):
         os.makedirs(path)
+        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+g')
         self.pupil_manager.sync_time()
         self.pupil_manager.start_recording(path)
 

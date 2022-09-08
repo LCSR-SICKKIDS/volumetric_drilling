@@ -69,7 +69,7 @@ class Ui(QtWidgets.QWidget):
         self.show()
 
     def pressed_start_simulation(self):
-        args = ['--launch_file', str(self.gui_setup.launch_file), '-l', '0', '-a', self.active_volume_adf]
+        args = ['--launch_file', str(self.gui_setup.launch_file), '-l', '0,7', '-a', self.active_volume_adf]
         self.study_manager.start_simulation(args)
 
     def pressed_pupil_service(self):
