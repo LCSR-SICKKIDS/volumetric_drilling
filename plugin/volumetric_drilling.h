@@ -96,6 +96,8 @@ public:
 
     int init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map& var_map);
 
+    void initializeLabels();
+
     void updateLabelPositions();
 
     void moveGazeMarker(double dt);
@@ -142,6 +144,10 @@ public:
     int init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::variables_map& opts);
 
     void update(double dt);
+
+    void initializeLabels();
+
+    void updateLabelPositions();
 
     // Initialize tool cursors
     void toolCursorInit(const afWorldPtr);
@@ -216,9 +222,9 @@ public:
     // panel to display current drill size
     cPanel* m_sizePanel;
 
-    cLabel* m_sizeText;
+    cLabel* m_sizeLabel;
 
-    cLabel* m_controlModeText;
+    cLabel* m_controlModeLabel;
 
     cAudioSource* m_audioSource = nullptr;
 
@@ -279,6 +285,10 @@ protected:
 
     void updateButtons();
 
+    void initializeLabels();
+
+    void updateLabelPositions();
+
 private:
 
     cVoxelObject* m_voxelObj;
@@ -307,8 +317,8 @@ private:
     afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR, m_stereoCameraLandR;
 
     // warning pop-up panel
-    cPanel* m_warningPopup;
-    cLabel* m_warningText;
+    cPanel* m_warningPanel;
+    cLabel* m_warningLabel;
 
     // color property of bone
     cColorb m_boneColor;
@@ -320,7 +330,7 @@ private:
 
     int m_volumeSmoothingLevel = 2;
 
-    cLabel* m_volumeSmoothingText;
+    cLabel* m_volumeSmoothingLabel;
 
     cVector3d m_maxVolCorner, m_minVolCorner;
 

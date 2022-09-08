@@ -141,31 +141,9 @@ int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::va
 
     a_worldPtr->addSceneObjectToWorld(m_burrMesh);
 
-    // A panel to display current drill size
-    m_sizePanel = new cPanel();
-    m_sizePanel->setSize(170, 50);
-    m_sizePanel->setCornerRadius(10, 10, 10, 10);
-    m_sizePanel->setLocalPos(15,60);
-    m_sizePanel->setColor(cColorf(1, 1, 1));
-    m_sizePanel->setTransparencyLevel(0.8);
-    a_cameraPtr->getFrontLayer()->addChild(m_sizePanel);
+    initializeLabels();
 
-    // create a font
-    cFontPtr font = NEW_CFONTCALIBRI40();
-
-    m_sizeText = new cLabel(font);
-    m_sizeText->setLocalPos(20,70);
-    m_sizeText->m_fontColor.setBlack();
-    m_sizeText->setFontScale(.75);
-    m_sizeText->setText("Drill Type: " + m_activeDrill->m_name);
-    a_cameraPtr->getFrontLayer()->addChild(m_sizeText);
-
-    m_controlModeText = new cLabel(font);
-    m_controlModeText->setLocalPos(20,35);
-    m_controlModeText->m_fontColor.setGreen();
-    m_controlModeText->setFontScale(.5);
-    m_controlModeText->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
-    a_cameraPtr->getFrontLayer()->addChild(m_controlModeText);
+    updateLabelPositions();
 
     // Get drills initial pose
     m_T_d_init = m_drillReferenceBody->getLocalTransform();
@@ -280,15 +258,48 @@ void DrillManager::update(double dt)
     }
 }
 
+void DrillManager::initializeLabels(){
+    // create a font
+    cFontPtr font = NEW_CFONTCALIBRI32();
+
+    m_sizeLabel = new cLabel(font);
+    m_sizeLabel->setLocalPos(10, 10); // Relative to Panel
+    m_sizeLabel->m_fontColor.setBlack();
+    m_sizeLabel->setText("Drill Type: " + m_activeDrill->m_name);
+
+    // A panel to display current drill size
+    m_sizePanel = new cPanel();
+    m_sizePanel->set(m_sizeLabel->getTextWidth() + m_sizeLabel->getLocalPos().x() * 2,
+                     m_sizeLabel->getTextHeight() + m_sizeLabel->getLocalPos().y() * 2,
+                     10, 10, 10, 10);
+    m_sizePanel->setColor(cColorf(1, 1, 1));
+    m_sizePanel->setTransparencyLevel(0.8);
+    m_camera->getFrontLayer()->addChild(m_sizePanel);
+
+    m_sizePanel->addChild(m_sizeLabel);
+
+    m_controlModeLabel = new cLabel(font);
+    m_controlModeLabel->m_fontColor.setGreen();
+    m_controlModeLabel->setFontScale(.5);
+    m_controlModeLabel->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
+    m_camera->getFrontLayer()->addChild(m_controlModeLabel);
+}
+
+void DrillManager::updateLabelPositions(){
+    m_sizePanel->setLocalPos(15,60);
+
+    m_controlModeLabel->setLocalPos(20,35);
+}
+
 void DrillManager::setOverrideControl(bool val){
     m_overrideControl = val;
     if (getOverrideControl()){
-        m_controlModeText->m_fontColor.setRed();
-        m_controlModeText->setText("[CTRL+O] Drill Control Mode = External afComm");
+        m_controlModeLabel->m_fontColor.setRed();
+        m_controlModeLabel->setText("[CTRL+O] Drill Control Mode = External afComm");
     }
     else{
-        m_controlModeText->m_fontColor.setGreen();
-        m_controlModeText->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
+        m_controlModeLabel->m_fontColor.setGreen();
+        m_controlModeLabel->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
     }
 }
 
@@ -391,31 +402,9 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_voxelObj->m_material->setDynamicFriction(0.0);
     m_voxelObj->setUseMaterial(true);
 
-    // create a font
-    cFontPtr font = NEW_CFONTCALIBRI40();
+    initializeLabels();
 
-    // A warning pop-up that shows up while drilling at critical region
-    m_warningPopup = new cPanel();
-    m_warningPopup->set(m_mainCamera->m_width/2, m_mainCamera->m_height/5);
-    m_warningPopup->setColor(cColorf(0.6,0,0));
-    m_warningPopup->setLocalPos(m_mainCamera->m_width*0.3, m_mainCamera->m_height*0.6, 0);
-    m_mainCamera->getFrontLayer()->addChild(m_warningPopup);
-    m_warningPopup->setShowPanel(false);
-
-    m_warningText = new cLabel(font);
-    m_warningText->setLocalPos(0.31 * m_mainCamera->m_width, 0.67 * m_mainCamera->m_height, 0.5);
-    m_warningText->m_fontColor.setWhite();
-    m_warningText->setFontScale(1.0);
-    m_warningText->setText("WARNING! Critical Region Detected");
-    m_mainCamera->getFrontLayer()->addChild(m_warningText);
-    m_warningText->setShowEnabled(false);
-
-    m_volumeSmoothingText = new cLabel(font);
-    m_volumeSmoothingText->setLocalPos(20,10);
-    m_volumeSmoothingText->m_fontColor.setRed();
-    m_volumeSmoothingText->setFontScale(.5);
-    m_volumeSmoothingText->setText("[ALT+S] Volume Smoothing: DISABLED");
-    m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingText);
+    updateLabelPositions();
 
     // Volume Properties
     float dim[3];
@@ -500,8 +489,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
             //if the tool comes in contact with the critical region, instantiate the warning message
             if(m_storedColor != m_boneColor && m_storedColor != m_zeroColor)
             {
-                m_warningPopup->setShowPanel(true);
-                m_warningText->setShowEnabled(true);
+                m_warningPanel->setShowEnabled(true);
             }
 
             if (m_drillManager.m_isOn){
@@ -537,8 +525,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // remove warning panel
     else
     {
-        m_warningPopup->setShowPanel(false);
-        m_warningText->setShowEnabled(false);
+        m_warningPanel->setShowEnabled(false);
     }
     // compute interaction forces
     for(int i = 0 ; i < m_drillManager.m_toolCursorList.size() ; i++){
@@ -778,7 +765,7 @@ void DrillManager::cycleDrillTypes(){
     m_toolCursorList[0]->setRadius(m_activeDrill->m_size);
     m_burrMesh->setRadius(m_activeDrill->m_size);
     cout << "Drill Type changed to " << m_activeDrill->m_name << endl;
-    m_sizeText->setText("Drill Type: " + m_activeDrill->m_name);
+    m_sizeLabel->setText("Drill Type: " + m_activeDrill->m_name);
 
     double sim_time = m_activeDrill->m_rigidBody->getCurrentTimeStamp();
     m_drillingPub->burrChange(m_activeDrill->m_size, sim_time);
@@ -889,6 +876,45 @@ void afVolmetricDrillingPlugin::updateButtons(){
         m_drillManager.m_camClutch |= val1;
         m_drillManager.m_deviceClutch |= val2;
     }
+}
+
+void afVolmetricDrillingPlugin::initializeLabels()
+{
+    // create a font
+    cFontPtr font = NEW_CFONTCALIBRI40();
+
+    m_warningLabel = new cLabel(font);
+    m_warningLabel->m_fontColor.setWhite();
+    m_warningLabel->setText("WARNING! Critical Region Detected");
+    m_warningLabel->setLocalPos(40, 40); // Relative to the panel
+
+    // A warning pop-up that shows up while drilling at critical region
+    m_warningPanel = new cPanel();
+    m_warningPanel->set(m_warningLabel->getTextWidth() + m_warningLabel->getLocalPos().x() * 2.0,
+                        m_warningLabel->getTextHeight() + m_warningLabel->getLocalPos().y() * 2.0,
+                        10, 10, 10, 10);
+    m_warningPanel->setColor(cColorf(0.6,0,0));
+    m_warningPanel->setTransparencyLevel(0.6);
+    m_mainCamera->getFrontLayer()->addChild(m_warningPanel);
+    m_warningPanel->setShowEnabled(true);
+
+    m_warningPanel->addChild(m_warningLabel);
+
+    m_volumeSmoothingLabel = new cLabel(font);
+    m_volumeSmoothingLabel->m_fontColor.setRed();
+    m_volumeSmoothingLabel->setFontScale(.5);
+    m_volumeSmoothingLabel->setText("[ALT+S] Volume Smoothing: DISABLED");
+    m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingLabel);
+}
+
+void afVolmetricDrillingPlugin::updateLabelPositions()
+{
+
+    m_warningPanel->setLocalPos((m_mainCamera->m_width - m_warningPanel->getWidth()) / 2.0,
+                                ((m_mainCamera->m_height - m_warningPanel->getHeight()) / 2.0),
+                                0);
+
+    m_volumeSmoothingLabel->setLocalPos(20,10);
 }
 
 
@@ -1006,12 +1032,12 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         }
 
         std::string text = "[ALT+S] Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
-        m_volumeSmoothingText->m_fontColor.setRed();
+        m_volumeSmoothingLabel->m_fontColor.setRed();
         if (m_enableVolumeSmoothing){
             text+= " ( LEVEL: " + to_string(m_volumeSmoothingLevel) + ")";
-            m_volumeSmoothingText->m_fontColor.setGreen();
+            m_volumeSmoothingLabel->m_fontColor.setGreen();
         }
-        m_volumeSmoothingText->setText(text);
+        m_volumeSmoothingLabel->setText(text);
     }
     else{
 
@@ -1304,29 +1330,36 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt:
     m_duration = var_map["gcdr"].as<double>() + m_textShowDuration;
     m_time = m_duration;
 
-    m_textPanel = new cPanel();
-    m_textPanel->setCornerRadius(0.5, 0.5, 0.5, 0.5);
-    m_textPanel->setTransparencyLevel(0.8);
-    m_textPanel->setColor(cColorf(1, 1, 1));
-    m_camera->getFrontLayer()->addChild(m_textPanel);
+    initializeLabels();
 
-    cFontPtr font = NEW_CFONTCALIBRI28();
-    m_textLabel = new cLabel(font);
-    m_textLabel->m_fontColor.setRed();
-    m_textStr = "PLEASE FOCUS ON THE SPIRALLING MARKER \n\n"
-                "             SHOWING MARKER IN : ";
-    m_textLabel->setText(m_textStr);
-    m_textPanel->addChild(m_textLabel);
+    updateLabelPositions();
 
     return 1;
 }
 
+void GazeMarkerController::initializeLabels(){
+    cFontPtr font = NEW_CFONTCALIBRI36();
+    m_textLabel = new cLabel(font);
+    m_textLabel->m_fontColor.setBlack();
+    m_textStr = "PLEASE FOCUS ON THE SPIRALLING MARKER \n\n"
+                "             SHOWING MARKER IN : ";
+    m_textLabel->setText(m_textStr);
+    m_textLabel->setLocalPos(10, 10); // Relative to Panel
+
+    m_textPanel = new cPanel();
+    m_textPanel->set(m_textLabel->getWidth() + m_textLabel->getLocalPos().x() * 2,
+                         m_textLabel->getHeight() + m_textLabel->getLocalPos().y() * 2,
+                         10, 10, 10, 10);
+    m_textPanel->setColor(cColorf(1., 1., 0.2));
+    m_textPanel->setTransparencyLevel(0.8);
+    m_camera->getFrontLayer()->addChild(m_textPanel);
+
+    m_textPanel->addChild(m_textLabel);
+}
+
 void GazeMarkerController::updateLabelPositions(){
-    double xpos = (m_camera->m_width - m_textLabel->getTextWidth()) / 2.0;
-    double ypos = (m_camera->m_height - m_textLabel->getTextHeight()) / 2.0;
-    m_textPanel->setLocalPos(xpos, ypos);
-    m_textPanel->setSize(m_textLabel->getWidth() + 0.4, m_textLabel->getHeight() + 0.4);
-    m_textLabel->setLocalPos(0.2, 0.2);
+    m_textPanel->setLocalPos((m_camera->m_width - m_textLabel->getTextWidth()) / 2.0,
+                             (m_camera->m_height - m_textLabel->getTextHeight()) / 2.0);
 }
 
 void GazeMarkerController::moveGazeMarker(double dt){
@@ -1343,7 +1376,7 @@ void GazeMarkerController::moveGazeMarker(double dt){
     m_time += dt;
 
     if (m_time <= m_textShowDuration){
-        string time_str = to_string(int(m_textShowDuration - m_time));
+        string time_str = to_string(int(ceil(m_textShowDuration - m_time)));
         m_textLabel->setText(m_textStr + time_str);
         return;
     }
