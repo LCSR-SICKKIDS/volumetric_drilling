@@ -350,18 +350,20 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_worldPtr = a_afWorld;
 
     // Get first camera
-    m_mainCamera = m_worldPtr->getCamera("main_camera");
-    if (m_mainCamera){
-        cerr << "INFO! GOT CAMERA: " << m_mainCamera->getName() << endl;
-    }
-    else{
-        cerr << "WARNING! COULD NOT FIND main_camera" << endl;
-        m_mainCamera = m_worldPtr->getCameras()[0];
+    m_mainCamera = findAndAppendCamera("main_camera");
+    m_stereoCameraL = findAndAppendCamera("cameraL");
+    m_stereoCameraR = findAndAppendCamera("cameraR");
+    m_stereoCameraLandR = findAndAppendCamera("stereoLR");
+
+    if (m_cameras.size() == 0){
+        cerr << "ERROR! NO CAMERAS FOUND. " << endl;
+        return -1;
     }
 
-    m_stereoCameraL = m_worldPtr->getCamera("cameraL");
-    m_stereoCameraR = m_worldPtr->getCamera("cameraR");
-    m_stereoCameraLandR = m_worldPtr->getCamera("stereoLR");
+    if (!m_mainCamera){
+        cerr << "INFO! FAILED TO LOAD main_camera, taking the first camera from world " << endl;
+        m_mainCamera = m_worldPtr->getCameras()[0];
+    }
 
     if (m_stereoCameraLandR){
         makeVRWindowFullscreen(m_stereoCameraLandR);
@@ -876,6 +878,18 @@ void afVolmetricDrillingPlugin::updateButtons(){
         m_drillManager.m_camClutch |= val1;
         m_drillManager.m_deviceClutch |= val2;
     }
+}
+
+afCameraPtr afVolmetricDrillingPlugin::findAndAppendCamera(string cam_name){
+    afCameraPtr cam = m_worldPtr->getCamera(cam_name);
+    if (cam){
+        cerr << "INFO! GOT CAMERA: " << cam->getName() << endl;
+        m_cameras[cam_name] = cam;
+    }
+    else{
+        cerr << "WARNING! CAMERA NOT FOUND " << cam_name << endl;
+    }
+    return cam;
 }
 
 void afVolmetricDrillingPlugin::initializeLabels()

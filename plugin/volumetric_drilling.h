@@ -287,6 +287,8 @@ protected:
 
     void initializeLabels();
 
+    afCameraPtr findAndAppendCamera(string cam_name);
+
     void updateLabelPositions();
 
 private:
@@ -315,6 +317,8 @@ private:
 
     // camera to render the world
     afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR, m_stereoCameraLandR;
+
+    map<string, afCameraPtr> m_cameras;
 
     // warning pop-up panel
     cPanel* m_warningPanel;
