@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QProcess
 import sys
 from study_manager import StudyManager
 from gui_setup import SetupGUI
@@ -60,29 +60,42 @@ class Ui(QtWidgets.QWidget):
 
         self.button_record_study = self.findChild(QtWidgets.QPushButton, 'button_record_study')
         self.button_record_study.clicked.connect(self.pressed_record_study)
+        self.button_record_study.setStyleSheet("background-color: GREEN")
 
         self.text_participant_name = self.findChild(QtWidgets.QTextEdit, 'textEdit_participant_name')
         self.recording_button = self.findChild(QtWidgets.QPushButton, 'button_record_study')
 
+        self.textEdit_info = self.findChild(QtWidgets.QPlainTextEdit, 'textEdit_info')
+
+        self.textEdit_debug = self.findChild(QtWidgets.QPlainTextEdit, 'textEdit_debug')
+
         self._recording_study = False
+
+        self._process = QProcess()
+        self._process.readyReadStandardOutput.connect(self.handle_stdout)
+        self._process.readyReadStandardError.connect(self.handle_stderr)
 
         self.show()
 
     def pressed_start_simulation(self):
         args = ['--launch_file', str(self.gui_setup.launch_file), '-l', '0,7', '-a', self.active_volume_adf]
-        self.study_manager.start_simulation(args)
+        # self.study_manager.start_simulation(args)
+        try:
+            self._process.start('ambf_simulator', args)
+        except Exception as e:
+            self.print_info(e)
 
     def pressed_pupil_service(self):
         self.study_manager.start_pupil_service()
 
     def pressed_record_study(self):
         name = self.text_participant_name.toPlainText()
-        print('Will Start Recording Participant: ', name)
+        self.print_info('Recording for : ' + name)
 
     def radio_button_volume_selection(self):
         button = self.sender()
         if button.isChecked():
-            print('Active Volume is ', button.volume_name)
+            self.print_info('Active Volume is ' + button.volume_name)
             self.active_volume_adf = button.volume_adf
 
     def pressed_record_study(self):
@@ -92,6 +105,9 @@ class Ui(QtWidgets.QWidget):
             self.button_record_study.setText("Record Study")
             self.button_record_study.setStyleSheet("background-color: GREEN")
         else:
+            if self.text_participant_name.toPlainText() == '':
+                self.print_info('INFO! Please enter a participant name')
+                return -1
             base_path = str(self.gui_setup.recording_base_path)
             participant_name = '/' + self.text_participant_name.toPlainText()
             date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -101,8 +117,25 @@ class Ui(QtWidgets.QWidget):
             self.button_record_study.setStyleSheet("background-color: RED")
 
     def closeEvent(self, event):
-        print('Terminate Called')
+        self.print_info('Terminate Called')
         self.study_manager.close()
+
+    def get_time_as_str(self):
+        return '[' + datetime.datetime.now().strftime("%H:%M:%S") + '] - '
+
+    def print_info(self, msg):
+        self.textEdit_info.insertPlainText(self.get_time_as_str() + msg + '\n')
+
+    def print_debug(self, msg):
+        self.textEdit_debug.insertPlainText(self.get_time_as_str() + msg)
+
+    def handle_stderr(self):
+        msg = bytes(self._process.readAllStandardError()).decode('utf-8')
+        self.print_debug(msg)
+
+    def handle_stdout(self):
+        msg = bytes(self._process.readAllStandardOutput()).decode('utf-8')
+        self.print_debug(msg)
 
 
 

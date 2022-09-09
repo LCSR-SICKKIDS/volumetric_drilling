@@ -14,7 +14,43 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="0" rowspan="12">
+   <item row="7" column="2">
+    <widget class="QLabel" name="label">
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>18</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>RECORD MENU</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QLabel" name="label_3">
+     <property name="font">
+      <font>
+       <family>Ubuntu Mono</family>
+       <pointsize>18</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>LAUNCH MENU</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" rowspan="11">
     <widget class="QGroupBox" name="groupBox">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -52,41 +88,47 @@
      </layout>
     </widget>
    </item>
-   <item row="8" column="2">
-    <layout class="QGridLayout" name="gridLayout_4">
-     <item row="3" column="0">
-      <widget class="QPushButton" name="button_record_study">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>50</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>Record Study</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QTextEdit" name="textEdit_participant_name">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
+   <item row="10" column="2">
+    <layout class="QGridLayout" name="gridLayout_9">
+     <item row="1" column="1">
+      <widget class="QPlainTextEdit" name="textEdit_debug"/>
      </item>
      <item row="1" column="0">
-      <widget class="QLabel" name="label_participant_name">
+      <widget class="QPlainTextEdit" name="textEdit_info"/>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>18</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Participant Name</string>
+        <string>INFO</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_5">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>18</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Debug</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -105,6 +147,9 @@
        <property name="text">
         <string>Toggle Shadows</string>
        </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item row="6" column="0">
@@ -117,6 +162,9 @@
        </property>
        <property name="text">
         <string>Reset Volume</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -131,6 +179,9 @@
        <property name="text">
         <string>Reset Drill</string>
        </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item row="7" column="1">
@@ -143,6 +194,9 @@
        </property>
        <property name="text">
         <string>Toggle Volume Smoothening</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -161,6 +215,9 @@
        <property name="text">
         <string>Start Pupil Service</string>
        </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item row="2" column="0">
@@ -173,6 +230,9 @@
        </property>
        <property name="text">
         <string>Start Simulation</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -212,6 +272,55 @@
      </property>
     </widget>
    </item>
+   <item row="8" column="2">
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="2" column="0">
+      <widget class="QTextEdit" name="textEdit_participant_name">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_participant_name">
+       <property name="text">
+        <string>Participant Name</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QPushButton" name="button_record_study">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>50</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Record Study</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+       <property name="flat">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
    <item row="6" column="2">
     <spacer name="verticalSpacer_2">
      <property name="orientation">
@@ -225,41 +334,18 @@
      </property>
     </spacer>
    </item>
-   <item row="7" column="2">
-    <widget class="QLabel" name="label">
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>18</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
+   <item row="9" column="2">
+    <spacer name="verticalSpacer_3">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
      </property>
-     <property name="text">
-      <string>RECORD MENU</string>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QLabel" name="label_3">
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>18</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>LAUNCH MENU</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
+    </spacer>
    </item>
   </layout>
  </widget>
