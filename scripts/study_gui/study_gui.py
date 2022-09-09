@@ -41,9 +41,16 @@ class Ui(QtWidgets.QWidget):
                 radio_button.setChecked(True)
 
         self.button_start_simulation = self.findChild(QtWidgets.QPushButton, 'button_start_simulation')
+        self.button_start_simulation.setStyleSheet("background-color: GREEN")
         self.button_start_simulation.clicked.connect(self.pressed_start_simulation)
 
-        self.button_pupil_service = self.findChild(QtWidgets.QPushButton, 'button_pupil_service')
+        self.button_launch_vr = self.findChild(QtWidgets.QPushButton, 'button_launch_vr')
+
+        self.button_stream_stereo = self.findChild(QtWidgets.QPushButton, 'button_stream_stereo')
+
+        self.button_stream_depth = self.findChild(QtWidgets.QPushButton, 'button_stream_depth')
+
+        self.button_pupil_service = self.findChild(QtWidgets.QPushButton, 'button_pupil_capture')
         self.button_pupil_service.clicked.connect(self.pressed_pupil_service)
 
         self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_drill')
@@ -74,20 +81,32 @@ class Ui(QtWidgets.QWidget):
         self._ambf_process = QProcess()
         self._ambf_process.readyReadStandardOutput.connect(self.handle_stdout)
         self._ambf_process.readyReadStandardError.connect(self.handle_stderr)
-
+        self._ambf_process.finished.connect(self._simulation_closed)
         self._pupil_process = QProcess()
 
         self.show()
 
     def pressed_start_simulation(self):
-        args = ['--launch_file', str(self.gui_params.launch_file), '-l', '0,7', '-a', self.active_volume_adf]
+        launch_file_adf_indices = '0'
+        if self.button_stream_depth.isChecked():
+            launch_file_adf_indices = launch_file_adf_indices + ',4'
+        if self.button_stream_stereo.isChecked():
+            launch_file_adf_indices = launch_file_adf_indices + ',5'
+        if self.button_launch_vr.isChecked():
+            launch_file_adf_indices = launch_file_adf_indices + ',6'
+        args = ['--launch_file', str(self.gui_params.launch_file), '-l', launch_file_adf_indices, '-a', self.active_volume_adf]
         # self.study_manager.start_simulation(args)
-        try:
-            # self._ambf_process.start('ambf_simulator', args)
+        if self._ambf_process.state() != QProcess.Running:
             self._ambf_process.start(str(self.gui_params.ambf_executable_path), args)
-        except Exception as e:
-            self.print('ERROR! Cant launch AMBF')
-            print(e)
+            self.button_start_simulation.setText('Close Simulation')
+            self.button_start_simulation.setStyleSheet("background-color: RED")
+        else:
+            self._ambf_process.close()
+
+    def _simulation_closed(self):
+        self.button_start_simulation.setText('Start Simulation')
+        self.button_start_simulation.setStyleSheet("background-color: GREEN")
+        pass
 
     def pressed_pupil_service(self):
         try:
