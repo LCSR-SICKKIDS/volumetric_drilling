@@ -12,15 +12,15 @@ class Ui(QtWidgets.QWidget):
         super(Ui, self).__init__()
         uic.loadUi('layout.ui', self)
 
-        self.gui_setup = SetupGUI('volumes_info.yaml')
-        self.study_manager = StudyManager(self.gui_setup.ambf_executable_path, self.gui_setup.pupil_executable_path)
+        self.gui_params = SetupGUI('volumes_info.yaml')
+        self.study_manager = StudyManager(self.gui_params.ambf_executable_path, self.gui_params.pupil_executable_path)
         self.active_volume_adf = ''
 
         # Setup the grid layout for different volumes
         self.volumes_grid = self.findChild(QtWidgets.QGridLayout, 'gridLayout')
 
-        for i in range(len(self.gui_setup.volumes_info)):
-            vinfo = self.gui_setup.volumes_info[i]
+        for i in range(len(self.gui_params.volumes_info)):
+            vinfo = self.gui_params.volumes_info[i]
             radio_button = QtWidgets.QRadioButton(vinfo.name)
             min_height = 400
             # radio_button.setMinimumHeight(min_height)
@@ -71,22 +71,30 @@ class Ui(QtWidgets.QWidget):
 
         self._recording_study = False
 
-        self._process = QProcess()
-        self._process.readyReadStandardOutput.connect(self.handle_stdout)
-        self._process.readyReadStandardError.connect(self.handle_stderr)
+        self._ambf_process = QProcess()
+        self._ambf_process.readyReadStandardOutput.connect(self.handle_stdout)
+        self._ambf_process.readyReadStandardError.connect(self.handle_stderr)
+
+        self._pupil_process = QProcess()
 
         self.show()
 
     def pressed_start_simulation(self):
-        args = ['--launch_file', str(self.gui_setup.launch_file), '-l', '0,7', '-a', self.active_volume_adf]
+        args = ['--launch_file', str(self.gui_params.launch_file), '-l', '0,7', '-a', self.active_volume_adf]
         # self.study_manager.start_simulation(args)
         try:
-            self._process.start('ambf_simulator', args)
+            # self._ambf_process.start('ambf_simulator', args)
+            self._ambf_process.start(str(self.gui_params.ambf_executable_path), args)
         except Exception as e:
-            self.print_info(e)
+            self.print('ERROR! Cant launch AMBF')
+            print(e)
 
     def pressed_pupil_service(self):
-        self.study_manager.start_pupil_service()
+        try:
+            self._pupil_process.start(str(self.gui_params.pupil_executable_path))
+        except Exception as e:
+            self.print_info('ERROR! Cant launch Pupil Capture')
+            print(e)
 
     def pressed_record_study(self):
         name = self.text_participant_name.toPlainText()
@@ -98,6 +106,19 @@ class Ui(QtWidgets.QWidget):
             self.print_info('Active Volume is ' + button.volume_name)
             self.active_volume_adf = button.volume_adf
 
+    def is_ready_to_record(self):
+        record = True
+        if self.text_participant_name.toPlainText() == '':
+            self.print_info('INFO! Please enter a participant name')
+            record = False
+        if self._ambf_process.state() != QProcess.Running:
+            self.print_info('INFO! Please run simulation before recording. Ignoring Record Request!')
+            record = False
+        if self._pupil_process.state() != QProcess.Running:
+            self.print_info('INFO! Please launch pupil capture before recording. Ignoring Record Request!')
+            record = False
+        return record
+
     def pressed_record_study(self):
         if self._recording_study:
             self.study_manager.stop_recording()
@@ -105,10 +126,9 @@ class Ui(QtWidgets.QWidget):
             self.button_record_study.setText("Record Study")
             self.button_record_study.setStyleSheet("background-color: GREEN")
         else:
-            if self.text_participant_name.toPlainText() == '':
-                self.print_info('INFO! Please enter a participant name')
+            if not self.is_ready_to_record():
                 return -1
-            base_path = str(self.gui_setup.recording_base_path)
+            base_path = str(self.gui_params.recording_base_path)
             participant_name = '/' + self.text_participant_name.toPlainText()
             date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.study_manager.start_recording(base_path + participant_name + date_time)
@@ -118,7 +138,10 @@ class Ui(QtWidgets.QWidget):
 
     def closeEvent(self, event):
         self.print_info('Terminate Called')
+        self._ambf_process.close()
+        self._pupil_process.close()
         self.study_manager.close()
+        print('GOOD BYE')
 
     def get_time_as_str(self):
         return '[' + datetime.datetime.now().strftime("%H:%M:%S") + '] - '
@@ -130,11 +153,11 @@ class Ui(QtWidgets.QWidget):
         self.textEdit_debug.insertPlainText(self.get_time_as_str() + msg)
 
     def handle_stderr(self):
-        msg = bytes(self._process.readAllStandardError()).decode('utf-8')
+        msg = bytes(self._ambf_process.readAllStandardError()).decode('utf-8')
         self.print_debug(msg)
 
     def handle_stdout(self):
-        msg = bytes(self._process.readAllStandardOutput()).decode('utf-8')
+        msg = bytes(self._ambf_process.readAllStandardOutput()).decode('utf-8')
         self.print_debug(msg)
 
 
