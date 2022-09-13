@@ -87,7 +87,7 @@ class Ui(QtWidgets.QWidget):
         self.show()
 
     def pressed_start_simulation(self):
-        launch_file_adf_indices = '0'
+        launch_file_adf_indices = '0,7'
         if self.button_stream_depth.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',4'
         if self.button_stream_stereo.isChecked():
