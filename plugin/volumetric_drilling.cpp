@@ -1329,19 +1329,20 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt:
         return -1;
     }
 
+    m_duration = var_map["gcdr"].as<double>() + m_textShowDuration;
     m_gazeMarker->scaleSceneObjects(0.5);
     m_camera = camPtr;
     m_radius = 0.;
-    m_delta_radius = 0.00000005;
+    m_maxRadius = 0.001;
+    m_radiusStep = (m_maxRadius - m_radius) / m_duration;
 
     m_T_c_w = m_camera->getLocalTransform();
-    m_T_m_c = cTransform(cVector3d(-4., 0., 0.), cMatrix3d());
+    m_T_m_c = cTransform(cVector3d(-5., 0., 0.), cMatrix3d());
 
     m_T_m_w = m_T_c_w * m_T_m_c;
     m_gazeMarker->setLocalTransform(m_T_m_w);
 
     m_textShowDuration = 5.0;
-    m_duration = var_map["gcdr"].as<double>() + m_textShowDuration;
     m_time = m_duration;
 
     initializeLabels();
@@ -1408,7 +1409,7 @@ void GazeMarkerController::moveGazeMarker(double dt){
 
 //    cerr << m_time << ": " << m_radius << " :: " << m_T_m_w.getLocalPos().str(2) << endl;
 
-    m_radius += m_delta_radius;
+    m_radius += (m_radiusStep * dt);
 }
 
 void GazeMarkerController::hide(bool val){

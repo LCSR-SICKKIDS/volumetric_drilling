@@ -109,7 +109,8 @@ public:
 
 private:
     double m_radius;
-    double m_delta_radius;
+    double m_maxRadius;
+    double m_radiusStep;
     cTransform m_T_c_w;
     cTransform m_T_m_w;
     cTransform m_T_m_c;
