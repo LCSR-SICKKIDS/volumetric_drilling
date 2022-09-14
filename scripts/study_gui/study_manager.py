@@ -1,9 +1,7 @@
 import os
 import subprocess
 import sys
-
 from pupil_manager import *
-import data_record
 
 
 class StudyManager:
@@ -38,22 +36,21 @@ class StudyManager:
             else:
                 self._launch_recording_script(path)
 
-    def _launch_simulator(self, args):
-        print('Launch args: ', args)
-        args_list = []
-        args_list.append(self.ambf_executable_path)
-        for a in args:
-            args_list.append(a)
-        self.ambf_handle = None
-        self.ambf_handle = subprocess.Popen(args_list)
+    def start_pupil_service(self):
+        if not self.pupil_service_handle:
+            self._launch_pupil_service()
+        else:
+            poll = self.pupil_service_handle.poll()
+            if poll is None:
+                print('INFO! Pupil service already running. Close it to reopen again')
+            else:
+                self._launch_pupil_service()
 
-    def _get_ambf_main_window_handle(self):
-        xdtool_str = 'xdotool search --class AMBF\ Simulator\ Window\ 1'
-        xdtool_proc = subprocess.Popen(xdtool_str, shell=True, stdout=subprocess.PIPE)
-        window_id = xdtool_proc.communicate()[0]
-        window_id_str = window_id.decode().replace('\n', '')
-        # print("AMBF Main Window ID: ", window_id_str)
-        return window_id_str
+    def start_recording(self, path):
+        os.makedirs(path)
+        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+g')
+        self.pupil_manager.start_recording(path)
+        self.start_recording_script(path)
 
     def close_simulation(self):
         if self.ambf_handle:
@@ -65,15 +62,18 @@ class StudyManager:
             self.recording_script_handle.terminate()
             self.recording_script_handle = None
 
-    def start_pupil_service(self):
-        if not self.pupil_service_handle:
-            self._launch_pupil_service()
-        else:
-            poll = self.pupil_service_handle.poll()
-            if poll is None:
-                print('INFO! Pupil service already running. Close it to reopen again')
-            else:
-                self._launch_pupil_service()
+    def close_pupil_service(self):
+        if self.pupil_service_handle:
+            self.pupil_service_handle.terminate()
+            self.pupil_service_handle = None
+
+    def stop_recording(self):
+        self.pupil_manager.stop_recoding()
+        self.close_recording_script()
+
+    def close(self):
+        self.close_simulation()
+        self.close_pupil_service()
 
     def toggle_volume_smoothening(self):
         self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'alt+s')
@@ -95,6 +95,23 @@ class StudyManager:
             proc = subprocess.Popen(cmd_str, shell=True)
             print("Running Command ", cmd_str)
 
+    def _launch_simulator(self, args):
+        print('Launch args: ', args)
+        args_list = []
+        args_list.append(self.ambf_executable_path)
+        for a in args:
+            args_list.append(a)
+        self.ambf_handle = None
+        self.ambf_handle = subprocess.Popen(args_list)
+
+    def _get_ambf_main_window_handle(self):
+        xdtool_str = 'xdotool search --class AMBF\ Simulator\ Window\ 1'
+        xdtool_proc = subprocess.Popen(xdtool_str, shell=True, stdout=subprocess.PIPE)
+        window_id = xdtool_proc.communicate()[0]
+        window_id_str = window_id.decode().replace('\n', '')
+        # print("AMBF Main Window ID: ", window_id_str)
+        return window_id_str
+
     def _launch_pupil_service(self):
         self.pupil_service_handle = None
         self.pupil_service_handle = subprocess.Popen(self.pupil_executable_path)
@@ -112,25 +129,6 @@ class StudyManager:
         args_list.append(path)
         self.recording_script_handle = None
         self.recording_script_handle = subprocess.Popen(args_list)
-
-    def close_pupil_service(self):
-        if self.pupil_service_handle:
-            self.pupil_service_handle.terminate()
-            self.pupil_service_handle = None
-
-    def start_recording(self, path):
-        os.makedirs(path)
-        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+g')
-        self.pupil_manager.start_recording(path)
-        self.start_recording_script(path)
-
-    def stop_recording(self):
-        self.pupil_manager.stop_recoding()
-        self.close_recording_script()
-
-    def close(self):
-        self.close_simulation()
-        self.close_pupil_service()
 
 
 
