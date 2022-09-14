@@ -13,6 +13,7 @@ class PupilManager:
         self.pr.recv_string()
 
     def start_recording(self, dir_path):
+        self.sync_time()
         self.pr.send_string('R ' + dir_path)
         self.pr.recv_string()
 

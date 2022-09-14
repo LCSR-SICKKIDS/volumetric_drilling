@@ -1,6 +1,7 @@
 # ambf_executable_path: "/home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator"
 ambf_executable_path: "../../../ambf/bin/lin-x86_64/ambf_simulator"
 pupil_executable_path: "pupil_capture"
+recording_script_path: "../data_record.py"
 launch_file_path: "../../launch.yaml"
 recording_base_path: "../../../Volumetric Drilling Userstudy/"
 

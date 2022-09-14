@@ -1,14 +1,20 @@
 import os
 import subprocess
+import sys
+
 from pupil_manager import *
+import data_record
+
 
 class StudyManager:
-    def __init__(self, ambf_executable_path, pupil_executable_path):
+    def __init__(self, ambf_executable_path, pupil_executable_path, recording_script_path):
         self.ambf_executable_path = str(ambf_executable_path)
         self.pupil_executable_path = str(pupil_executable_path)
+        self.recording_script_path = str(recording_script_path)
         self.pupil_manager = PupilManager()
         self.ambf_handle = None
         self.pupil_service_handle = None
+        self.recording_script_handle = None
         self.xdotool_handle = None
         self._xdtool_window_key_cmd_prefix = 'xdotool key --window '
 
@@ -21,6 +27,16 @@ class StudyManager:
                 print('INFO! AMBF Simulator already running. Close it to reopen again')
             else:
                 self._launch_simulator(args)
+
+    def start_recording_script(self, path):
+        if not self.recording_script_handle:
+            self._launch_recording_script(path)
+        else:
+            poll = self.recording_script_handle.poll()
+            if poll is None:
+                print('INFO! Recording already running. Close it to reopen again')
+            else:
+                self._launch_recording_script(path)
 
     def _launch_simulator(self, args):
         print('Launch args: ', args)
@@ -43,6 +59,11 @@ class StudyManager:
         if self.ambf_handle:
             self.ambf_handle.terminate()
             self.ambf_handle = None
+
+    def close_recording_script(self):
+        if self.recording_script_handle:
+            self.recording_script_handle.terminate()
+            self.recording_script_handle = None
 
     def start_pupil_service(self):
         if not self.pupil_service_handle:
@@ -78,6 +99,20 @@ class StudyManager:
         self.pupil_service_handle = None
         self.pupil_service_handle = subprocess.Popen(self.pupil_executable_path)
 
+    def _launch_recording_script(self, path):
+        print('Recording Path: ', path)
+        args_list = []
+        if sys.version_info[0] > 2:
+            python_interp = 'python3'
+        else:
+            python_interp = 'python'
+        args_list.append(python_interp)
+        args_list.append(self.recording_script_path)
+        args_list.append('--output_dir')
+        args_list.append(path)
+        self.recording_script_handle = None
+        self.recording_script_handle = subprocess.Popen(args_list)
+
     def close_pupil_service(self):
         if self.pupil_service_handle:
             self.pupil_service_handle.terminate()
@@ -86,11 +121,12 @@ class StudyManager:
     def start_recording(self, path):
         os.makedirs(path)
         self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+g')
-        self.pupil_manager.sync_time()
         self.pupil_manager.start_recording(path)
+        self.start_recording_script(path)
 
     def stop_recording(self):
         self.pupil_manager.stop_recoding()
+        self.close_recording_script()
 
     def close(self):
         self.close_simulation()

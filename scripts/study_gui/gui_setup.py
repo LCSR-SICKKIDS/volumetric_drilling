@@ -16,12 +16,13 @@ class VolumeInfo:
 class SetupGUI:
     def __init__(self, setup_filename):
         self.setup_file_name = setup_filename
-        self.file_path = pathlib.Path(self.setup_file_name).parent.resolve()
-        self.yaml_file = open('gui_setup.yaml', 'r')
+        self.file_path = pathlib.Path(self.setup_file_name)
+        self.yaml_file = open(str(self.file_path), 'r')
 
         self.yaml_data = yaml.safe_load(self.yaml_file)
-        self.ambf_executable_path = pathlib.Path(self.yaml_data["ambf_executable_path"]).resolve()
+        self.ambf_executable_path = pathlib.Path(self.yaml_data["ambf_executable_path"])
         self.pupil_executable_path = pathlib.Path(self.yaml_data["pupil_executable_path"])
+        self.recording_script_path = pathlib.Path(self.yaml_data["recording_script_path"])
         self.recording_base_path = pathlib.Path(self.yaml_data['recording_base_path']).resolve()
         self.launch_file = pathlib.Path(self.yaml_data["launch_file_path"]).resolve()
         volumes_data = self.yaml_data['volumes']

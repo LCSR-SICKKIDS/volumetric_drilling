@@ -12,8 +12,10 @@ class Ui(QtWidgets.QWidget):
         super(Ui, self).__init__()
         uic.loadUi('layout.ui', self)
 
-        self.gui_params = SetupGUI('volumes_info.yaml')
-        self.study_manager = StudyManager(self.gui_params.ambf_executable_path, self.gui_params.pupil_executable_path)
+        self.gui_params = SetupGUI('gui_setup.yaml')
+        self.study_manager = StudyManager(self.gui_params.ambf_executable_path,
+                                          self.gui_params.pupil_executable_path,
+                                          self.gui_params.recording_script_path)
         self.active_volume_adf = ''
 
         # Setup the grid layout for different volumes
@@ -83,6 +85,7 @@ class Ui(QtWidgets.QWidget):
         self._ambf_process.readyReadStandardError.connect(self.handle_stderr)
         self._ambf_process.finished.connect(self._simulation_closed)
         self._pupil_process = QProcess()
+        self._recording_process = QProcess()
 
         self.show()
 
@@ -115,10 +118,6 @@ class Ui(QtWidgets.QWidget):
             self.print_info('ERROR! Cant launch Pupil Capture')
             print(e)
 
-    def pressed_record_study(self):
-        name = self.text_participant_name.toPlainText()
-        self.print_info('Recording for : ' + name)
-
     def radio_button_volume_selection(self):
         button = self.sender()
         if button.isChecked():
@@ -140,6 +139,7 @@ class Ui(QtWidgets.QWidget):
 
     def pressed_record_study(self):
         if self._recording_study:
+            # self._recording_process.close()
             self.study_manager.stop_recording()
             self._recording_study = False
             self.button_record_study.setText("Record Study")
@@ -150,7 +150,9 @@ class Ui(QtWidgets.QWidget):
             base_path = str(self.gui_params.recording_base_path)
             participant_name = '/' + self.text_participant_name.toPlainText()
             date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self.study_manager.start_recording(base_path + participant_name + date_time)
+            recording_filepath = base_path + participant_name + date_time
+            self.study_manager.start_recording(recording_filepath)
+            # self._recording_process.start("python3", [str(self.gui_params.recording_executable_path), '--output_dir', recording_filepath])
             self._recording_study = True
             self.button_record_study.setText("STOP RECORDING")
             self.button_record_study.setStyleSheet("background-color: RED")
