@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import pathlib
 import pickle
 import sys
 import time
@@ -380,6 +381,7 @@ def main(args):
     print("Writing to HDF5 every chunk of %d data" % args.chunk_size)
 
     rospy.spin()
+    print("Terminating ", __file__)
     write_to_hdf5()  # save when user exits
 
 
@@ -401,14 +403,16 @@ if __name__ == '__main__':
     parser.add_argument(
         '--output_dir', default='data', type=str)
 
+    resolved_path = str(pathlib.Path(os.path.dirname(__file__)).resolve())
+
     parser.add_argument(
-        '--world_adf', default='../ADF/world/world.yaml', type=str)
+        '--world_adf', default=resolved_path + '/../ADF/world/world.yaml', type=str)
     parser.add_argument(
-        '--volume_adf', default='../ADF/volume_171.yaml', type=str)
+        '--volume_adf', default=resolved_path + '/../ADF/volume_171.yaml', type=str)
     parser.add_argument(
-        '--stereo_adf', default='../ADF/stereo_cameras.yaml', type=str)
+        '--stereo_adf', default=resolved_path + '/../ADF/stereo_cameras.yaml', type=str)
     parser.add_argument(
-        '--nrrd_header', default='../resources/volumes/nrrd_header.pkl', type=str)
+        '--nrrd_header', default=resolved_path + '/../resources/volumes/nrrd_header.pkl', type=str)
 
     parser.add_argument(
         '--stereoL_topic', default='/ambf/env/cameras/stereoL/ImageData', type=str)
@@ -433,7 +437,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', action='store_true')
 
     args = parser.parse_args()
-
+    print("Provided args: \n", args)
     # init cv bridge for data conversion
     bridge = CvBridge()
     valid = verify_cv_bridge()
