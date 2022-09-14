@@ -210,7 +210,7 @@ def write_to_hdf5():
 
     # write volume pose
     key = "pose_mastoidectomy_volume"
-    num_samples = len(f["data"][f["data"].keys()[0]])
+    num_samples = len(f["data"][list(f["data"].keys())[0]])
     f["data"].create_dataset(key, data=np.stack([volume_pose] * num_samples, axis=0),
                              compression='gzip')  # write to disk
     log.log(logging.INFO, (key, f["data"][key].shape))
