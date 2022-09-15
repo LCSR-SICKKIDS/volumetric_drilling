@@ -94,7 +94,7 @@ class GazeMarkerController{
 public:
     GazeMarkerController();
 
-    int init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map& var_map);
+    int init(afWorldPtr a_worldPtr, cWorld* a_frontLayer, p_opt::variables_map& var_map);
 
     void initializeLabels();
 
@@ -105,6 +105,8 @@ public:
     void hide(bool val);
 
     void restart();
+
+    cWorld* m_frontLayer;
 
 
 private:
@@ -118,7 +120,7 @@ private:
     double m_duration;
 
     afRigidBodyPtr m_gazeMarker;
-    afCameraPtr m_camera;
+    afCameraPtr m_mainCamera, m_stereoCamera;
 
     cPanel* m_textPanel;
     cLabel* m_textLabel;
@@ -142,7 +144,7 @@ public:
 
     void cleanup();
 
-    int init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::variables_map& opts);
+    int init(afWorldPtr a_worldPtr, cWorld* a_frontLayer, p_opt::variables_map& opts);
 
     void update(double dt);
 
@@ -262,7 +264,9 @@ public:
 
     cToolCursor* m_targetToolCursor;
 
-    afCameraPtr m_camera;
+    afCameraPtr m_mainCamera, m_stereoCamera;
+
+    cWorld* m_frontLayer;
 };
 
 
@@ -317,7 +321,7 @@ private:
     afVolumePtr m_volumeObject;
 
     // camera to render the world
-    afCameraPtr m_mainCamera, m_stereoCameraL, m_stereoCameraR, m_stereoCameraLandR;
+    afCameraPtr m_mainCamera, m_cameraL, m_cameraR, m_stereoCamera;
 
     map<string, afCameraPtr> m_cameras;
 
@@ -350,6 +354,8 @@ private:
     WaveGenerator m_waveGenerator;
 
     GazeMarkerController m_gazeMarkerController;
+
+    cWorld* m_frontLayer;
 };
 
 

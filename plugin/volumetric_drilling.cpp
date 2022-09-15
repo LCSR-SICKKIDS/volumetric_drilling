@@ -76,19 +76,21 @@ void DrillManager::cleanup()
             delete m_audioBuffer;
         }
         if (m_audioDevice){
-            m_camera->getInternalCamera()->detachAudioDevice();
+            m_mainCamera->getInternalCamera()->detachAudioDevice();
             delete m_audioDevice;
         }
         delete m_deviceHandler;
 }
 
-int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::variables_map& var_map){
+int DrillManager::init(afWorldPtr a_worldPtr, cWorld* a_frontLayer, p_opt::variables_map& var_map){
     // importing drill model
 
     int nt = var_map["nt"].as<int>();
     bool mute = var_map["mute"].as<bool>();
 
-    m_camera = a_cameraPtr;
+    m_mainCamera = a_worldPtr->getCamera("main_camera");
+    m_stereoCamera = a_worldPtr->getCamera("stereoLR");
+    m_frontLayer = a_frontLayer;
 
     if (nt > 0 && nt <= 8){
         m_toolCursorList.resize(nt);
@@ -173,7 +175,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::va
 
     if (!mute){
         m_audioDevice = new cAudioDevice();
-        a_cameraPtr->getInternalCamera()->attachAudioDevice(m_audioDevice);
+        m_mainCamera->getInternalCamera()->attachAudioDevice(m_audioDevice);
 
         m_audioBuffer = new cAudioBuffer();
         string drillAudioFilepath = g_current_filepath + "/../resources/sounds/drill.wav";
@@ -209,7 +211,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, afCameraPtr a_cameraPtr, p_opt::va
 void DrillManager::update(double dt)
 {
 
-    cTransform T_c_w = m_camera->getLocalTransform();
+    cTransform T_c_w = m_mainCamera->getLocalTransform();
 
     // If a valid haptic device is found, then it should be available
     if (getOverrideControl()){
@@ -225,7 +227,7 @@ void DrillManager::update(double dt)
         // set zero forces when manipulating objects
         if (m_deviceClutch || m_camClutch){
             if (m_camClutch){
-                m_camera->setView(T_c_w.getLocalPos() + m_V_i * !m_deviceClutch, m_camera->getTargetPosLocal(), m_camera->getUpVector());
+                m_mainCamera->setView(T_c_w.getLocalPos() + m_V_i * !m_deviceClutch, m_mainCamera->getTargetPosLocal(), m_mainCamera->getUpVector());
             }
             m_toolCursorList[0]->setDeviceLocalForce(0.0, 0.0, 0.0);
         }
@@ -274,7 +276,8 @@ void DrillManager::initializeLabels(){
                      10, 10, 10, 10);
     m_sizePanel->setColor(cColorf(1, 1, 1));
     m_sizePanel->setTransparencyLevel(0.8);
-    m_camera->getFrontLayer()->addChild(m_sizePanel);
+//    m_camera->getFrontLayer()->addChild(m_sizePanel);
+    m_frontLayer->addChild(m_sizePanel);
 
     m_sizePanel->addChild(m_sizeLabel);
 
@@ -282,7 +285,8 @@ void DrillManager::initializeLabels(){
     m_controlModeLabel->m_fontColor.setGreen();
     m_controlModeLabel->setFontScale(.5);
     m_controlModeLabel->setText("[CTRL+O] Drill Control Mode = Haptic Device / Keyboard");
-    m_camera->getFrontLayer()->addChild(m_controlModeLabel);
+//    m_camera->getFrontLayer()->addChild(m_controlModeLabel);
+    m_frontLayer->addChild(m_controlModeLabel);
 }
 
 void DrillManager::updateLabelPositions(){
@@ -324,7 +328,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
             ("dm", p_opt::value<string>()->default_value("dark_metal_brushed.jpg"), "Drill's Matcap Filename (Should be placed in ./resources/matcap/ folder)")
             ("fp", p_opt::value<string>()->default_value("/dev/input/js0"), "Footpedal joystick input file description E.g. /dev/input/js0)")
             ("mute", p_opt::value<bool>()->default_value(false), "Mute")
-            ("gcdr", p_opt::value<double>()->default_value(15.0), "Gaze Calibration Marker Motion Duration");
+            ("gcdr", p_opt::value<double>()->default_value(30.0), "Gaze Calibration Marker Motion Duration");
 
     p_opt::variables_map var_map;
     p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).allow_unregistered().run(), var_map);
@@ -349,11 +353,13 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     m_worldPtr = a_afWorld;
 
+    m_frontLayer = new cWorld();
+
     // Get first camera
     m_mainCamera = findAndAppendCamera("main_camera");
-    m_stereoCameraL = findAndAppendCamera("cameraL");
-    m_stereoCameraR = findAndAppendCamera("cameraR");
-    m_stereoCameraLandR = findAndAppendCamera("stereoLR");
+    m_cameraL = findAndAppendCamera("cameraL");
+    m_cameraR = findAndAppendCamera("cameraR");
+    m_stereoCamera = findAndAppendCamera("stereoLR");
 
     if (m_cameras.size() == 0){
         cerr << "ERROR! NO CAMERAS FOUND. " << endl;
@@ -365,11 +371,11 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         m_mainCamera = m_worldPtr->getCameras()[0];
     }
 
-    if (m_stereoCameraLandR){
-        makeVRWindowFullscreen(m_stereoCameraLandR);
+    if (m_stereoCamera){
+        makeVRWindowFullscreen(m_stereoCamera);
     }
 
-    if (!m_drillManager.init(a_afWorld, m_mainCamera, var_map)){
+    if (!m_drillManager.init(a_afWorld, m_frontLayer, var_map)){
         return -1;
     }
 
@@ -405,6 +411,22 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     m_voxelObj->setUseMaterial(true);
 
     initializeLabels();
+
+    for (int ci = 0 ; ci < m_mainCamera->getFrontLayer()->getNumChildren() ; ci++){
+        cGenericObject* child = m_mainCamera->getFrontLayer()->getChild(ci);
+        m_mainCamera->getFrontLayer()->removeChild(child);
+        m_frontLayer->addChild(child);
+    }
+
+    if (m_mainCamera->getFrontLayer()){
+//        delete m_mainCamera->getFrontLayer();
+    }
+
+    m_mainCamera->getInternalCamera()->m_frontLayer = m_frontLayer;
+    if (m_stereoCamera){
+        m_stereoCamera->getInternalCamera()->m_frontLayer = m_frontLayer;
+        m_stereoCamera->getInternalCamera()->m_stereoOffsetW = 0.1;
+    }
 
     updateLabelPositions();
 
@@ -445,7 +467,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         cerr << "SUCCESFULLY FOUND FOOTPEDAL \n";
     }
 
-    m_gazeMarkerController.init(m_worldPtr, m_mainCamera, var_map);
+    m_gazeMarkerController.init(m_worldPtr, m_frontLayer, var_map);
 
     return 1;
 }
@@ -848,6 +870,8 @@ void afVolmetricDrillingPlugin::makeVRWindowFullscreen(afCameraPtr vrCam, int mo
     x += xpos; y += ypos;
     glfwSetWindowPos(vrCam->m_window, x, y);
     glfwSetWindowSize(vrCam->m_window, w, h);
+    vrCam->m_width = w;
+    vrCam->m_height = h;
     glfwSwapInterval(0);
     cerr << "\t\t Setting the Window on the VR Monitor to fullscreen \n" ;
 }
@@ -909,7 +933,8 @@ void afVolmetricDrillingPlugin::initializeLabels()
                         10, 10, 10, 10);
     m_warningPanel->setColor(cColorf(0.6,0,0));
     m_warningPanel->setTransparencyLevel(0.6);
-    m_mainCamera->getFrontLayer()->addChild(m_warningPanel);
+//    m_mainCamera->getFrontLayer()->addChild(m_warningPanel);
+    m_frontLayer->addChild(m_warningPanel);
     m_warningPanel->setShowEnabled(true);
 
     m_warningPanel->addChild(m_warningLabel);
@@ -918,15 +943,24 @@ void afVolmetricDrillingPlugin::initializeLabels()
     m_volumeSmoothingLabel->m_fontColor.setRed();
     m_volumeSmoothingLabel->setFontScale(.5);
     m_volumeSmoothingLabel->setText("[ALT+S] Volume Smoothing: DISABLED");
-    m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingLabel);
+
+//    m_mainCamera->getFrontLayer()->addChild(m_volumeSmoothingLabel);
+    m_frontLayer->addChild(m_volumeSmoothingLabel);
 }
 
 void afVolmetricDrillingPlugin::updateLabelPositions()
 {
+    double xpos, ypos;
+    if (m_stereoCamera){
+        xpos = 0.5 * (m_stereoCamera->m_width - m_warningPanel->getWidth());
+        ypos = 0.5 * (m_stereoCamera->m_height - m_warningPanel->getHeight());
+    }
+    else{
+        xpos = 0.5 * (m_mainCamera->m_width - m_warningPanel->getWidth());
+        ypos = 0.5 * (m_mainCamera->m_height - m_warningPanel->getHeight());
+    }
+    m_warningPanel->setLocalPos(xpos, ypos, 0);
 
-    m_warningPanel->setLocalPos((m_mainCamera->m_width - m_warningPanel->getWidth()) / 2.0,
-                                ((m_mainCamera->m_height - m_warningPanel->getHeight()) / 2.0),
-                                0);
 
     m_volumeSmoothingLabel->setLocalPos(20,10);
 }
@@ -1017,6 +1051,22 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             enableShadow = ! enableShadow;
             cerr << "INFO! TOGGLING SHADOW MAP " << enableShadow << endl;
             m_volumeObject->getShaderProgram()->setUniformi("uEnableShadow", enableShadow);
+        }
+
+        else if (a_key == GLFW_KEY_PAGE_UP){
+            if(m_stereoCamera){
+                m_stereoCamera->getInternalCamera()->m_stereoOffsetW += 0.05;
+                cerr << "INFO! SETTING STEREO OFFSET W " <<
+                        m_stereoCamera->getInternalCamera()->m_stereoOffsetW << endl;
+            }
+        }
+
+        else if (a_key == GLFW_KEY_PAGE_DOWN){
+            if(m_stereoCamera){
+                m_stereoCamera->getInternalCamera()->m_stereoOffsetW -= 0.05;
+                cerr << "INFO! SETTING STEREO OFFSET W " <<
+                        m_stereoCamera->getInternalCamera()->m_stereoOffsetW << endl;
+            }
         }
 
         // Reset the drill pose
@@ -1237,29 +1287,29 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
         }
 
         else if (a_key == GLFW_KEY_KP_ADD){
-            if (m_stereoCameraL){
-                m_stereoCameraL->setLocalPos(m_stereoCameraL->getLocalPos() - cVector3d(0., 0.001, 0.));
+            if (m_cameraL){
+                m_cameraL->setLocalPos(m_cameraL->getLocalPos() - cVector3d(0., 0.001, 0.));
             }
-            if (m_stereoCameraR){
-                m_stereoCameraR->setLocalPos(m_stereoCameraR->getLocalPos() + cVector3d(0., 0.001, 0.));
+            if (m_cameraR){
+                m_cameraR->setLocalPos(m_cameraR->getLocalPos() + cVector3d(0., 0.001, 0.));
             }
 
-            if (m_stereoCameraLandR){
-                double stereo_sep = m_stereoCameraLandR->getInternalCamera()->getStereoEyeSeparation();
-                m_stereoCameraLandR->getInternalCamera()->setStereoEyeSeparation(stereo_sep + 0.002);
+            if (m_stereoCamera){
+                double stereo_sep = m_stereoCamera->getInternalCamera()->getStereoEyeSeparation();
+                m_stereoCamera->getInternalCamera()->setStereoEyeSeparation(stereo_sep + 0.002);
             }
         }
         else if (a_key == GLFW_KEY_KP_SUBTRACT){
-            if (m_stereoCameraL){
-                m_stereoCameraL->setLocalPos(m_stereoCameraL->getLocalPos() + cVector3d(0., 0.001, 0.));
+            if (m_cameraL){
+                m_cameraL->setLocalPos(m_cameraL->getLocalPos() + cVector3d(0., 0.001, 0.));
             }
-            if (m_stereoCameraR){
-                m_stereoCameraR->setLocalPos(m_stereoCameraR->getLocalPos() - cVector3d(0., 0.001, 0.));
+            if (m_cameraR){
+                m_cameraR->setLocalPos(m_cameraR->getLocalPos() - cVector3d(0., 0.001, 0.));
             }
 
-            if (m_stereoCameraLandR){
-                double stereo_sep = m_stereoCameraLandR->getInternalCamera()->getStereoEyeSeparation();
-                m_stereoCameraLandR->getInternalCamera()->setStereoEyeSeparation(stereo_sep - 0.002);
+            if (m_stereoCamera){
+                double stereo_sep = m_stereoCamera->getInternalCamera()->getStereoEyeSeparation();
+                m_stereoCamera->getInternalCamera()->setStereoEyeSeparation(stereo_sep - 0.002);
             }
         }
     }
@@ -1322,7 +1372,7 @@ GazeMarkerController::GazeMarkerController(){
     m_gazeMarker = nullptr;
 }
 
-int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt::variables_map &var_map){
+int GazeMarkerController::init(afWorldPtr a_worldPtr, cWorld* a_frontLayer, p_opt::variables_map &var_map){
     m_gazeMarker = a_worldPtr->getRigidBody("GazeMarker");
     if (!m_gazeMarker){
         cerr << "ERROR! GAZE MARKER RIGID BODY NOT FOUND. CAN'T PERFORM GAZE CALIBRATION MOTION" << endl;
@@ -1331,12 +1381,14 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, afCameraPtr camPtr, p_opt:
 
     m_duration = var_map["gcdr"].as<double>() + m_textShowDuration;
     m_gazeMarker->scaleSceneObjects(0.5);
-    m_camera = camPtr;
+    m_mainCamera = a_worldPtr->getCamera("main_camera");
+    m_stereoCamera = a_worldPtr->getCamera("stereoLR");
+    m_frontLayer = a_frontLayer;
     m_radius = 0.;
-    m_maxRadius = 0.001;
+    m_maxRadius = 0.0004;
     m_radiusStep = (m_maxRadius - m_radius) / m_duration;
 
-    m_T_c_w = m_camera->getLocalTransform();
+    m_T_c_w = m_mainCamera->getLocalTransform();
     m_T_m_c = cTransform(cVector3d(-5., 0., 0.), cMatrix3d());
 
     m_T_m_w = m_T_c_w * m_T_m_c;
@@ -1367,14 +1419,23 @@ void GazeMarkerController::initializeLabels(){
                          10, 10, 10, 10);
     m_textPanel->setColor(cColorf(1., 1., 0.2));
     m_textPanel->setTransparencyLevel(0.8);
-    m_camera->getFrontLayer()->addChild(m_textPanel);
+//    m_camera->getFrontLayer()->addChild(m_textPanel);
+    m_frontLayer->addChild(m_textPanel);
 
     m_textPanel->addChild(m_textLabel);
 }
 
 void GazeMarkerController::updateLabelPositions(){
-    m_textPanel->setLocalPos((m_camera->m_width - m_textLabel->getTextWidth()) / 2.0,
-                             (m_camera->m_height - m_textLabel->getTextHeight()) / 2.0);
+    double xpos, ypos;
+    if (m_stereoCamera){
+        xpos = 0.5 * (m_stereoCamera->m_width - m_textPanel->getWidth());
+        ypos = 0.5 * (m_stereoCamera->m_height - m_textPanel->getHeight());
+    }
+    else{
+        xpos = 0.5 * (m_mainCamera->m_width - m_textPanel->getWidth());
+        ypos = 0.5 * (m_mainCamera->m_height - m_textPanel->getHeight());
+    }
+    m_textPanel->setLocalPos(xpos, ypos);
 }
 
 void GazeMarkerController::moveGazeMarker(double dt){
@@ -1386,6 +1447,8 @@ void GazeMarkerController::moveGazeMarker(double dt){
     if (m_time == 0.){
         updateLabelPositions();
         hide(false);
+        cTransform trans(cVector3d(-100, 0, 0), cMatrix3d());
+        m_gazeMarker->setLocalTransform(trans); // Set the marker to be way behind the vol
     }
 
     m_time += dt;
@@ -1402,7 +1465,7 @@ void GazeMarkerController::moveGazeMarker(double dt){
 
     cVector3d dP(0., m_radius * sin(offset_time), m_radius * cos(offset_time));
 
-    m_T_m_w.setLocalPos( m_T_m_w.getLocalPos() + m_T_c_w.getLocalRot() * dP);
+    m_T_m_w.setLocalPos(m_T_m_w.getLocalPos() + m_T_c_w.getLocalRot() * dP);
     m_T_m_w.setLocalRot(m_T_c_w.getLocalRot());
 
     m_gazeMarker->setLocalTransform(m_T_m_w);
@@ -1425,7 +1488,7 @@ void GazeMarkerController::restart(){
         m_radius = 0.;
         m_time = 0.;
         m_gazeMarker->reset();
-        m_T_c_w = m_camera->getLocalTransform();
+        m_T_c_w = m_mainCamera->getLocalTransform();
         m_T_m_w = m_T_c_w * m_T_m_c;;
     }
 }
