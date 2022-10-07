@@ -38,7 +38,7 @@ BODY GazeMarker:
       r: 0
       p: 0
       y: 0
-  passive: false
+  passive: true
   publish children names: false
   publish joint names: false
   publish joint positions: false

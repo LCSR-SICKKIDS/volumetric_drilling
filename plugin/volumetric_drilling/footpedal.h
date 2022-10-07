@@ -35,39 +35,32 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE.
 
-    \author    <nnaguru1@jh.edu>
-    \author    Nimesh Nagururu
+    \author    <amunawar@jhu.edu>
+    \author    Adnan Munawar
 */
 //==============================================================================
+#ifndef FOOTPEDAL_H
+#define FOOTPEDAL_H
 
-#ifndef COLLISION_PUBLISHER_H
-#define COLLISION_PUBLISHER_H
+#include "joystick.h"
 
-#include "ros/ros.h"
-#include <string>
-#include <vdrilling_msgs/points.h>
-#include <vdrilling_msgs/UInt8Stamped.h>
-#include <vdrilling_msgs/VolumeProp.h>
-
-
-class DrillingPublisher{
-public:
-    DrillingPublisher(std::string a_namespace, std::string a_plugin);
-    ~DrillingPublisher();
-    void init(std::string a_namespace, std::string a_plugin);
-    ros::NodeHandle* m_rosNode;
-
-    void voxelsRemoved(double ray[3], float vcolor[4], double time);
-    void burrChange(int burrSize, double time);
-    void volumeProp(float dimensions[3], int voxelCount[3]);
-private:
-    ros::Publisher m_voxelsRemovedPub;
-    ros::Publisher m_burrChangePub;
-    ros::Publisher m_volumePropPub;
-    vdrilling_msgs::points voxel_msg;
-    vdrilling_msgs::UInt8Stamped burr_msg;
-    vdrilling_msgs::VolumeProp volume_msg;
-
+enum class FootPedalButtonMap{
+    CAM_CLUTCH = 0,
+    CHANGE_BURR_SIZE = 1,
+    DEVICE_CLUTCH = 2
 };
 
-#endif //VOLUMETRIC_PLUGIN_COLLISION_PUBLISHER_H
+class FootPedal: public JoyStick{
+public:
+    bool isDrillOn();
+
+    bool isChangeBurrSizePressed();
+
+    bool isCamClutchPressed();
+
+    bool isDeviceClutchPressed();
+
+    bool m_burrChangeBtnPrevState = false;
+};
+
+#endif

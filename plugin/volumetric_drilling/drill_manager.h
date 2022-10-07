@@ -39,93 +39,17 @@
     \author    Adnan Munawar
 */
 //==============================================================================
+#ifndef DRILL_MANAGER_H
+#define DRILL_MANAGER_H
 
-// To silence warnings on MacOS
-#define GL_SILENCE_DEPRECATION
 #include <afFramework.h>
+#include "camera_panel_manager.h"
 #include "collision_publisher.h"
-#include "joystick.h"
-
-using namespace std;
-using namespace ambf;
-
-namespace boost{
-    namespace program_options{
-        class variables_map;
-    }
-}
-
-namespace p_opt = boost::program_options;
-
-enum class FootPedalButtonMap{
-    CAM_CLUTCH = 0,
-    CHANGE_BURR_SIZE = 1,
-    DEVICE_CLUTCH = 2
-};
+#include "common.h"
 
 enum class AudioState{
     STOPPED = 0,
     PLAYING = 1
-};
-
-class FootPedal: public JoyStick{
-public:
-    bool isDrillOn();
-
-    bool isChangeBurrSizePressed();
-
-    bool isCamClutchPressed();
-
-    bool isDeviceClutchPressed();
-
-    bool m_burrChangeBtnPrevState = false;
-};
-
-class WaveGenerator{
-public:
-    WaveGenerator();
-    double generate(double dt);
-    double m_amplitude = 0.08;
-    double m_frequency = 500.0;
-    double m_time = 0.;
-};
-
-class GazeMarkerController{
-public:
-    GazeMarkerController();
-
-    int init(afWorldPtr a_worldPtr, cWorld* a_frontLayer, p_opt::variables_map& var_map);
-
-    void initializeLabels();
-
-    void updateLabelPositions();
-
-    void moveGazeMarker(double dt);
-
-    void hide(bool val);
-
-    void restart();
-
-    cWorld* m_frontLayer;
-
-
-private:
-    double m_radius;
-    double m_maxRadius;
-    double m_radiusStep;
-    cTransform m_T_c_w;
-    cTransform m_T_m_w;
-    cTransform m_T_m_c;
-    double m_time;
-    double m_duration;
-
-    afRigidBodyPtr m_gazeMarker;
-    afCameraPtr m_mainCamera, m_stereoCamera;
-
-    cPanel* m_textPanel;
-    cLabel* m_textLabel;
-    string m_textStr;
-    double m_textShowDuration;
 };
 
 
@@ -144,13 +68,11 @@ public:
 
     void cleanup();
 
-    int init(afWorldPtr a_worldPtr, cWorld* a_frontLayer, p_opt::variables_map& opts);
+    int init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager, p_opt::variables_map& opts);
 
     void update(double dt);
 
     void initializeLabels();
-
-    void updateLabelPositions();
 
     // Initialize tool cursors
     void toolCursorInit(const afWorldPtr);
@@ -222,9 +144,6 @@ public:
 
     bool m_deviceClutch = false;
 
-    // panel to display current drill size
-    cPanel* m_sizePanel;
-
     cLabel* m_sizeLabel;
 
     cLabel* m_controlModeLabel;
@@ -264,99 +183,9 @@ public:
 
     cToolCursor* m_targetToolCursor;
 
-    afCameraPtr m_mainCamera, m_stereoCamera;
+    afCameraPtr m_mainCamera;
 
-    cWorld* m_frontLayer;
+    CameraPanelManager* m_panelManager;
 };
 
-
-class afVolmetricDrillingPlugin: public afSimulatorPlugin{
-public:
-    afVolmetricDrillingPlugin();
-    virtual int init(int argc, char** argv, const afWorldPtr a_afWorld) override;
-    virtual void keyboardUpdate(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, int a_mods) override;
-    virtual void mouseBtnsUpdate(GLFWwindow* a_window, int a_button, int a_action, int a_modes) override;
-    virtual void mousePosUpdate(GLFWwindow* a_window, double x_pos, double y_pos) override {}
-    virtual void mouseScrollUpdate(GLFWwindow* a_window, double x_pos, double y_pos) override;
-    virtual void graphicsUpdate() override;
-    virtual void physicsUpdate(double dt) override;
-    virtual void reset() override;
-    virtual bool close() override;
-
-protected:
-    void sliceVolume(int axisIdx, double delta);
-
-    void makeVRWindowFullscreen(afCameraPtr vrCam, int monitor_number=-1);
-
-    void updateButtons();
-
-    void initializeLabels();
-
-    afCameraPtr findAndAppendCamera(string cam_name);
-
-    void updateLabelPositions();
-
-private:
-
-    cVoxelObject* m_voxelObj;
-
-    int m_renderingMode = 0;
-
-    double m_opticalDensity;
-
-    cMutex m_mutexVoxel;
-
-    cCollisionAABBBox m_volumeUpdate;
-
-    cColorb m_zeroColor;
-
-    bool m_flagStart = true;
-
-    int m_counter = 0;
-
-    cGenericObject* m_selectedObject = NULL;
-
-    bool m_flagMarkVolumeForUpdate = false;
-
-    afVolumePtr m_volumeObject;
-
-    // camera to render the world
-    afCameraPtr m_mainCamera, m_cameraL, m_cameraR, m_stereoCamera;
-
-    map<string, afCameraPtr> m_cameras;
-
-    // warning pop-up panel
-    cPanel* m_warningPanel;
-    cLabel* m_warningLabel;
-
-    // color property of bone
-    cColorb m_boneColor;
-
-    // get color of voxels at (x,y,z)
-    cColorb m_storedColor;
-
-    bool m_enableVolumeSmoothing = false;
-
-    int m_volumeSmoothingLevel = 2;
-
-    cLabel* m_volumeSmoothingLabel;
-
-    cVector3d m_maxVolCorner, m_minVolCorner;
-
-    cVector3d m_maxTexCoord, m_minTexCoord;
-
-    cVector3d m_textureCoordScale; // Scale between volume corners extent and texture coordinates extent
-
-    DrillManager m_drillManager;
-
-    FootPedal m_footpedal;
-
-    WaveGenerator m_waveGenerator;
-
-    GazeMarkerController m_gazeMarkerController;
-
-    cWorld* m_frontLayer;
-};
-
-
-AF_REGISTER_SIMULATOR_PLUGIN(afVolmetricDrillingPlugin)
+#endif

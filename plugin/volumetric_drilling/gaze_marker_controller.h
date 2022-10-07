@@ -37,59 +37,51 @@
 
     \author    <amunawar@jhu.edu>
     \author    Adnan Munawar
-
-    \courtesy Jason White (https://gist.github.com/jasonwhite/c5b2048c15993d285130)
 */
 //==============================================================================
+#ifndef GAZE_MARKER_CONTROLLER_H
+#define GAZE_MARKER_CONTROLLER_H
 
-#ifndef FOOTPEDAL_H
-#define FOOTPEDAL_H
+#include <afFramework.h>
+#include "camera_panel_manager.h"
+#include "common.h"
 
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <linux/joystick.h>
-#include <string>
-#include <vector>
+using namespace chai3d;
+using namespace ambf;
 
-using namespace std;
-
-struct JoyState{
-
-    JoyState();
-    vector<bool> m_buttons;
-    vector<double> m_axes;
-
-    void print();
-    void reset();
-};
-
-class JoyStick{
+class GazeMarkerController{
 public:
-    JoyStick();
-    ~JoyStick();
+    GazeMarkerController();
 
-    int init(std::string dev_name);
+    int init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager, p_opt::variables_map& var_map);
 
-    bool isAvailable();
+    void initializeLabels();
 
-    bool getButtonState(int button_index);
+    void update(double dt);
 
-    double getPedalState(int pedal_index);
+    void hide(bool val);
 
-    void poll();
+    void restart();
 
-    JoyState m_state;
+    CameraPanelManager* m_panelManager;
+
 
 private:
-    int readEvent(int fd, struct js_event *event);
+    double m_radius;
+    double m_maxRadius;
+    double m_radiusStep;
+    cTransform m_T_c_w;
+    cTransform m_T_m_w;
+    cTransform m_T_m_c;
+    double m_time;
+    double m_duration;
 
-    int m_js = -1;
+    afRigidBodyPtr m_gazeMarker;
+    afCameraPtr m_mainCamera;
 
-    struct js_event m_event;
-
-    double m_pedalValue = 0.;
+    cLabel* m_gazeNotificationLabel;
+    string m_textStr;
+    double m_textShowDuration;
 };
-
 
 #endif
