@@ -44,7 +44,7 @@
 
 #include <afFramework.h>
 #include "camera_panel_manager.h"
-#include "collision_publisher.h"
+#include "ros_interface.h"
 #include "common.h"
 
 enum class AudioState{
@@ -58,6 +58,18 @@ public:
     afRigidBodyPtr m_rigidBody;
     string m_name;
     double m_size;
+
+    inline int getVoxelRemovalThreshold(){return m_voxelRemovalThreshold;}
+    bool setVoxelRemvalThreshold(int val){
+        if (val > 0){
+            m_voxelRemovalThreshold = val;
+            return true;
+        }
+        return false;
+    }
+
+protected:
+    int m_voxelRemovalThreshold;
 };
 
 

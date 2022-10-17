@@ -26,10 +26,10 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
 
 try:
-    from vdrilling_msgs.msg import points, UInt8Stamped, VolumeProp
+    from volumetric_drilling_msgs.msg import Voxels, DrillSize, VolumeInfo
 except ImportError:
-    print("\nvdrilling_msgs.msg: cannot open shared message file. " +
-          "Please source <volumetric_plugin_path>/vdrilling_msgs/build/devel/setup.bash \n")
+    print("\nvolumetric_drilling_msgs.msg: cannot open shared message file. " +
+          "Please source <volumetric_plugin_path>/build/devel/setup.bash \n")
 
 
 def rpy_to_quat(roll, pitch, yaw):
@@ -242,24 +242,27 @@ def timer_callback(_):
 
 
 def rm_vox_callback(rm_vox_msg):
-    voxel = [rm_vox_msg.voxel_removed.x, rm_vox_msg.voxel_removed.y, rm_vox_msg.voxel_removed.z]
     collisions['time_stamp'].append(rm_vox_msg.header.stamp.to_sec())
-    collisions['voxel_removed'].append(voxel)
-    int_vox_color = [round(elem * 255) for elem in rm_vox_msg.voxel_color]
-    collisions['voxel_color'].append(int_vox_color)
+    collisions['voxel_removed'].append(rm_vox_msg.indices)
+    for c in rm_vox_msg.colors:
+        c.r = 255 * c.r
+        c.g = 255 * c.g
+        c.b = 255 * c.b
+        c.a = 255 * c.a
+    collisions['voxel_color'].append(rm_vox_msg.colors)
 
 
 def burr_change_callback(burr_change_msg):
     global burr_change
     burr_change['time_stamp'].append(burr_change_msg.header.stamp.to_sec())
-    burr_change['burr_size'].append(burr_change_msg.number.data)
+    burr_change['burr_size'].append(burr_change_msg.size.data)
 
 
 def volume_prop_callback(volume_prop_msg):
     global voxel_volume
     dimensions = volume_prop_msg.dimensions
-    voxelCount = volume_prop_msg.voxelCount
-    resolution = np.divide(dimensions, voxelCount) * 1000
+    voxel_count = volume_prop_msg.voxel_count
+    resolution = np.divide(dimensions, voxel_count) * 1000
     voxel_volume = np.prod(resolution) * scale ** 3
 
 
@@ -314,7 +317,7 @@ def setup_subscriber(args):
 
     if args.rm_vox_topic != 'None':
         if args.rm_vox_topic in active_topics:
-            rospy.Subscriber(args.rm_vox_topic, points, rm_vox_callback)
+            rospy.Subscriber(args.rm_vox_topic, Voxels, rm_vox_callback)
             collisions['time_stamp'] = []
             collisions['voxel_removed'] = []
             collisions['voxel_color'] = []
@@ -324,7 +327,7 @@ def setup_subscriber(args):
 
     if args.burr_change_topic != 'None':
         if args.burr_change_topic in active_topics:
-            rospy.Subscriber(args.burr_change_topic, UInt8Stamped, burr_change_callback)
+            rospy.Subscriber(args.burr_change_topic, DrillSize, burr_change_callback)
             burr_change['time_stamp'] = []
             burr_change['burr_size'] = []
         else:
@@ -333,7 +336,7 @@ def setup_subscriber(args):
 
     if args.volume_prop_topic != 'None':
         if args.volume_prop_topic in active_topics:
-            rospy.Subscriber(args.volume_prop_topic, VolumeProp, volume_prop_callback)
+            rospy.Subscriber(args.volume_prop_topic, VolumeInfo, volume_prop_callback)
         else:
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.volume_prop_topic)
             exit()
@@ -414,20 +417,21 @@ if __name__ == '__main__':
     parser.add_argument(
         '--nrrd_header', default=resolved_path + '/../resources/volumes/nrrd_header.pkl', type=str)
 
+    ambf_prefix = '/ambf/env'
     parser.add_argument(
-        '--stereoL_topic', default='/ambf/env/cameras/stereoL/ImageData', type=str)
+        '--stereoL_topic', default=ambf_prefix + '/cameras/stereoL/ImageData', type=str)
     parser.add_argument(
-        '--depth_topic', default='/ambf/env/cameras/segmentation_camera/DepthData', type=str)
+        '--depth_topic', default=ambf_prefix + '/cameras/segmentation_camera/DepthData', type=str)
     parser.add_argument(
-        '--stereoR_topic', default='/ambf/env/cameras/stereoR/ImageData', type=str)
+        '--stereoR_topic', default=ambf_prefix + '/cameras/stereoR/ImageData', type=str)
     parser.add_argument(
-        '--segm_topic', default='/ambf/env/cameras/segmentation_camera/ImageData', type=str)
+        '--segm_topic', default=ambf_prefix + '/cameras/segmentation_camera/ImageData', type=str)
     parser.add_argument(
-        '--rm_vox_topic', default='/ambf/volumetric_drilling/voxels_removed', type=str)
+        '--rm_vox_topic', default=ambf_prefix + '/plugin/volumetric_drilling/voxels_removed', type=str)
     parser.add_argument(
-        '--burr_change_topic', default='/ambf/volumetric_drilling/burr_change', type=str)
+        '--burr_change_topic', default=ambf_prefix + '/plugin/volumetric_drilling/drill_size', type=str)
     parser.add_argument(
-        '--volume_prop_topic', default='/ambf/volumetric_drilling/volume_prop', type=str)
+        '--volume_prop_topic', default=ambf_prefix + '/plugin/volumetric_drilling/volume_info', type=str)
     parser.add_argument(
         '--objects', default=['mastoidectomy_drill', 'main_camera'], type=str, nargs='+')
 

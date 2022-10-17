@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 if (POLICY CMP0048)
     cmake_policy(SET CMP0048 NEW)
 endif (POLICY CMP0048)
-project(vdrilling_msgs)
+project(volumetric_drilling_msgs)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -15,9 +15,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(
   FILES
-  points.msg
-  UInt8Stamped.msg
-  VolumeProp.msg
+  Voxels.msg
+  DrillSize.msg
+  VolumeInfo.msg
 )
 
 generate_messages(
@@ -35,4 +35,3 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 
 )
-

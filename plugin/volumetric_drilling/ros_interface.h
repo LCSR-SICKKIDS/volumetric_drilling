@@ -37,57 +37,50 @@
 
     \author    <nnaguru1@jh.edu>
     \author    Nimesh Nagururu
+    \author    Adnan Munawar
 */
 //==============================================================================
-#include "collision_publisher.h"
-#include <ambf_server/RosComBase.h>
+#ifndef COLLISION_PUBLISHER_H
+#define COLLISION_PUBLISHER_H
 
-using namespace std;
+#include "ros/ros.h"
+#include <string>
+#include <volumetric_drilling_msgs/Voxels.h>
+#include <volumetric_drilling_msgs/DrillSize.h>
+#include <volumetric_drilling_msgs/VolumeInfo.h>
+#include <std_msgs/ColorRGBA.h>
 
-DrillingPublisher::DrillingPublisher(string a_namespace, string a_plugin){
-    init(a_namespace, a_plugin);
-}
+#include <afFramework.h>
 
-DrillingPublisher::~DrillingPublisher(){
-    m_voxelsRemovedPub.shutdown();
-    m_burrChangePub.shutdown();
-    m_volumePropPub.shutdown();
-}
+using namespace chai3d;
 
-void DrillingPublisher::init(string a_namespace, string a_plugin){
-    m_rosNode = afROSNode::getNode();
+class DrillingPublisher{
+public:
+    DrillingPublisher(std::string a_namespace, std::string a_plugin);
+    ~DrillingPublisher();
+    void init(std::string a_namespace, std::string a_plugin);
+    ros::NodeHandle* m_rosNode;
+    void publishDrillSize(int burrSize, double time);
 
-    m_voxelsRemovedPub = m_rosNode-> advertise<vdrilling_msgs::points>(a_namespace + "/" + a_plugin + "/voxels_removed", 1);
-    m_burrChangePub = m_rosNode -> advertise<vdrilling_msgs::UInt8Stamped>(a_namespace + "/" + a_plugin + "/burr_change", 1, true);
-    m_volumePropPub = m_rosNode -> advertise<vdrilling_msgs::VolumeProp>(a_namespace + "/" + a_plugin + "/volume_prop", 1, true);
-}
+    void setVolumeInfo(cTransform& pose, cVector3d& dimensions, cVector3d& voxel_count);
 
-void DrillingPublisher::voxelsRemoved(double vray[3], float vcolor[4], double time){
-    voxel_msg.header.stamp.fromSec(time);
+    void publishVolumeInfo(double time);
 
-    std::vector<float> vec(vcolor, vcolor + 4);
-    voxel_msg.voxel_color = vec;
+    void appendToVoxelMsg(cVector3d& index, cColorf& color);
 
-    voxel_msg.voxel_removed.x = vray[0];
-    voxel_msg.voxel_removed.y = vray[1];
-    voxel_msg.voxel_removed.z = vray[2];
+    void clearVoxelMsg();
 
-    m_voxelsRemovedPub.publish(voxel_msg);
-}
+    void publishVoxelMsg(double time);
 
-void DrillingPublisher::burrChange(int burrSize, double time){
-    burr_msg.header.stamp.fromSec(time);
-    burr_msg.number.data = burrSize;
+private:
+    ros::Publisher m_voxelsRemovalPub;
+    ros::Publisher m_drillSizePub;
+    ros::Publisher m_volumeInfoPub;
 
-    m_burrChangePub.publish(burr_msg);
-}
+    volumetric_drilling_msgs::Voxels m_voxel_msg;
+    volumetric_drilling_msgs::DrillSize m_drill_size_msg;
+    volumetric_drilling_msgs::VolumeInfo m_volume_info_msg;
 
-void DrillingPublisher::volumeProp(float dimensions[3], int voxelCount[3]){
-    std::vector<float> dim(dimensions, dimensions + 3);
-    volume_msg.dimensions = dim;
+};
 
-    std::vector<int> vox(voxelCount, voxelCount + 3);
-    volume_msg.voxelCount = vox;
-
-    m_volumePropPub.publish(volume_msg);
-}
+#endif //VOLUMETRIC_PLUGIN_COLLISION_PUBLISHER_H

@@ -92,6 +92,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
     }
 
     vector<int> drillTypes = {2, 4, 6};
+    int voxelRemovalMultiplier = 5;
 
     for (int i = 0 ; i < drillTypes.size() ; i++){
         string drillName = to_string(drillTypes[i]) + "mm";
@@ -101,6 +102,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
             drill->m_name = drillName;
             drill->m_rigidBody = drillRB;
             drill->m_size = drillTypes[i] * m_units_mmToSim;
+            drill->setVoxelRemvalThreshold(drillTypes[i] * voxelRemovalMultiplier);
             m_drills.push_back(drill);
         }
     }
@@ -135,7 +137,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
     m_T_d = m_T_d_init;
 
     // Set up voxels_removed publisher
-    m_drillingPub = new DrillingPublisher("ambf", "volumetric_drilling");
+    m_drillingPub = new DrillingPublisher(a_worldPtr->getNamespace(), "/plugin/volumetric_drilling");
 
     string file_path = __FILE__;
     string current_filepath = file_path.substr(0, file_path.rfind("/"));
@@ -485,7 +487,7 @@ void DrillManager::cycleDrillTypes(){
     showOnlyActive();
 
     double sim_time = m_activeDrill->m_rigidBody->getCurrentTimeStamp();
-    m_drillingPub->burrChange(m_activeDrill->m_size, sim_time);
+    m_drillingPub->publishDrillSize((int)(m_activeDrill->m_size / m_units_mmToSim), sim_time);
 }
 
 void DrillManager::showOnlyActive(){

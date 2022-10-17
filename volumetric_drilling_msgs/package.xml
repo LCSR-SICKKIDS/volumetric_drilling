@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>vdrilling_msgs</name>
+  <name>volumetric_drilling_msgs</name>
   <version>0.0.0</version>
   <description>The vdrilling_msgs package</description>
 

@@ -159,18 +159,12 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     initializeLabels();
 
-    // Volume Properties
-    float dim[3];
-    dim[0] = m_volumeObject->getDimensions().get(0);
-    dim[1]= m_volumeObject->getDimensions().get(1);
-    dim[2] = m_volumeObject->getDimensions().get(2);
-
-    int voxelCount[3];
-    voxelCount[0] = m_volumeObject->getVoxelCount().get(0);
-    voxelCount[1]= m_volumeObject->getVoxelCount().get(1);
-    voxelCount[2] = m_volumeObject->getVoxelCount().get(2);
-
-    m_drillManager.m_drillingPub->volumeProp(dim, voxelCount);
+    // Publish Volume Info
+    cTransform volPose = m_volumeObject->getLocalTransform();
+    cVector3d dims = m_volumeObject->getDimensions();
+    cVector3d count = m_volumeObject->getVoxelCount();
+    m_drillManager.m_drillingPub->setVolumeInfo(volPose, dims, count);
+    m_drillManager.m_drillingPub->publishVolumeInfo(m_worldPtr->getCurrentTimeStamp());
 
     string volumeMatcapFilepath = current_filepath + "/../../resources/matcap/" + volume_matcap;
     cTexture2dPtr volMatCap = cTexture2d::create();
@@ -239,47 +233,41 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     if (m_drillManager.m_toolCursorList[0]->isInContact(m_voxelObj) && m_drillManager.m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
 
-        for (int ci = 0 ; ci < 3 ; ci++){
-            // retrieve contact event
-            cCollisionEvent* contact = m_drillManager.m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(ci);
+        // retrieve contact event
+        cCollisionEvent* contact = m_drillManager.m_toolCursorList[0]->m_hapticPoint->getCollisionEvent(0);
 
-            cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ);
+        cVector3d orig(contact->m_voxelIndexX, contact->m_voxelIndexY, contact->m_voxelIndexZ); // This is the closest voxel index to the drill tip
 
-            m_voxelObj->m_texture->m_image->getVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_storedColor);
+        m_voxelObj->m_texture->m_image->getVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_storedColor);
 
-            //if the tool comes in contact with the critical region, instantiate the warning message
-            if(m_storedColor != m_boneColor && m_storedColor != m_zeroColor)
-            {
-                m_panelManager.setVisible(m_warningLabel, true);
-            }
-
+        if (m_storedColor != m_zeroColor){
             if (m_drillManager.m_isOn){
-                m_voxelObj->m_texture->m_image->setVoxelColor(uint(orig.x()), uint(orig.y()), uint(orig.z()), m_zeroColor);
+                int removalCount = cMin(m_drillManager.m_activeDrill->getVoxelRemovalThreshold(), (int)contact->m_events.size());
+                m_drillManager.m_drillingPub->clearVoxelMsg();
+                m_mutexVoxel.acquire();
+                for (int cIdx = 0 ; cIdx < removalCount ; cIdx++){
+                    cVector3d ct(contact->m_events[cIdx].m_voxelIndexX, contact->m_events[cIdx].m_voxelIndexY, contact->m_events[cIdx].m_voxelIndexZ);
+                    cColorb colorb;
+                    m_voxelObj->m_texture->m_image->getVoxelColor(uint(ct.x()), uint(ct.y()), uint(ct.z()), colorb);
+                    cColorf colorf = colorb.getColorf();
+                    m_drillManager.m_drillingPub->appendToVoxelMsg(ct, colorf);
+                    m_voxelObj->m_texture->m_image->setVoxelColor(uint(ct.x()), uint(ct.y()), uint(ct.z()), m_zeroColor);
+                    m_volumeUpdate.enclose(cVector3d(uint(ct.x()), uint(ct.y()), uint(ct.z())));
+                }
+                m_mutexVoxel.release();
+
+                //Publisher for voxels removed
+                m_drillManager.m_drillingPub->publishVoxelMsg(m_worldPtr->getCurrentTimeStamp());
             }
 
             //Publisher for voxels removed
-            if(m_storedColor != m_zeroColor)
+            if(m_storedColor != m_boneColor)
             {
-                double sim_time = m_worldPtr->getCurrentTimeStamp();
-
-                double voxel_array[3] = {orig.get(0), orig.get(1), orig.get(2)};
-
-                cColorf color_glFloat = m_storedColor.getColorf();
-                float color_array[4];
-                color_array[0] = color_glFloat.getR();
-                color_array[1] = color_glFloat.getG();
-                color_array[2] = color_glFloat.getB();
-                color_array[3] = color_glFloat.getA();
-
-
-                m_drillManager.m_drillingPub->voxelsRemoved(voxel_array,color_array,sim_time);
+                m_panelManager.setVisible(m_warningLabel, true);
             }
-
-            m_mutexVoxel.acquire();
-            m_volumeUpdate.enclose(cVector3d(uint(orig.x()), uint(orig.y()), uint(orig.z())));
-            m_mutexVoxel.release();
-            // mark voxel for update
         }
+
+        // mark voxel for update
 
         m_flagMarkVolumeForUpdate = true;
     }
@@ -577,6 +565,12 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             }
         }
 
+        else if (a_key == GLFW_KEY_T){
+            int val = m_drillManager.m_activeDrill->getVoxelRemovalThreshold() + 1;
+            m_drillManager.m_activeDrill->setVoxelRemvalThreshold(val);
+            cerr << "INFO! REMOVAL THRESHOLD " << val << endl;
+        }
+
         // Reset the drill pose
         if (a_key == GLFW_KEY_R){
             cerr << "INFO! RESETTING THE DRILL" << endl;
@@ -601,6 +595,12 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             m_volumeSmoothingLevel = cClamp(m_volumeSmoothingLevel-1, 1, 10);
             cerr << "INFO! SETTING SMOOTHING LEVEL " << m_volumeSmoothingLevel << endl;
             m_volumeObject->getShaderProgram()->setUniformi("uSmoothingLevel", m_volumeSmoothingLevel);
+        }
+
+        else if (a_key == GLFW_KEY_T){
+            int val = cMax(1, m_drillManager.m_activeDrill->getVoxelRemovalThreshold() - 1);
+            m_drillManager.m_activeDrill->setVoxelRemvalThreshold(val);
+            cerr << "INFO! REMOVAL THRESHOLD " << val << endl;
         }
 
         std::string text = "[ALT+S] Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
