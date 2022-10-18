@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_message_files(
   FILES
+  Index.msg
   Voxels.msg
   DrillSize.msg
   VolumeInfo.msg

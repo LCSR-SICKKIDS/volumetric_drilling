@@ -104,9 +104,9 @@ void DrillingPublisher::publishVolumeInfo(double time)
 
 void DrillingPublisher::appendToVoxelMsg(cVector3d &index, cColorf &color)
 {
-    geometry_msgs::Point p;
-    p.x = index.x(); p.y = index.y(); p.z = index.z();
-    m_voxel_msg.indices.push_back(p);
+    volumetric_drilling_msgs::Index idx;
+    idx.x = index.x(); idx.y = index.y(); idx.z = index.z();
+    m_voxel_msg.indices.push_back(idx);
     std_msgs::ColorRGBA col;
     col.r = color.getR(); col.g = color.getG(); col.b = color.getB(); col.a = color.getA();
     m_voxel_msg.colors.push_back(col);

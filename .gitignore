@@ -11,3 +11,5 @@ build/
 *.old
 
 *.blend1
+
+scripts/data/
