@@ -202,7 +202,7 @@ def write_to_hdf5():
     hdf5_vox_vol.attrs['units'] = "mm^3, millimeters cubed"
     containers = [(f["data"], container), (f["voxels_removed"], collisions), (f["burr_change"], burr_change)]
 
-    for name, group, data in containers:
+    for group, data in containers:
         for key, value in data.items():
             if len(value) > 0:
                 if key == "voxel_removed" or key == "voxel_color":
@@ -242,7 +242,7 @@ def write_to_hdf5():
     f["data"].create_dataset(key, data=np.stack([volume_pose] * num_samples, axis=0),
                              compression='gzip')  # write to disk
     log.log(logging.INFO, (key, f["data"][key].shape))
-
+    print("finish writing and closing hdf5 file")
     f.close()
 
     return
