@@ -3,13 +3,17 @@
 ~.old
 build/
 .idea/
+.vscode
 
 *.pyc
 
-*.autosave
+# EDT files
+*.edt
+*.ply
 
-*.old
 
-*.blend1
-
-scripts/data/
+*resources/volumes/
+hdf5_files
+*.hdf5
+*.avi
+*.bag
