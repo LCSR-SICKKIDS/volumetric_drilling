@@ -7,6 +7,7 @@ import sys
 import time
 from argparse import ArgumentParser
 from collections import OrderedDict
+import threading
 
 import h5py
 import numpy as np
@@ -198,43 +199,73 @@ def callback(*inputs):
 
 
 def write_to_hdf5():
-    hdf5_vox_vol = f['metadata'].create_dataset("voxel_volume", data=voxel_volume)
-    hdf5_vox_vol.attrs['units'] = "mm^3, millimeters cubed"
-    containers = [(f["data"], container), (f["voxels_removed"], collisions), (f["burr_change"], burr_change)]
+    try:
+        hdf5_vox_vol = f['metadata'].create_dataset("voxel_volume", data=voxel_volume)
+        hdf5_vox_vol.attrs['units'] = "mm^3, millimeters cubed"
+    except:
+        f.close()
+        print("File writing interrupted.")
+        return
 
+    ##################################
+    #### Save img data and burr_change
+    containers = [(f["data"], container), (f["burr_change"], burr_change)]
     for group, data in containers:
         for key, value in data.items():
             if len(value) > 0:
-                if key == "voxel_removed" or key == "voxel_color":
-                    n_fields = 3 if key == "voxel_removed" else 4
-                    # Zero-pad voxel information to store in a single big array
-
-                    # Find max dimension
-                    max_size = 0
-                    for t in value:
-                        if len(t) > max_size:
-                            max_size = len(t)
-                    resized_arr = np.zeros((len(value) + 10, max_size, n_fields))
-
-                    # add all voxel information to resized_arr
-                    for idx, t in enumerate(value):
-                        temp_arr = np.zeros((max_size, n_fields))
-                        for idx2, k in enumerate(t):
-                            if key == "voxel_removed":
-                                temp_arr[idx2, :] = [k.x, k.y, k.z]
-                            else:
-                                temp_arr[idx2, :] = [k.r, k.g, k.b, k.a]
-
-                        resized_arr[idx, :, :] = temp_arr
-
-                    group.create_dataset(key, data=resized_arr, compression="gzip")  # write to disk
-                else:
-                    print(f"key {key}")
-                    group.create_dataset(
-                        key, data=np.stack(value, axis=0), compression="gzip"
-                    )  # write to disk
+                print(f"key {key}")
+                group.create_dataset(
+                    key, data=np.stack(value, axis=0), compression="gzip"
+                )  # write to disk
                 log.log(logging.INFO, (key, group[key].shape))
             data[key] = []  # reset list to empty memory
+
+    ########################
+    #### Save voxels removed
+    # TODO: Add metadata of what each column means
+    voxel_idx = []
+    voxel_color = []
+    
+    global voxel_lock
+    voxel_lock = True 
+    ###
+
+    ###
+
+    try:
+        assert (len(collisions['voxel_color']) == len(collisions['voxel_removed'])),"dimension errors"
+        assert (len(collisions['voxel_color']) == len(collisions['voxel_time_stamp'])),"dimension errors"
+    except:
+        print(f"voxel_color len: {len(collisions['voxel_color'])}")
+        print(f"voxel_removed len: {len(collisions['voxel_removed'])}")
+        print(f"voxel_time_stamp len: {len(collisions['voxel_time_stamp'])}")
+        raise Exception()
+
+    #Add ts index column to voxels_idx and voxels color     
+    for idx in range(len(collisions["voxel_time_stamp"])):
+        num_of_removed = collisions['voxel_removed'][idx].shape[0]
+
+        if num_of_removed > 0:
+            idx_column = np.ones((num_of_removed,1))*idx
+            voxel_idx.append( np.hstack((idx_column,collisions['voxel_removed'][idx]))) 
+            voxel_color.append( np.hstack((idx_column,collisions['voxel_color'][idx]))) 
+
+    #Write data to hdf5
+    voxel_idx  = np.vstack(voxel_idx)
+    voxel_color = np.vstack(voxel_color)
+    voxel_data = dict(voxel_time_stamp=collisions["voxel_time_stamp"], 
+                      voxel_removed=voxel_idx,
+                      voxel_color=voxel_color )
+    for key,value in voxel_data.items():
+        print(f"key {key}")
+        f["voxels_removed"].create_dataset(
+            key, data=value, compression="gzip"
+        )  # write to disk
+        log.log(logging.INFO, (key, f["voxels_removed"][key].shape))
+        # Reset collisions list -  empty memory
+        collisions[key] = []
+
+    voxel_lock = False
 
     # write volume pose
     key = "pose_mastoidectomy_volume"
@@ -248,35 +279,52 @@ def write_to_hdf5():
     return
 
 
-def timer_callback(_):
-    log.log(logging.NOTSET, "timer callback")
-    try:
-        data_dict = data_queue.get_nowait()
-    except Empty:
-        log.log(logging.NOTSET, "Empty queue")
-        return
+def timer_callback():
+    global finish_recording
+    finish_recording=False
+    while finish_recording == False:
+        log.log(logging.NOTSET, "timer callback")
+        try:
+            data_dict = data_queue.get_nowait()
 
-    global num_data, f
-    for key, data in data_dict.items():
-        container[key].append(data)
+            global num_data, f
+            for key, data in data_dict.items():
+                container[key].append(data)
 
-    num_data = num_data + 1
-    if num_data >= chunk:
-        log.log(logging.INFO, "\nWrite data to disk")
-        write_to_hdf5()
-        f, _, _, _, _ = init_hdf5(args, stereo)
-        num_data = 0
+            num_data = num_data + 1
+            if num_data >= chunk:
+                log.log(logging.INFO, "\nWrite data to disk")
+                write_to_hdf5()
+                f, _, _, _, _ = init_hdf5(args, stereo)
+                num_data = 0
+        except Empty:
+            log.log(logging.NOTSET, "Empty queue")
 
+        
+        time.sleep(0.002)
+
+voxel_lock = False 
 
 def rm_vox_callback(rm_vox_msg):
-    collisions['time_stamp'].append(rm_vox_msg.header.stamp.to_sec())
-    collisions['voxel_removed'].append(rm_vox_msg.indices)
-    for c in rm_vox_msg.colors:
-        c.r = 255 * c.r
-        c.g = 255 * c.g
-        c.b = 255 * c.b
-        c.a = 255 * c.a
-    collisions['voxel_color'].append(rm_vox_msg.colors)
+    global voxel_lock
+    if voxel_lock:
+        return
+
+    #Convert voxel removed and voxel color to numpy
+    voxels_colors = []
+    voxels_indices= []
+    for idx in range(len(rm_vox_msg.indices)):
+        vcolor = rm_vox_msg.colors[idx]
+        vidx =  rm_vox_msg.indices[idx]
+        voxels_colors.append([vcolor.r,vcolor.g,vcolor.b,vcolor.a])
+        voxels_indices.append([vidx.x,vidx.y,vidx.z])
+    voxels_colors = np.array(voxels_colors)*255 
+    voxels_indices = np.array(voxels_indices)
+
+    collisions['voxel_time_stamp'].append(rm_vox_msg.header.stamp.to_sec())
+    collisions['voxel_removed'].append(voxels_indices)
+    collisions['voxel_color'].append(voxels_colors)
+
 
 
 def burr_change_callback(burr_change_msg):
@@ -345,7 +393,7 @@ def setup_subscriber(args):
     if args.rm_vox_topic != 'None':
         if args.rm_vox_topic in active_topics:
             rospy.Subscriber(args.rm_vox_topic, Voxels, rm_vox_callback)
-            collisions['time_stamp'] = []
+            collisions['voxel_time_stamp'] = []
             collisions['voxel_removed'] = []
             collisions['voxel_color'] = []
         else:
@@ -388,6 +436,7 @@ def setup_subscriber(args):
     log.log(logging.INFO, '\n'.join(["Subscribed to the following topics:"] + topics))
     return subscribers
 
+finish_recording=False
 
 def main(args):
     container['time'] = []
@@ -407,12 +456,18 @@ def main(args):
         ats.registerCallback(callback, container.keys())
 
     # separate thread for writing to hdf5 to release memory
-    rospy.Timer(rospy.Duration(0, 500000), timer_callback)  # set to 2Khz such that we don't miss pose data
+    # rospy.Timer(rospy.Duration(0, 500000), timer_callback)  # set to 2Khz such that we don't miss pose data
+    global finish_recording
+    timer_thread = threading.Thread(target=timer_callback)
+    timer_thread.start()
+
     print("Writing to HDF5 every chunk of %d data" % args.chunk_size)
 
     rospy.spin()
+    finish_recording = True 
+
     print("Terminating ", __file__)
-    write_to_hdf5()  # save when user exits
+    # write_to_hdf5()  # save when user exits
 
 
 def verify_cv_bridge():
