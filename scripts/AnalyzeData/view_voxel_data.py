@@ -21,8 +21,8 @@ def main(f):
     voxel_index = f["voxels_removed/voxel_removed"][()]
 
     # Load hdf5 into dataframe
-    voxel_color = pd.DataFrame(voxel_color,columns=['ts','r','g','b','a'])
-    voxel_index= pd.DataFrame(voxel_index,columns=['ts','x','y','z'])
+    voxel_color = pd.DataFrame(voxel_color, columns=["ts", "r", "g", "b", "a"])
+    voxel_index = pd.DataFrame(voxel_index, columns=["ts", "x", "y", "z"])
 
     print("timestamps", ts_dataset.shape)
     print("voxel color", voxel_color.shape)
@@ -32,7 +32,7 @@ def main(f):
 
     print(f"voxels removed at step 5000 {voxel_color.loc[voxel_color['ts']==5000].shape}")
     print(f"voxels removed at step 8000 {voxel_color.loc[voxel_color['ts']==8000].shape}")
-    
+
 
 if __name__ == "__main__":
 
