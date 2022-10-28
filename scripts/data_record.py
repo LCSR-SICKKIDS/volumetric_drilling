@@ -7,7 +7,7 @@ import sys
 import time
 from argparse import ArgumentParser
 from collections import OrderedDict
-import threading
+from threading import Thread, Lock
 
 import h5py
 import numpy as np
@@ -99,7 +99,7 @@ def pose_gen(pose_msg):
     return pose_np
 
 
-def init_hdf5(args, stereo):
+def init_hdf5(args):
     world_adf = open(args.world_adf, "r")
     world_params = yaml.safe_load(world_adf)
     world_adf.close()
@@ -163,7 +163,7 @@ def init_hdf5(args, stereo):
     )
 
     # baseline info from stereo adf
-    if stereo:
+    if args.stereo:
         adf = args.stereo_adf
         stereo_adf = open(adf, "r")
         stereo_params = yaml.safe_load(stereo_adf)
@@ -244,7 +244,7 @@ def write_to_hdf5():
     voxel_color = []
 
     global voxel_lock
-    voxel_lock = True
+    voxel_lock.acquire()
     ###
 
     ###
@@ -286,7 +286,7 @@ def write_to_hdf5():
         # Reset collisions list -  empty memory
         collisions[key] = []
 
-    voxel_lock = False
+    voxel_lock.release()
 
     # write volume pose
     key = "pose_mastoidectomy_volume"
@@ -296,15 +296,16 @@ def write_to_hdf5():
     )  # write to disk
     log.log(logging.INFO, (key, f["data"][key].shape))
     print("finish writing and closing hdf5 file")
-    f.close()
 
+    f.close()
     return
 
 
 def timer_callback():
-    global finish_recording
-    finish_recording = False
-    while finish_recording == False:
+    global terminate_recording, finished_recording
+    terminate_recording = False
+    finished_recording = False
+    while terminate_recording == False:
         log.log(logging.NOTSET, "timer callback")
         try:
             data_dict = data_queue.get_nowait()
@@ -317,21 +318,22 @@ def timer_callback():
             if num_data >= chunk:
                 log.log(logging.INFO, "\nWrite data to disk")
                 write_to_hdf5()
-                f, _, _, _, _ = init_hdf5(args, stereo)
+                f, _, _, _, _ = init_hdf5(args)
                 num_data = 0
         except Empty:
             log.log(logging.NOTSET, "Empty queue")
 
         time.sleep(0.002)
 
+    # Write one more time for any data that hasn't been saved
+    write_to_hdf5()
 
-voxel_lock = False
+    finished_recording = True
 
 
 def rm_vox_callback(rm_vox_msg):
     global voxel_lock
-    if voxel_lock:
-        return
+    voxel_lock.acquire()
 
     # Convert voxel removed and voxel color to numpy
     voxels_colors = []
@@ -347,6 +349,7 @@ def rm_vox_callback(rm_vox_msg):
     collisions["voxel_time_stamp"].append(rm_vox_msg.header.stamp.to_sec())
     collisions["voxel_removed"].append(voxels_indices)
     collisions["voxel_color"].append(voxels_colors)
+    voxel_lock.release()
 
 
 def burr_change_callback(burr_change_msg):
@@ -459,9 +462,6 @@ def setup_subscriber(args):
     return subscribers
 
 
-finish_recording = False
-
-
 def main(args):
     container["time"] = []
 
@@ -481,14 +481,18 @@ def main(args):
 
     # separate thread for writing to hdf5 to release memory
     # rospy.Timer(rospy.Duration(0, 500000), timer_callback)  # set to 2Khz such that we don't miss pose data
-    global finish_recording
-    timer_thread = threading.Thread(target=timer_callback)
+    global terminate_recording, finished_recording
+    timer_thread = Thread(target=timer_callback)
     timer_thread.start()
 
     print("Writing to HDF5 every chunk of %d data" % args.chunk_size)
 
     rospy.spin()
-    finish_recording = True
+    terminate_recording = True
+
+    while not finished_recording:
+        print('Waiting for recording to finish')
+        time.sleep(0.1)
 
     print("Terminating ", __file__)
     # write_to_hdf5()  # save when user exits
@@ -565,10 +569,15 @@ if __name__ == "__main__":
 
     # check topics and see if we need to read stereo adf for baseline
     if args.stereoL_topic is not None and args.stereoR_topic is not None:
-        stereo = True
+        args.stereo = True
     else:
-        stereo = False
-    f, h, w, scale, volume_pose = init_hdf5(args, stereo)
+        args.stereo = False
+
+    terminate_recording = False
+    finished_recording = True
+    voxel_lock = Lock()
+
+    f, h, w, scale, volume_pose = init_hdf5(args)
 
     # initialize queue for multi-threading
     chunk = args.chunk_size
