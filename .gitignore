@@ -17,3 +17,8 @@ hdf5_files
 *.hdf5
 *.avi
 *.bag
+*.old
+
+*.autosave
+
+*.blend1

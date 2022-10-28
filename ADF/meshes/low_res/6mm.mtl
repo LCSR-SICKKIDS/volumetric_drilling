@@ -1,7 +1,7 @@
-# Blender MTL File: 'None'
+# Blender MTL File: 'drills.blend'
 # Material Count: 4
 
-newmtl black.002
+newmtl black.019
 Ns 323.999994
 Ka 1.000000 1.000000 1.000000
 Kd 0.004148 0.004148 0.004148
@@ -11,7 +11,7 @@ Ni 1.000000
 d 1.000000
 illum 2
 
-newmtl golden.002
+newmtl golden.019
 Ns 738.198645
 Ka 1.000000 1.000000 1.000000
 Kd 0.800000 0.619847 0.019031
@@ -21,7 +21,7 @@ Ni 1.000000
 d 1.000000
 illum 2
 
-newmtl grey.002
+newmtl grey.019
 Ns 323.999994
 Ka 1.000000 1.000000 1.000000
 Kd 0.617706 0.617706 0.617706
@@ -31,7 +31,7 @@ Ni 1.000000
 d 1.000000
 illum 2
 
-newmtl silver.002
+newmtl silver.019
 Ns 323.999994
 Ka 0.627358 0.627358 0.627358
 Kd 0.531616 0.501214 0.514546

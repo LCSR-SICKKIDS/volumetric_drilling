@@ -91,7 +91,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
         return -1;
     }
 
-    vector<int> drillTypes = {2, 4, 6};
+    vector<int> drillTypes = {1, 2, 4, 6};
     int voxelRemovalMultiplier = 5;
 
     for (int i = 0 ; i < drillTypes.size() ; i++){
@@ -112,7 +112,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
         return -1;
     }
 
-    m_activeDrillIdx = 0;
+    m_activeDrillIdx = 2;
     m_activeDrill = m_drills[m_activeDrillIdx];
     showOnlyActive();
 
