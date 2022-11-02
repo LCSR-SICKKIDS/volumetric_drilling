@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets, uic
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QProcess
 import sys
-from study_manager import StudyManager
+from study_manager import StudyManager, RecordOptions
 from gui_setup import SetupGUI
 import datetime
 
@@ -58,14 +58,14 @@ class Ui(QtWidgets.QWidget):
         self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_drill')
         self.button_reset_drill.clicked.connect(self.study_manager.reset_drill)
 
-        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_volume')
-        self.button_reset_drill.clicked.connect(self.study_manager.reset_volume)
+        self.button_reset_volume = self.findChild(QtWidgets.QPushButton, 'button_reset_volume')
+        self.button_reset_volume.clicked.connect(self.study_manager.reset_volume)
 
-        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_toggle_shadows')
-        self.button_reset_drill.clicked.connect(self.study_manager.toggle_shadows)
+        self.button_toggle_shadows = self.findChild(QtWidgets.QPushButton, 'button_toggle_shadows')
+        self.button_toggle_shadows.clicked.connect(self.study_manager.toggle_shadows)
 
-        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_toggle_vol_smooth')
-        self.button_reset_drill.clicked.connect(self.study_manager.toggle_volume_smoothening)
+        self.button_toggle_vol_smooth = self.findChild(QtWidgets.QPushButton, 'button_toggle_vol_smooth')
+        self.button_toggle_vol_smooth.clicked.connect(self.study_manager.toggle_volume_smoothening)
 
         self.button_record_study = self.findChild(QtWidgets.QPushButton, 'button_record_study')
         self.button_record_study.clicked.connect(self.pressed_record_study)
@@ -125,17 +125,42 @@ class Ui(QtWidgets.QWidget):
             self.active_volume_adf = button.volume_adf
 
     def is_ready_to_record(self):
-        record = True
+        ready = True
         if self.text_participant_name.toPlainText() == '':
-            self.print_info('INFO! Please enter a participant name')
-            record = False
+            self.print_info('ERROR! Please enter a participant name. Ignoring Record Request')
+            ready = ready & False
         if self._ambf_process.state() != QProcess.Running:
-            self.print_info('INFO! Please run simulation before recording. Ignoring Record Request!')
-            record = False
-        if self._pupil_process.state() != QProcess.Running:
-            self.print_info('INFO! Please launch pupil capture before recording. Ignoring Record Request!')
-            record = False
-        return record
+            self.print_info('ERROR! Please run simulation before recording. Ignoring Record Request!')
+            ready = ready & False
+
+        if ready and self._pupil_process.state() != QProcess.Running:
+            self.print_info('WARNING! Pupil capture not initialized!')
+            dlg = QtWidgets.QMessageBox(self)
+            dlg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            dlg.setText('Pupil capture not running. No pupil data will be recorded. OK?')
+            button = dlg.exec()
+            if button == QtWidgets.QMessageBox.Ok:
+                ready = ready & True
+            elif button == QtWidgets.QMessageBox.Cancel:
+                ready = ready & False
+
+        self.print_info('INFO! Ready to record ? ' + str(ready))
+        return ready
+
+    def get_record_options(self):
+        record_options = RecordOptions()
+        base_path = str(self.gui_params.recording_base_path)
+        participant_name = '/' + self.text_participant_name.toPlainText()
+        date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        record_options.path = base_path + participant_name + date_time
+        record_options.simulator_data = True
+
+        if self._pupil_process.state() == QProcess.Running:
+            record_options.pupil_data = True
+        else:
+            record_options.pupil_data = False
+
+        return record_options
 
     def pressed_record_study(self):
         if self._recording_study:
@@ -147,12 +172,7 @@ class Ui(QtWidgets.QWidget):
         else:
             if not self.is_ready_to_record():
                 return -1
-            base_path = str(self.gui_params.recording_base_path)
-            participant_name = '/' + self.text_participant_name.toPlainText()
-            date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            recording_filepath = base_path + participant_name + date_time
-            self.study_manager.start_recording(recording_filepath)
-            # self._recording_process.start("python3", [str(self.gui_params.recording_executable_path), '--output_dir', recording_filepath])
+            self.study_manager.start_recording(self.get_record_options())
             self._recording_study = True
             self.button_record_study.setText("STOP RECORDING")
             self.button_record_study.setStyleSheet("background-color: RED")

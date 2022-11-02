@@ -4,6 +4,13 @@ import sys
 from pupil_manager import *
 
 
+class RecordOptions:
+    def __init__(self):
+        self.pupil_data = False
+        self.simulator_data = False
+        self.path = None
+
+
 class StudyManager:
     def __init__(self, ambf_executable_path, pupil_executable_path, recording_script_path):
         self.ambf_executable_path = str(ambf_executable_path)
@@ -27,14 +34,12 @@ class StudyManager:
                 self._launch_simulator(args)
 
     def start_recording_script(self, path):
-        if not self.recording_script_handle:
-            self._launch_recording_script(path)
-        else:
+        if self.recording_script_handle:
             poll = self.recording_script_handle.poll()
             if poll is None:
                 print('INFO! Recording already running. Close it to reopen again')
-            else:
-                self._launch_recording_script(path)
+
+        self._launch_recording_script(path)
 
     def start_pupil_service(self):
         if not self.pupil_service_handle:
@@ -46,11 +51,17 @@ class StudyManager:
             else:
                 self._launch_pupil_service()
 
-    def start_recording(self, path):
-        os.makedirs(path)
-        self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+g')
-        self.pupil_manager.start_recording(path)
-        self.start_recording_script(path)
+    def start_recording(self, record_options):
+        os.makedirs(record_options.path)
+
+        if record_options.pupil_data:
+            self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'ctrl+g')
+            self.pupil_manager.start_recording(record_options.path)
+
+        if record_options.simulator_data:
+            self.start_recording_script(record_options.path)
+        else:
+            print('ERROR! NOTHING TO RECORD')
 
     def close_simulation(self):
         if self.ambf_handle:
@@ -74,6 +85,7 @@ class StudyManager:
     def close(self):
         self.close_simulation()
         self.close_pupil_service()
+        self.close_recording_script()
 
     def toggle_volume_smoothening(self):
         self.send_xdotool_keycmd(self._get_ambf_main_window_handle(), 'alt+s')
