@@ -272,19 +272,22 @@ def write_to_hdf5():
             voxel_color.append(np.hstack((idx_column, collisions["voxel_color"][idx])))
 
     # Write data to hdf5
-    voxel_idx = np.vstack(voxel_idx)
-    voxel_color = np.vstack(voxel_color)
-    voxel_data = dict(
-        voxel_time_stamp=collisions["voxel_time_stamp"],
-        voxel_removed=voxel_idx,
-        voxel_color=voxel_color,
-    )
-    for key, value in voxel_data.items():
-        print(f"key {key}")
-        f["voxels_removed"].create_dataset(key, data=value, compression="gzip")  # write to disk
-        log.log(logging.INFO, (key, f["voxels_removed"][key].shape))
-        # Reset collisions list -  empty memory
-        collisions[key] = []
+    try:
+        voxel_idx = np.vstack(voxel_idx)
+        voxel_color = np.vstack(voxel_color)
+        voxel_data = dict(
+            voxel_time_stamp=collisions["voxel_time_stamp"],
+            voxel_removed=voxel_idx,
+            voxel_color=voxel_color,
+        )
+        for key, value in voxel_data.items():
+            print(f"key {key}")
+            f["voxels_removed"].create_dataset(key, data=value, compression="gzip")  # write to disk
+            log.log(logging.INFO, (key, f["voxels_removed"][key].shape))
+            # Reset collisions list -  empty memory
+            collisions[key] = []
+    except Exception as e:
+        print("WARNING! FOR WRITING VOXEL REMOVAL TO HDF5:", str(e))
 
     voxel_lock.release()
 
