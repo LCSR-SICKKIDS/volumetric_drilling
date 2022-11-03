@@ -92,7 +92,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
     }
 
     vector<int> drillTypes = {1, 2, 4, 6};
-    int voxelRemovalMultiplier = 5;
+    vector<int> voxelRemovalThresholds = {1, 3, 6, 10};
 
     for (int i = 0 ; i < drillTypes.size() ; i++){
         string drillName = to_string(drillTypes[i]) + "mm";
@@ -102,7 +102,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
             drill->m_name = drillName;
             drill->m_rigidBody = drillRB;
             drill->m_size = drillTypes[i] * m_units_mmToSim;
-            drill->setVoxelRemvalThreshold(drillTypes[i] * voxelRemovalMultiplier);
+            drill->setVoxelRemvalThreshold(voxelRemovalThresholds[i]);
             m_drills.push_back(drill);
         }
     }
