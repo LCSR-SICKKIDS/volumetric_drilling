@@ -287,19 +287,22 @@ def write_to_hdf5():
             # Reset collisions list -  empty memory
             collisions[key] = []
     except Exception as e:
-        print("WARNING! FOR WRITING VOXEL REMOVAL TO HDF5:", str(e))
+        print("INFO! No voxels removed in this batch since EXCEPTION:", str(e))
 
     voxel_lock.release()
 
-    # write volume pose
-    key = "pose_mastoidectomy_volume"
-    num_samples = len(f["data"][list(f["data"].keys())[0]])
-    f["data"].create_dataset(
-        key, data=np.stack([volume_pose] * num_samples, axis=0), compression="gzip"
-    )  # write to disk
-    log.log(logging.INFO, (key, f["data"][key].shape))
-    print("finish writing and closing hdf5 file")
+    try:
+        # write volume pose
+        key = "pose_mastoidectomy_volume"
+        num_samples = len(f["data"][list(f["data"].keys())[0]])
+        f["data"].create_dataset(
+            key, data=np.stack([volume_pose] * num_samples, axis=0), compression="gzip"
+        )  # write to disk
+        log.log(logging.INFO, (key, f["data"][key].shape))
+        print("finish writing and closing hdf5 file")
+    except Exception as e:
 
+        print('INFO! No data recorded in this batch since EXCEPTION:', str(e))
     f.close()
     return
 
@@ -495,7 +498,7 @@ def main(args):
 
     while not finished_recording:
         print('Waiting for recording to finish')
-        time.sleep(0.1)
+        time.sleep(1.0)
 
     print("Terminating ", __file__)
     # write_to_hdf5()  # save when user exits
