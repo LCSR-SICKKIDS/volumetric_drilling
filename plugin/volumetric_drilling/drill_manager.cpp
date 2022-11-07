@@ -112,7 +112,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
         return -1;
     }
 
-    m_activeDrillIdx = 2;
+    m_activeDrillIdx = m_drills.size() - 1;
     m_activeDrill = m_drills[m_activeDrillIdx];
     showOnlyActive();
 
@@ -476,7 +476,7 @@ void DrillManager::updatePoseFromCursors(){
 }
 
 void DrillManager::cycleDrillTypes(){
-    m_activeDrillIdx = (m_activeDrillIdx + 1) % m_drills.size();
+    m_activeDrillIdx = (m_activeDrillIdx - 1) % m_drills.size();
     m_activeDrill = m_drills[m_activeDrillIdx];
     m_toolCursorList[0]->setRadius(m_activeDrill->m_size);
     m_burrMesh->setRadius(m_activeDrill->m_size);
