@@ -48,6 +48,7 @@
 #include <volumetric_drilling_msgs/Voxels.h>
 #include <volumetric_drilling_msgs/DrillSize.h>
 #include <volumetric_drilling_msgs/VolumeInfo.h>
+#include <geometry_msgs/WrenchStamped.h>
 #include <std_msgs/ColorRGBA.h>
 
 #include <afFramework.h>
@@ -72,14 +73,18 @@ public:
 
     void publishVoxelMsg(double time);
 
+    void publishForceFeedback(cVector3d& force, cVector3d& moment, double time);
+
 private:
     ros::Publisher m_voxelsRemovalPub;
     ros::Publisher m_drillSizePub;
     ros::Publisher m_volumeInfoPub;
+    ros::Publisher m_forcefeedbackPub;
 
     volumetric_drilling_msgs::Voxels m_voxel_msg;
     volumetric_drilling_msgs::DrillSize m_drill_size_msg;
     volumetric_drilling_msgs::VolumeInfo m_volume_info_msg;
+    geometry_msgs::WrenchStamped m_force_feedback_msg;
 
 };
 

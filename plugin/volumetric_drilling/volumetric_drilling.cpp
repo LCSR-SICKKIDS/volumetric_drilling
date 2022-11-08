@@ -288,6 +288,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
         force += (cVector3d(1.0, 1.0, 1.0) * m_waveGenerator.generate(dt));
     }
     m_drillManager.m_toolCursorList[0]->setDeviceLocalForce(force);
+    m_drillManager.m_drillingPub->publishForceFeedback(force, force, m_worldPtr->getCurrentTimeStamp());
     double maxF = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearForce;
     double force_mag = cClamp(force.length(), 0.0, maxF);
     m_drillManager.setAudioPitch(3.0 - force_mag / maxF);

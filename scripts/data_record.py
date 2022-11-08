@@ -25,6 +25,7 @@ import rospy
 from ambf_msgs.msg import RigidBodyState, CameraState
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
+from geometry_msgs.msg import WrenchStamped
 
 try:
     from volumetric_drilling_msgs.msg import Voxels, DrillSize, VolumeInfo
@@ -179,6 +180,7 @@ def init_hdf5(args):
     file.create_group("data")
     file.create_group("voxels_removed")
     file.create_group("burr_change")
+    file.create_group("drill_force_feedback")
 
     return file, img_height, img_width, s, volume_pose
 
@@ -226,7 +228,7 @@ def write_to_hdf5():
 
     ##################################
     #### Save img data and burr_change
-    containers = [(f["data"], container), (f["burr_change"], burr_change)]
+    containers = [(f["data"], container), (f["burr_change"], burr_change), (f["drill_force_feedback"], drill_force_feedback)]
     for group, data in containers:
         for key, value in data.items():
             if len(value) > 0:
@@ -358,6 +360,13 @@ def rm_vox_callback(rm_vox_msg):
     voxel_lock.release()
 
 
+def drill_force_feedback_callback(wrench_msg):
+    wrench = [wrench_msg.wrench.force.x, wrench_msg.wrench.force.y, wrench_msg.wrench.force.z,
+              wrench_msg.wrench.torque.x, wrench_msg.wrench.torque.y, wrench_msg.wrench.torque.z]
+    drill_force_feedback['time_stamp'].append(wrench_msg.header.stamp.to_sec())
+    drill_force_feedback['wrench'].append(wrench)
+
+
 def burr_change_callback(burr_change_msg):
     global burr_change
     burr_change["time_stamp"].append(burr_change_msg.header.stamp.to_sec())
@@ -447,6 +456,16 @@ def setup_subscriber(args):
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.volume_prop_topic)
             exit()
 
+    if args.drill_force_feedback_topic != 'None':
+        if args.drill_force_feedback_topic in active_topics:
+            rospy.Subscriber(args.drill_force_feedback_topic, WrenchStamped, drill_force_feedback_callback)
+            # Can I just use omni_force here or do I have to use a different variable?
+            drill_force_feedback['time_stamp'] = []
+            drill_force_feedback['wrench'] =[]
+        else:
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.force_topic)
+            exit()
+
     # poses
     for name in args.objects:
         if "camera" in name:
@@ -529,18 +548,19 @@ if __name__ == "__main__":
     #fmt: off
     parser.add_argument("--world_adf", default=resolved_path + "/../ADF/world/world.yaml", type=str)
     parser.add_argument("--volume_adf", default=resolved_path + "/../ADF/volume_171.yaml", type=str)
-    parser.add_argument( "--stereo_adf", default=resolved_path + "/../ADF/stereo_cameras.yaml", type=str)
-    parser.add_argument( "--nrrd_header", default=resolved_path + "/../resources/volumes/nrrd_header.pkl", type=str)
+    parser.add_argument("--stereo_adf", default=resolved_path + "/../ADF/stereo_cameras.yaml", type=str)
+    parser.add_argument("--nrrd_header", default=resolved_path + "/../resources/volumes/nrrd_header.pkl", type=str)
 
     ambf_prefix = "/ambf/env"
-    parser.add_argument( "--stereoL_topic", default=ambf_prefix + "/cameras/stereoL/ImageData", type=str)
-    parser.add_argument( "--depth_topic", default=ambf_prefix + "/cameras/segmentation_camera/DepthData", type=str)
-    parser.add_argument( "--stereoR_topic", default=ambf_prefix + "/cameras/stereoR/ImageData", type=str)
-    parser.add_argument( "--segm_topic", default=ambf_prefix + "/cameras/segmentation_camera/ImageData", type=str)
-    parser.add_argument( "--rm_vox_topic", default=ambf_prefix + "/plugin/volumetric_drilling/voxels_removed", type=str,)
-    parser.add_argument( "--burr_change_topic", default=ambf_prefix + "/plugin/volumetric_drilling/drill_size", type=str,)
-    parser.add_argument( "--volume_prop_topic", default=ambf_prefix + "/plugin/volumetric_drilling/volume_info", type=str,)
-    parser.add_argument( "--objects", default=["mastoidectomy_drill", "main_camera"], type=str, nargs="+")
+    parser.add_argument("--stereoL_topic", default=ambf_prefix + "/cameras/stereoL/ImageData", type=str)
+    parser.add_argument("--depth_topic", default=ambf_prefix + "/cameras/segmentation_camera/DepthData", type=str)
+    parser.add_argument("--stereoR_topic", default=ambf_prefix + "/cameras/stereoR/ImageData", type=str)
+    parser.add_argument("--segm_topic", default=ambf_prefix + "/cameras/segmentation_camera/ImageData", type=str)
+    parser.add_argument("--rm_vox_topic", default=ambf_prefix + "/plugin/volumetric_drilling/voxels_removed", type=str,)
+    parser.add_argument("--burr_change_topic", default=ambf_prefix + "/plugin/volumetric_drilling/drill_size", type=str,)
+    parser.add_argument("--volume_prop_topic", default=ambf_prefix + "/plugin/volumetric_drilling/volume_info", type=str,)
+    parser.add_argument("--objects", default=["mastoidectomy_drill", "main_camera"], type=str, nargs="+")
+    parser.add_argument("--drill_force_feedback_topic", default=ambf_prefix + "/plugin/volumetric_drilling/drill_force_feedback", type=str,)
 
     parser.add_argument("--sync", action="store_true")
     parser.add_argument(
@@ -592,6 +612,7 @@ if __name__ == "__main__":
     container = OrderedDict()
     collisions = OrderedDict()
     burr_change = OrderedDict()
+    drill_force_feedback = OrderedDict()
     voxel_volume = 0
 
     main(args)
