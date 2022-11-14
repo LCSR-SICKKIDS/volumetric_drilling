@@ -128,7 +128,7 @@ void DrillingPublisher::publishVoxelMsg(double time)
 
 void DrillingPublisher::publishForceFeedback(cVector3d& force, cVector3d& moment, double time)
 {
-    m_force_feedback_msg.header.stamp.fromNSec(time);
+    m_force_feedback_msg.header.stamp.fromSec(time);
     m_force_feedback_msg.wrench.force.x = force.x();
     m_force_feedback_msg.wrench.force.y = force.y();
     m_force_feedback_msg.wrench.force.z = force.z();
