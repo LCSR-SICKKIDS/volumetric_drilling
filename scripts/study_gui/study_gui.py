@@ -1,10 +1,17 @@
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QProcess
+from PyQt5.QtWidgets import QFormLayout, QGroupBox, QPushButton, QFileDialog
 import sys
 from study_manager import StudyManager, RecordOptions
-from gui_setup import SetupGUI
+from gui_setup import GUIConfiguration
 import datetime
+from enum import Enum
+
+
+class DialogType(Enum):
+    FILE=0
+    FOLDER=1
 
 
 class Ui(QtWidgets.QWidget):
@@ -12,19 +19,20 @@ class Ui(QtWidgets.QWidget):
         super(Ui, self).__init__()
         uic.loadUi('layout.ui', self)
 
-        self.gui_params = SetupGUI('gui_setup.yaml')
-        self.study_manager = StudyManager(self.gui_params.ambf_executable_path,
-                                          self.gui_params.pupil_executable_path,
-                                          self.gui_params.recording_script_path)
+        self.gui_configuration = GUIConfiguration('gui_setup.yaml')
+        self.study_manager = StudyManager(self.gui_configuration.ambf_executable.get(),
+                                          self.gui_configuration.pupil_executable.get(),
+                                          self.gui_configuration.recording_script.get())
         self.active_volume_adf = ''
 
         # Setup the grid layout for different volumes
-        self.volumes_grid = self.findChild(QtWidgets.QGridLayout, 'gridLayout')
-
-        for i in range(len(self.gui_params.volumes_info)):
-            vinfo = self.gui_params.volumes_info[i]
+        self.scroll_area = self.findChild(QtWidgets.QScrollArea, 'scrollArea')
+        formLayout = QFormLayout()
+        groupBox = QGroupBox('Anatomies')
+        for i in range(len(self.gui_configuration.volumes_info)):
+            vinfo = self.gui_configuration.volumes_info[i]
             radio_button = QtWidgets.QRadioButton(vinfo.name)
-            min_height = 400
+            min_height = 300
             # radio_button.setMinimumHeight(min_height)
             # radio_button.setGeometry(200, 150, 100, 40)
             radio_button.volume_name = vinfo.name
@@ -37,10 +45,12 @@ class Ui(QtWidgets.QWidget):
             label.resize(150, 350)
             # label.setMinimumHeight(min_height)
             label.setPixmap(pixmap.scaled(label.width(), label.height(), Qt.KeepAspectRatio))
-            self.volumes_grid.addWidget(radio_button, i, 0)
-            self.volumes_grid.addWidget(label, i, 1)
+            formLayout.addRow(radio_button, label)
             if i == 0:
                 radio_button.setChecked(True)
+        groupBox.setLayout(formLayout)
+        self.scroll_area.setWidget(groupBox)
+        self.scroll_area.setWidgetResizable(True)
 
         self.button_start_simulation = self.findChild(QtWidgets.QPushButton, 'button_start_simulation')
         self.button_start_simulation.setStyleSheet("background-color: GREEN")
@@ -78,6 +88,19 @@ class Ui(QtWidgets.QWidget):
 
         self.textEdit_debug = self.findChild(QtWidgets.QPlainTextEdit, 'textEdit_debug')
 
+        self.gui_param_dialogs = {}
+        self.connect_gui_param_to_dialog('ambf_executable', self.gui_configuration.ambf_executable.get_id(), DialogType.FILE)
+        self.connect_gui_param_to_dialog('pupil_capture_executable', self.gui_configuration.pupil_executable.get_id(), DialogType.FILE)
+        self.connect_gui_param_to_dialog('launch_file', self.gui_configuration.launch_file.get_id(), DialogType.FILE)
+        self.connect_gui_param_to_dialog('recording_script_executable', self.gui_configuration.recording_script.get_id(), DialogType.FILE)
+        self.connect_gui_param_to_dialog('recording_base_path', self.gui_configuration.recording_base_path.get_id(), DialogType.FOLDER)
+
+        self.button_save_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_save_configuration')
+        self.button_save_configuration.clicked.connect(self.gui_configuration.save)
+
+        self.button_reload_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_reload_configuration')
+        self.button_reload_configuration.clicked.connect(self.reload_configuration)
+
         self._recording_study = False
 
         self._ambf_process = QProcess()
@@ -89,6 +112,41 @@ class Ui(QtWidgets.QWidget):
 
         self.show()
 
+    def connect_gui_param_to_dialog(self, name, param_id, dialog_type: DialogType):
+        exec_file_text_edit = self.findChild(QtWidgets.QTextEdit, 'textEdit_' + name)
+        exec_file_btn = self.findChild(QtWidgets.QPushButton, 'pushButton_' + name)
+        if dialog_type == DialogType.FILE:
+            exec_file_btn.clicked.connect(
+                lambda: self.file_dialog(exec_file_text_edit, param_id))
+        elif dialog_type == DialogType.FOLDER:
+            exec_file_btn.clicked.connect(
+                lambda: self.folder_dialog(exec_file_text_edit, param_id))
+
+        exec_file_text_edit.setText(self.gui_configuration.params[param_id].get_as_str())
+        self.gui_param_dialogs[param_id] = exec_file_text_edit
+        return exec_file_text_edit
+
+    def file_dialog(self, text_edit, param_id):
+        file , check = QFileDialog.getOpenFileName(None, "QFileDialog.getOpenFileName()",
+            "", "All Files (*);;Python Files (*.py);;Text Files (*.txt)")
+        if check:
+            print(file)
+            self.gui_configuration.params[param_id].set(file)
+            text_edit.setText(file)
+
+    def folder_dialog(self, text_edit, param_id):
+        folder = QFileDialog.getExistingDirectory(None, "QFileDialog.getExistingDirectory()",
+            "",)
+        print(folder)
+        self.gui_configuration.params[param_id].set(folder)
+        text_edit.setText(folder)
+
+    def reload_configuration(self):
+        print('Reloading Configuration')
+        self.gui_configuration.reload()
+        for k, v in self.gui_param_dialogs.items():
+            v.setText(self.gui_configuration.params[k].get_as_str())
+
     def pressed_start_simulation(self):
         launch_file_adf_indices = '0,7'
         if self.button_stream_depth.isChecked():
@@ -97,10 +155,10 @@ class Ui(QtWidgets.QWidget):
             launch_file_adf_indices = launch_file_adf_indices + ',5'
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
-        args = ['--launch_file', str(self.gui_params.launch_file), '-l', launch_file_adf_indices, '-a', self.active_volume_adf]
+        args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf]
         # self.study_manager.start_simulation(args)
         if self._ambf_process.state() != QProcess.Running:
-            self._ambf_process.start(str(self.gui_params.ambf_executable_path), args)
+            self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), args)
             self.button_start_simulation.setText('Close Simulation')
             self.button_start_simulation.setStyleSheet("background-color: RED")
         else:
@@ -113,7 +171,7 @@ class Ui(QtWidgets.QWidget):
 
     def pressed_pupil_service(self):
         try:
-            self._pupil_process.start(str(self.gui_params.pupil_executable_path))
+            self._pupil_process.start(str(self.gui_configuration.pupil_executable.get()))
         except Exception as e:
             self.print_info('ERROR! Cant launch Pupil Capture')
             print(e)
@@ -149,7 +207,7 @@ class Ui(QtWidgets.QWidget):
 
     def get_record_options(self):
         record_options = RecordOptions()
-        base_path = str(self.gui_params.recording_base_path)
+        base_path = str(self.gui_configuration.recording_base_path.get())
         participant_name = '/' + self.text_participant_name.toPlainText()
         date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record_options.path = base_path + participant_name + date_time

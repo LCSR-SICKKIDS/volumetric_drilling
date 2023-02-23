@@ -13,18 +13,48 @@ class VolumeInfo:
         print('Icon Path', self.icon_path)
 
 
-class SetupGUI:
+class GUIParam:
+    def __init__(self, id, val):
+        self._id = id
+        self._param = val
+
+    def get_id(self):
+        return self._id
+
+    def get(self):
+        return self._param
+
+    def get_as_str(self):
+        return str(self._param)
+
+    def set(self, val):
+        self._param = val
+
+
+class GUIConfiguration:
     def __init__(self, setup_filename):
         self.setup_file_name = setup_filename
-        self.file_path = pathlib.Path(self.setup_file_name)
-        self.yaml_file = open(str(self.file_path), 'r')
+        self.yaml_file_path = pathlib.Path(self.setup_file_name)
+        self.yaml_file = open(str(self.yaml_file_path), 'r')
+
+        self.param_keys = ["ambf_executable",
+                           "pupil_executable",
+                           "recording_script_executable",
+                           "recording_base_path",
+                           "launch_file"]
+        self.params = {}
 
         self.yaml_data = yaml.safe_load(self.yaml_file)
-        self.ambf_executable_path = pathlib.Path(self.yaml_data["ambf_executable_path"])
-        self.pupil_executable_path = pathlib.Path(self.yaml_data["pupil_executable_path"])
-        self.recording_script_path = pathlib.Path(self.yaml_data["recording_script_path"])
-        self.recording_base_path = pathlib.Path(self.yaml_data['recording_base_path']).resolve()
-        self.launch_file = pathlib.Path(self.yaml_data["launch_file_path"]).resolve()
+
+        for l in self.param_keys:
+            self.params[l] = GUIParam(l, pathlib.Path(self.yaml_data[l]).resolve())
+
+        self.ambf_executable = self.params["ambf_executable"]
+        self.pupil_executable = self.params["pupil_executable"]
+        self.recording_script = self.params["recording_script_executable"]
+        self.recording_base_path = self.params['recording_base_path']
+        self.launch_file = self.params["launch_file"]
+
         volumes_data = self.yaml_data['volumes']
         self.volumes_info = []
         for v in volumes_data:
@@ -40,9 +70,34 @@ class SetupGUI:
             print('-------')
             v.print_info()
 
+    def print(self):
+        print('Printing GUI Params:')
+        for k,v in self.params.items():
+            print('\t', k, v.get_as_str())
+
+    def save(self):
+        for k, v in self.params.items():
+            self.yaml_data[k] = v.get_as_str()
+        self.yaml_file = open(str(self.yaml_file_path), 'w')
+        yaml.dump(self.yaml_data, self.yaml_file)
+        self.yaml_file.close()
+
+    def reload(self):
+        self.yaml_file = open(str(self.yaml_file_path), 'r')
+        for l in self.param_keys:
+            self.params[l] = GUIParam(l, pathlib.Path(self.yaml_data[l]).resolve())
+
+        self.ambf_executable = self.params["ambf_executable"]
+        self.pupil_executable = self.params["pupil_executable"]
+        self.recording_script = self.params["recording_script_executable"]
+        self.recording_base_path = self.params['recording_base_path']
+        self.launch_file = self.params["launch_file"]
+        self.yaml_file.close()
+        # self.print()
+
 
 def main():
-    gs = SetupGUI('gui_setup.yaml')
+    gs = GUIConfiguration('gui_setup.yaml')
     gs.print_volumes_info()
 
 
