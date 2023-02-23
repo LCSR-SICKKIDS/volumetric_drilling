@@ -10,26 +10,33 @@ namespace: /ambf/env/
 stereoLR:
   namespace: cameras/
   name: stereoLR
-  location: {x: 0.0, y: 0.0, z: 0.0}
+  location: {x: 4.0, y: 0.0, z: 0.0}
   look at: {x: -1.0, y: 0.0, z: 0.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
   clipping plane: {near: 2.0135309278350517, far: 1006.7654639175257}
   field view angle: 0.17951634837990105
   monitor: 2
-  stereo: {mode: Passive, eye separation: 0.13, focal length: 0.8}
+  stereo: {mode: Passive, eye separation: 0.15, focal length: 200}
   # multipass: true
   # publish image: true
   # preprocessing shaders:
   #   path: ../../../ambf_shaders/preprocessing/
   #   vertex: shader.vs
   #   fragment: shader.fs
-  publish image interval: 5   # Publish every nth scene update
+  # publish image interval: 5   # Publish every nth scene update
   # publish depth: true
   # publish depth noise: {mean: 0.1, std_dev: 0.01, bias: 0.0}
   # publish depth interval: 1 # Publish every nth scene update
-  publish image resolution: {width: 640, height: 480}
+  # publish image resolution: {width: 640, height: 480}
   # depth compute shaders:
   #    path: ../../../ambf_shaders/depth
   #    vertex: shader.vs
   #    fragment: shader.fs
   parent: main_camera
+  plugins: [
+    {
+      name: vr_plugin,
+      path: "../build",
+      filename: "libcamera_hmd.so",
+    }
+  ]

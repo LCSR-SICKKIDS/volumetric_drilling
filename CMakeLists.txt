@@ -45,8 +45,8 @@ set(CMAKE_CXX_STANDARD 11)
 find_package(AMBF)
 find_package(Boost COMPONENTS program_options filesystem)
 
-add_subdirectory(vdrilling_msgs)
-find_package(catkin COMPONENTS vdrilling_msgs)
+add_subdirectory(volumetric_drilling_msgs)
+find_package(catkin COMPONENTS volumetric_drilling_msgs)
 
 include_directories(${AMBF_INCLUDE_DIRS})
 include_directories(${Boost_INCLUDE_DIRS})
@@ -60,8 +60,30 @@ add_definitions(${AMBF_DEFINITIONS})
 message("---> LIBS " ${catkin_INCLUDE_DIRS})
 message("---> FOUND ? " ${catkin_vdrilling_msgs_FOUND})
 
-add_library(volumetric_drilling SHARED volumetric_drilling.cpp volumetric_drilling.h collision_publisher.h collision_publisher.cpp)
+set (vol_plugin_prefix "plugin/volumetric_drilling")
+
+add_library(volumetric_drilling SHARED
+    ${vol_plugin_prefix}/common.h
+    ${vol_plugin_prefix}/volumetric_drilling.cpp
+    ${vol_plugin_prefix}/volumetric_drilling.h
+    ${vol_plugin_prefix}/ros_interface.cpp
+    ${vol_plugin_prefix}/ros_interface.h
+    ${vol_plugin_prefix}/joystick.cpp
+    ${vol_plugin_prefix}/joystick.h
+    ${vol_plugin_prefix}/footpedal.cpp
+    ${vol_plugin_prefix}/footpedal.h
+    ${vol_plugin_prefix}/wave_generator.cpp
+    ${vol_plugin_prefix}/wave_generator.h
+    ${vol_plugin_prefix}/drill_manager.cpp
+    ${vol_plugin_prefix}/drill_manager.h
+    ${vol_plugin_prefix}/camera_panel_manager.h
+    ${vol_plugin_prefix}/camera_panel_manager.cpp
+    ${vol_plugin_prefix}/gaze_marker_controller.h
+  ${vol_plugin_prefix}/gaze_marker_controller.cpp)
 add_dependencies(volumetric_drilling ${catkin_EXPORTED_TARGETS})
 target_link_libraries (volumetric_drilling ${Boost_LIBRARIES} ${AMBF_LIBRARIES} ${catkin_LIBRARIES})
-
 set_property(TARGET volumetric_drilling PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+
+add_library(camera_hmd plugin/camera_hmd/hmd.cpp plugin/camera_hmd/hmd.h)
+target_link_libraries(camera_hmd ${AMBF_LIBRARIES})
+set_property(TARGET camera_hmd PROPERTY POSITION_INDEPENDENT_CODE TRUE)

@@ -25,7 +25,7 @@ void main(void)
    gl_TexCoord[1] = vec4(s, t, r, q);
    vTexCoord = aTexCoord;
 
-   vec3 e = normalize(vec3(vPosition.xyz));
+   vec3 e = normalize(vPosition.xyz);
    vec3 n = vNormal;
 
    vec3 ref = reflect( e, n );

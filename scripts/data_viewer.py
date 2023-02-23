@@ -67,8 +67,8 @@ def generate_video():
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--file', type=str, default=None, action='Iterate through all data frame by frame')
-    parser.add_argument('--idx', nargs='+', default=None, action='View the data of provided index')
+    parser.add_argument('--file', type=str, default=None, action='store', help='Iterate through all data frame by frame')
+    parser.add_argument('--idx', nargs='+', default=None, action='store', help='View the data of provided index')
     parser.add_argument('--generate_video', action='store_true', help="create a video of recorded data")
     args = parser.parse_args()
 

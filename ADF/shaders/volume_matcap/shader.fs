@@ -3,13 +3,15 @@ uniform vec3 uMaxCorner;
 uniform vec3 uTextureScale;
 uniform vec3 uGradientDelta;
 uniform sampler3D uVolume;
+uniform sampler2DShadow shadowMap;
 uniform float uIsosurface;
 uniform float uResolution;
 
 varying vec4 vPosition;
 uniform bool uSmoothVolume;
 uniform int uSmoothingLevel;
-uniform sampler2D aoMap;
+uniform sampler2D uMatcapMap;
+uniform int uEnableShadow;
 
 vec3 dx = vec3(uGradientDelta.x, 0.0, 0.0);
 vec3 dy = vec3(0.0, uGradientDelta.y, 0.0);
@@ -113,6 +115,8 @@ void main(void)
     vec4 sum = vec4(0.0);
     vec3 tc = gl_TexCoord[0].stp + t_entry * tc_step / t_step;
 
+    vec4 dpos = vPosition;
+
     for (float t = t_entry; t < 0.0; t += t_step, tc += tc_step)
     {
         // sample the volume for intensity (red channel)
@@ -127,14 +131,14 @@ void main(void)
               nabla = vec3(0., 0., 0.);
               vec3 tr;
               int cnt = uSmoothingLevel;
-              vec3 half = vec3(1., 1., 1.) * float(cnt)/2.0;
+              vec3 half_vec = vec3(1., 1., 1.) * float(cnt)/2.0;
               // vec3 tcr = tc;
               for (int x = 0 ; x < cnt ; x++){
                 for (int y = 0 ; y < cnt ; y++){
                   for (int z = 0 ; z < cnt ; z++){
-                    tr[0] = tcr[0] + (float(x) - half[0]) * uGradientDelta[0];
-                    tr[1] = tcr[1] + (float(y) - half[1]) * uGradientDelta[1];
-                    tr[2] = tcr[2] + (float(z) - half[2]) * uGradientDelta[2];
+                    tr[0] = tcr[0] + (float(x) - half_vec[0]) * uGradientDelta[0];
+                    tr[1] = tcr[1] + (float(y) - half_vec[1]) * uGradientDelta[1];
+                    tr[2] = tcr[2] + (float(z) - half_vec[2]) * uGradientDelta[2];
                     nabla += gradient(tr);
                   }
                 }
@@ -148,13 +152,18 @@ void main(void)
             vec3 position = vPosition.xyz + (t - dt * t_step) * raydir;
             vec3 normal = -normalize(nabla);
             vec3 view = -raydir;
+
+            vec3 lp = vec3(gl_LightSource[0].spotDirection);
+            float bias = max(0.01 * (1.0 - dot(normal, lp)), 0.001);
+            dpos.xyz = vPosition.xyz + (t - bias - dt * t_step) * raydir;
+
             // vec3 colour = shade(position, view, normal) * texture3D(uVolume, tcr).rgb / uIsosurface;
-            vec3 e = vec3(gl_ModelViewMatrix * vec4(view, 1.0));
+            vec3 e = normalize(vec3(gl_ModelViewMatrix * vec4(view, 1.0)));
             vec3 n = normalize(gl_NormalMatrix * nabla);
             vec3 r = reflect(e, n);
             float m = 2. * sqrt( pow( r.x, 2. ) + pow( r.y, 2. ) + pow( r.z + 1., 2. ) );
             vec2 vN = r.xy / m + .5;
-            vec3 matcap = texture2D(aoMap, vN).rgb;
+            vec3 matcap = texture2D(uMatcapMap, vN).rgb;
             vec3 colour = matcap * texture3D(uVolume, tcr).rgb / uIsosurface;
             sum = vec4(colour, 1.0);
 
@@ -168,6 +177,17 @@ void main(void)
 
     // discard the fragment if no geometry was intersected
     if (sum.a <= 0.0) discard;
-
-    gl_FragColor = sum;
+    if (uEnableShadow == 1){
+      dpos = gl_ModelViewMatrix * dpos;
+      float s = dot(gl_EyePlaneS[1], dpos);
+      float t = dot(gl_EyePlaneT[1], dpos);
+      float r = dot(gl_EyePlaneR[1], dpos);
+      float q = dot(gl_EyePlaneQ[1], dpos);
+      vec4 depos = vec4(s, t, r, q);
+      vec4 shadow = shadow2DProj(shadowMap, depos);
+      gl_FragColor = vec4(sum.rgb, shadow.a);
+    }
+    else{
+      gl_FragColor = sum;
+    }
 }
