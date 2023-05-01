@@ -68,7 +68,6 @@ main_camera:
   #    path: ../../../ambf_shaders/depth
   #    vertex: shader.vs
   #    fragment: shader.fs
-
   # multipass: true
 
 cameraL:
