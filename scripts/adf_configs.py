@@ -65,11 +65,14 @@ def camera_config(params, args, name):
         fov = 2 * math.atan(sensor_height / 2 / focal)
         camera['field view angle'] = fov
 
-    camera['publish image resolution']['width'] = args.res[0]
-    camera['publish image resolution']['height'] = args.res[1]
-    camera['publish image interval'] = args.image_interval
-    if 'publish depth interval' in camera:
-        camera['publish depth interval'] = args.image_interval
+    try:
+        camera['publish image resolution']['width'] = args.res[0]
+        camera['publish image resolution']['height'] = args.res[1]
+        camera['publish image interval'] = args.image_interval
+        if 'publish depth interval' in camera:
+            camera['publish depth interval'] = args.image_interval
+    except:
+        print("Publish image resoluiton not set for camera ", camera['name'])
 
     return params
 

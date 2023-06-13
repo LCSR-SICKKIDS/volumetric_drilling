@@ -130,7 +130,7 @@ public:
     bool m_overrideControl = false;
 
     // rate of drill movement
-    double m_drillRate = 0.020f;
+    double m_drillRate = 0.001f;
 
     afRigidBodyPtr m_drillReferenceBody;
 
@@ -185,10 +185,10 @@ public:
     vector<cToolCursor*> m_toolCursorList;
 
     // radius of tool cursors
-    vector<double> m_toolCursorRadius{0.02, 0.013, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025};
+    vector<double> m_toolCursorRadii;
 
     // Local offset between shaft tool cursors
-    double m_dX = 0.03;
+    double m_dX;
 
     // for storing index of follow sphere
     int m_targetToolCursorIdx = 0;

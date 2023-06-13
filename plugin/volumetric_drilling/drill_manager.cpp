@@ -44,7 +44,7 @@
 #include <boost/program_options.hpp>
 
 DrillManager::DrillManager(){
-    m_units_mmToSim = 0.01007;
+    m_units_mmToSim = 0.001;
 }
 
 void DrillManager::cleanup()
@@ -189,6 +189,15 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
     // get access to the first available haptic device found
     m_deviceHandler->getDevice(m_hapticDevice, 0);
 
+    m_toolCursorRadii.push_back(0.001);
+    m_toolCursorRadii.push_back(0.00065);
+    m_toolCursorRadii.push_back(0.00075);
+    m_toolCursorRadii.push_back(0.00085);
+    m_toolCursorRadii.push_back(0.00095);
+    m_toolCursorRadii.push_back(0.00105);
+    m_toolCursorRadii.push_back(0.00115);
+    m_toolCursorRadii.push_back(0.00125);
+
     // Initializing tool cursors
     toolCursorInit(a_worldPtr);
 
@@ -323,14 +332,14 @@ void DrillManager::toolCursorInit(const afWorldPtr a_afWorld){
 
             // if the haptic device has a gripper, enable it as a user switch
             m_hapticDevice->setEnableGripperUserSwitch(true);
-            m_toolCursorList[i]->setRadius(m_activeDrill->m_size); // Set the correct radius for the tip which is not from the list of cursor radii
+            m_toolCursorList[i]->setRadius(m_activeDrill->m_size / 2.0); // Set the correct radius for the tip which is not from the list of cursor radii
         }
         else
         {
             m_toolCursorList[i]->setShowContactPoints(m_showGoalProxySpheres, m_showGoalProxySpheres);
             m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
             m_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
-            m_toolCursorList[i]->setRadius(m_toolCursorRadius[i]);
+            m_toolCursorList[i]->setRadius(m_toolCursorRadii[i]);
         }
      }
 
@@ -478,8 +487,8 @@ void DrillManager::updatePoseFromCursors(){
 void DrillManager::cycleDrillTypes(){
     m_activeDrillIdx = (m_activeDrillIdx - 1) % m_drills.size();
     m_activeDrill = m_drills[m_activeDrillIdx];
-    m_toolCursorList[0]->setRadius(m_activeDrill->m_size);
-    m_burrMesh->setRadius(m_activeDrill->m_size);
+    m_toolCursorList[0]->setRadius(m_activeDrill->m_size / 2.0);
+    m_burrMesh->setRadius(m_activeDrill->m_size / 2.0);
     cout << "Drill Type changed to " << m_activeDrill->m_name << endl;
     m_panelManager->setText(m_sizeLabel, "Drill Type: " + m_activeDrill->m_name);
 
