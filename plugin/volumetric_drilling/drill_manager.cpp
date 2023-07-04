@@ -121,7 +121,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
     string drill_matcap = var_map["dm"].as<string>();
 
     m_burrMesh = new cShapeSphere(m_activeDrill->m_size);
-    m_burrMesh->setRadius(m_activeDrill->m_size);
+    m_burrMesh->setRadius(m_activeDrill->m_size / 2.0);
     m_burrMesh->m_material->setBlack();
     m_burrMesh->m_material->setShininess(0);
     m_burrMesh->m_material->m_specular.set(0, 0, 0);
