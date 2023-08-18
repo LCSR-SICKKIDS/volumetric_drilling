@@ -520,19 +520,6 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             }
         }
 
-        // option - polygonize model and save to file
-        else if (a_key == GLFW_KEY_P) {
-            cMultiMesh *surface = new cMultiMesh;
-            m_voxelObj->polygonize(surface, 0.01, 0.01, 0.01);
-            double SCALE = 0.1;
-            double METERS_TO_MILLIMETERS = 1000.0;
-            surface->scale(SCALE * METERS_TO_MILLIMETERS);
-            surface->setUseVertexColors(true);
-            surface->saveToFile("volume.obj");
-            cout << "> Volume has been polygonized and saved to disk                            \r";
-            delete surface;
-        }
-
         // toggles size of drill burr/tip tool cursor
         else if (a_key == GLFW_KEY_N){
             cerr << "INFO! RESETTING THE VOLUME" << endl;
@@ -602,6 +589,21 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             int val = cMax(1, m_drillManager.m_activeDrill->getVoxelRemovalThreshold() - 1);
             m_drillManager.m_activeDrill->setVoxelRemvalThreshold(val);
             cerr << "INFO! REMOVAL THRESHOLD " << val << endl;
+        }
+
+
+        // option - polygonize model and save to file
+        else if (a_key == GLFW_KEY_P) {
+            cMultiMesh *surface = new cMultiMesh;
+            m_voxelObj->polygonize(surface);
+            surface->setUseVertexColors(true);
+            std::string volume_filename = "volume.stl";
+            surface->saveToFile(volume_filename);
+            int buff_size = 512;
+            char current_dir[buff_size];
+            getcwd(current_dir, buff_size);
+            cout << "INFO! Volume has been polygonized and saved to disk as " << current_dir <<  "/" << volume_filename << "\n";
+            delete surface;
         }
 
         std::string text = "[ALT+S] Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
