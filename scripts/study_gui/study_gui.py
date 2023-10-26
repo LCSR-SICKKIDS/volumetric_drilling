@@ -7,6 +7,7 @@ from study_manager import StudyManager, RecordOptions
 from gui_setup import GUIConfiguration
 import datetime
 from enum import Enum
+import json
 
 
 class DialogType(Enum):
@@ -24,6 +25,8 @@ class Ui(QtWidgets.QWidget):
                                           self.gui_configuration.pupil_executable.get(),
                                           self.gui_configuration.recording_script.get())
         self.active_volume_adf = ''
+        self.active_volume_name = ''
+        self.record_options = RecordOptions()
 
         # Setup the grid layout for different volumes
         self.scroll_area = self.findChild(QtWidgets.QScrollArea, 'scrollArea')
@@ -181,6 +184,7 @@ class Ui(QtWidgets.QWidget):
         if button.isChecked():
             self.print_info('Active Volume is ' + button.volume_name)
             self.active_volume_adf = button.volume_adf
+            self.active_volume_name = button.volume_name
 
     def is_ready_to_record(self):
         ready = True
@@ -208,7 +212,7 @@ class Ui(QtWidgets.QWidget):
     def get_record_options(self):
         record_options = RecordOptions()
         base_path = str(self.gui_configuration.recording_base_path.get())
-        participant_name = '/' + self.text_participant_name.toPlainText()
+        participant_name = '/' + self.text_participant_name.toPlainText().strip()
         date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record_options.path = base_path + participant_name + date_time
         record_options.simulator_data = True
@@ -220,17 +224,36 @@ class Ui(QtWidgets.QWidget):
 
         return record_options
 
+    def save_metadata(self):
+        notes, ok = QtWidgets.QInputDialog.getMultiLineText(
+            self, 'Input Dialog', 'Enter notes:')
+
+        metadata = {
+                "participant_name": self.text_participant_name.toPlainText().strip(),
+                "volume_adf": self.active_volume_adf,
+                "volume_name": self.active_volume_name,
+                "notes": notes
+            }
+        
+        metadata_path = self.record_options.path + "/metadata.json"
+
+        with open(metadata_path, "w") as outfile:
+            json.dump(metadata, outfile, indent = 4)
+        
+
     def pressed_record_study(self):
         if self._recording_study:
             # self._recording_process.close()
             self.study_manager.stop_recording()
             self._recording_study = False
+            self.save_metadata()
             self.button_record_study.setText("Record Study")
             self.button_record_study.setStyleSheet("background-color: GREEN")
         else:
             if not self.is_ready_to_record():
                 return -1
-            self.study_manager.start_recording(self.get_record_options())
+            self.record_options = self.get_record_options()
+            self.study_manager.start_recording(self.record_options)
             self._recording_study = True
             self.button_record_study.setText("STOP RECORDING")
             self.button_record_study.setStyleSheet("background-color: RED")
