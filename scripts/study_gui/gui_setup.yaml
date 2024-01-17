@@ -1,121 +1,113 @@
-# ambf_executable_path: "/home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator"
-ambf_executable: "../../../ambf/bin/lin-x86_64/ambf_simulator"
-pupil_executable: "pupil_capture"
-recording_script_executable: "../data_record.py"
-launch_file: "../../launch.yaml"
-recording_base_path: "../../../Volumetric Drilling Userstudy/"
-
-volumes: [volume1, volume2, volume3, volume4, volume5, volume6,
-volume7, volume8, volume9, volume10, volume11, volume12, volume13, 
-volume14, volume15, volume16, volume17, volume18, volume19, volume20, 
-volume21]
-
-# volumes: [volume1, volume2, volume4, volume5, volume7,
-# volume8, volume9, volume10, volume12, volume13, 
-# volume14, volume15, volume16, volume17, volume18, volume19, volume20, 
-# volume21]
-
+ambf_executable: /home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator
+launch_file: /home/amunawa2/volumetric_drilling_VRE/launch.yaml
+pupil_executable: /usr/bin/pupil_capture
+recording_base_path: /home/amunawa2/VRE_UserStudy
+recording_script_executable: /home/amunawa2/volumetric_drilling_VRE/scripts/data_record.py
 volume1:
-  icon_path: ./assets/RT143.png
   adf_path: ../../ADF/volume_256_RT143.yaml
-  name: 'Anatomy A'
-
-volume2:
-  icon_path: ./assets/RT138.png
-  adf_path: ../../ADF/volume_256_RT138.yaml
-  name: 'Anatomy B'
-
-volume3:
-  icon_path: ./assets/RT147.png
-  adf_path: ../../ADF/volume_256_RT147.yaml
-  name: 'Anatomy C'
-
-volume4:
-  icon_path: ./assets/LT143.png
-  adf_path: ../../ADF/volume_256_LT143.yaml
-  name: 'Anatomy D'
-
-volume5:
-  icon_path: ./assets/LT151.png
-  adf_path: ../../ADF/volume_256_LT151.yaml
-  name: 'Anatomy E'
-
-volume6:
-  icon_path: ./assets/LT138.png
-  adf_path: ../../ADF/volume_256_LT138.yaml
-  name: 'Anatomy F'
-
-volume7:
-  icon_path: ./assets/LT144.png
-  adf_path: ../../ADF/volume_256_LT144.yaml
-  name: 'Anatomy G'
-
-volume8:
-  icon_path: ./assets/LT145.png
-  adf_path: ../../ADF/volume_256_LT145.yaml
-  name: 'Anatomy H'
-
-volume9:
-  icon_path: ./assets/LT146.png
-  adf_path: ../../ADF/volume_256_LT146.yaml
-  name: 'Anatomy I'
-
+  icon_path: ./assets/RT143.png
+  name: Anatomy A
 volume10:
-  icon_path: ./assets/LT147.png
   adf_path: ../../ADF/volume_256_LT147.yaml
-  name: 'Anatomy J'
-
+  icon_path: ./assets/LT147.png
+  name: Anatomy J
 volume11:
-  icon_path: ./assets/LT148.png
   adf_path: ../../ADF/volume_256_LT148.yaml
-  name: 'Anatomy K'
-
+  icon_path: ./assets/LT148.png
+  name: Anatomy K
 volume12:
-  icon_path: ./assets/LT150.png
   adf_path: ../../ADF/volume_256_LT150.yaml
-  name: 'Anatomy L'
-
+  icon_path: ./assets/LT150.png
+  name: Anatomy L
 volume13:
-  icon_path: ./assets/LT152.png
   adf_path: ../../ADF/volume_256_LT152.yaml
-  name: 'Anatomy M'
-
+  icon_path: ./assets/LT152.png
+  name: Anatomy M
 volume14:
-  icon_path: ./assets/LT169.png
   adf_path: ../../ADF/volume_256_LT169.yaml
-  name: 'Anatomy N'
-
+  icon_path: ./assets/LT169.png
+  name: Anatomy N
 volume15:
-  icon_path: ./assets/LT171.png
   adf_path: ../../ADF/volume_256_LT171.yaml
-  name: 'Anatomy O'
-
+  icon_path: ./assets/LT171.png
+  name: Anatomy O
 volume16:
-  icon_path: ./assets/RT142.png
   adf_path: ../../ADF/volume_256_RT142.yaml
-  name: 'Anatomy P'
-
+  icon_path: ./assets/RT142.png
+  name: Anatomy P
 volume17:
-  icon_path: ./assets/RT144.png
   adf_path: ../../ADF/volume_256_RT144.yaml
-  name: 'Anatomy Q'
-
+  icon_path: ./assets/RT144.png
+  name: Anatomy Q
 volume18:
-  icon_path: ./assets/RT146.png
   adf_path: ../../ADF/volume_256_RT146.yaml
-  name: 'Anatomy R'
-
+  icon_path: ./assets/RT146.png
+  name: Anatomy R
 volume19:
-  icon_path: ./assets/RT150.png
   adf_path: ../../ADF/volume_256_RT150.yaml
-  name: 'Anatomy S'
-
+  icon_path: ./assets/RT150.png
+  name: Anatomy S
+volume2:
+  adf_path: ../../ADF/volume_256_RT138.yaml
+  icon_path: ./assets/RT138.png
+  name: Anatomy B
 volume20:
-  icon_path: ./assets/RT152.png
   adf_path: ../../ADF/volume_256_RT152.yaml
-  name: 'Anatomy T'
-
+  icon_path: ./assets/RT152.png
+  name: Anatomy T
 volume21:
-  icon_path: ./assets/RT153.png
   adf_path: ../../ADF/volume_256_RT153.yaml
-  name: 'Anatomy U'
+  icon_path: ./assets/RT153.png
+  name: Anatomy U
+volume3:
+  adf_path: ../../ADF/volume_256_RT147.yaml
+  icon_path: ./assets/RT147.png
+  name: Anatomy C
+volume4:
+  adf_path: ../../ADF/volume_256_LT143.yaml
+  icon_path: ./assets/LT143.png
+  name: Anatomy D
+volume5:
+  adf_path: ../../ADF/volume_256_LT151.yaml
+  icon_path: ./assets/LT151.png
+  name: Anatomy E
+volume6:
+  adf_path: ../../ADF/volume_256_LT138.yaml
+  icon_path: ./assets/LT138.png
+  name: Anatomy F
+volume7:
+  adf_path: ../../ADF/volume_256_LT144.yaml
+  icon_path: ./assets/LT144.png
+  name: Anatomy G
+volume8:
+  adf_path: ../../ADF/volume_256_LT145.yaml
+  icon_path: ./assets/LT145.png
+  name: Anatomy H
+volume9:
+  adf_path: ../../ADF/volume_256_LT146.yaml
+  icon_path: ./assets/LT146.png
+  name: Anatomy I
+volume22:
+  adf_path: ../../ADF/volume_512.yaml
+  icon_path: ./assets/LT146.png
+  name: Anatomy 512
+volumes:
+- volume1
+- volume2
+- volume4
+- volume5
+- volume7
+- volume8
+- volume9
+- volume10
+- volume12
+- volume13
+- volume14
+- volume15
+- volume16
+- volume17
+- volume18
+- volume19
+- volume20
+- volume21
+- volume22

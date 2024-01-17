@@ -44,9 +44,9 @@ MTMR:
 
 Geomagic Touch:
     hardware name: PHANTOM Omni
-    haptic gain: {linear: 0.000, angular: 0.0}
-    deadband: 0.01
-    max force: 2
+    haptic gain: {linear: 13.0, angular: 13.0}
+    deadband: 0.0001
+    max force: 5
     max jerk: 0.2
     workspace scaling: 10
     simulated multibody: "../multi-bodies/grippers/resistive/sensorized_box/gripper.yaml"

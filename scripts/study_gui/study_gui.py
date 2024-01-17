@@ -158,7 +158,10 @@ class Ui(QtWidgets.QWidget):
             launch_file_adf_indices = launch_file_adf_indices + ',5'
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
-        args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf]
+        args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
+                '--plugins', '/home/amunawa2/ambf_spacenav_plugin/build/libspacenav_plugin.so',
+                "--spf", '/home/amunawa2/ambf_spacenav_plugin/example/spacenav_config.yaml',
+                "--nt", "2"]
         # self.study_manager.start_simulation(args)
         if self._ambf_process.state() != QProcess.Running:
             self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), args)
@@ -174,6 +177,7 @@ class Ui(QtWidgets.QWidget):
 
     def pressed_pupil_service(self):
         try:
+            print("Launching ", self.gui_configuration.pupil_executable.get())
             self._pupil_process.start(str(self.gui_configuration.pupil_executable.get()))
         except Exception as e:
             self.print_info('ERROR! Cant launch Pupil Capture')

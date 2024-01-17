@@ -207,9 +207,14 @@ void DrillManager::update(double dt)
     else if(m_hapticDevice->isDeviceAvailable()){
         m_hapticDevice->getTransform(m_T_i);
         m_hapticDevice->getLinearVelocity(m_V_i);
+        // cMatrix3d extraRotation;
+        // extraRotation.setExtrinsicEulerRotationDeg(0, 90, 0, C_EULER_ORDER_XYZ);
+        // m_V_i = T_c_w.getLocalRot() * extraRotation * (m_V_i / m_toolCursorList[0]->getWorkspaceScaleFactor());
         m_V_i = T_c_w.getLocalRot() * (m_V_i / m_toolCursorList[0]->getWorkspaceScaleFactor());
-        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.4 * !m_deviceClutch * !m_camClutch));
-        m_T_d.setLocalRot(T_c_w.getLocalRot() * m_T_i.getLocalRot());
+        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.8 * !m_deviceClutch * !m_camClutch)); // moved from 0.4 to 0.8 to get closer to real world
+        // m_T_d.setLocalRot(T_c_w.getLocalRot() * extraRotation * m_T_i.getLocalRot());
+        m_T_d.setLocalRot(T_c_w.getLocalRot() *  m_T_i.getLocalRot());
+
 
         // set zero forces when manipulating objects
         if (m_deviceClutch || m_camClutch){

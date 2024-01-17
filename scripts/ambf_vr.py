@@ -121,7 +121,8 @@ def main():
         ambf_cam_pub.publish(cam_cmd)
         counter = counter + 1
         if counter % 60 == 0:
-            print "- Publishing Occulus Pose ", format( round(rospy.get_time() - start, 3)), 's'
+            # print "- Publishing Occulus Pose ", format( round(rospy.get_time() - start, 3)), 's'
+            print("VR Live")
         rate.sleep()
 
 
