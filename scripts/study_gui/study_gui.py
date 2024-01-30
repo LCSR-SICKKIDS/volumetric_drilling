@@ -97,6 +97,7 @@ class Ui(QtWidgets.QWidget):
         self.connect_gui_param_to_dialog('launch_file', self.gui_configuration.launch_file.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_script_executable', self.gui_configuration.recording_script.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_base_path', self.gui_configuration.recording_base_path.get_id(), DialogType.FOLDER)
+        self.connect_gui_param_to_dialog('footpedal_device', self.gui_configuration.footpedal_device.get_id(), DialogType.FILE)
 
         self.button_save_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_save_configuration')
         self.button_save_configuration.clicked.connect(self.gui_configuration.save)
@@ -159,9 +160,11 @@ class Ui(QtWidgets.QWidget):
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
         args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
-                '--plugins', '/home/amunawa2/ambf_spacenav_plugin/build/libspacenav_plugin.so',
-                "--spf", '/home/amunawa2/ambf_spacenav_plugin/example/spacenav_config.yaml',
-                "--nt", "2"]
+                '--plugins', '/home/tblab/ambf_spacenav_plugin/build/libspacenav_plugin.so',
+                "--spf", '/home/tblab/ambf_spacenav_plugin/example/spacenav_config.yaml',
+                # "--nt", "2",
+                "--fp", str(self.gui_configuration.footpedal_device.get())]
+        print("--fp", str(self.gui_configuration.footpedal_device.get()))
         # self.study_manager.start_simulation(args)
         if self._ambf_process.state() != QProcess.Running:
             self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), args)

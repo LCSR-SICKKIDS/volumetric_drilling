@@ -165,11 +165,11 @@ void JoyStick::poll()
         switch (m_event.type)
         {
         case JS_EVENT_BUTTON:
-//            printf("Button %u %s\n", m_event.number, m_event.value ? "pressed" : "released");
+            printf("Button %u %s\n", m_event.number, m_event.value ? "pressed" : "released");
             m_state.m_buttons[m_event.number] = m_event.value;
             break;
         case JS_EVENT_AXIS:
-//            printf("Axis at (%6d, %6f)\n", m_event.number, double (m_event.value / 32768.0));
+            printf("Axis at (%6d, %6f)\n", m_event.number, double (m_event.value / 32768.0));
             m_state.m_axes[m_event.number] = double (m_event.value / 32768.0);
             break;
         default:
