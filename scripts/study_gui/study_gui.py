@@ -152,7 +152,7 @@ class Ui(QtWidgets.QWidget):
             v.setText(self.gui_configuration.params[k].get_as_str())
 
     def pressed_start_simulation(self):
-        launch_file_adf_indices = '0,7'
+        launch_file_adf_indices = '0,7,8'
         if self.button_stream_depth.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',4'
         if self.button_stream_stereo.isChecked():
@@ -160,8 +160,9 @@ class Ui(QtWidgets.QWidget):
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
         args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
-                '--plugins', '/home/tblab/ambf_spacenav_plugin/build/libspacenav_plugin.so',
-                "--spf", '/home/tblab/ambf_spacenav_plugin/example/spacenav_config.yaml',
+                ',/home/nimesh/ambf/ambf_models/descriptions/multi-bodies/tools/cylinder.yaml'
+                '--plugins', '/home/nimesh/ambf_spacenav_plugin/build/libspacenav_plugin.so',
+                "--spf", '/home/nimesh/ambf_spacenav_plugin/example/spacenav_config.yaml',
                 # "--nt", "2",
                 "--fp", str(self.gui_configuration.footpedal_device.get())]
         print("--fp", str(self.gui_configuration.footpedal_device.get()))

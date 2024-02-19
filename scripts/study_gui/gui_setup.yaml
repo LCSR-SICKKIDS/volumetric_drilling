@@ -1,9 +1,9 @@
-ambf_executable: /home/tblab/ambf/bin/lin-x86_64/ambf_simulator
+ambf_executable: /home/nimesh/ambf/bin/lin-x86_64/ambf_simulator
 footpedal_device: /dev/input/js1
-launch_file: /home/tblab/volumetric_drilling_VRE/launch.yaml
+launch_file: /home/nimesh/volumetric_drilling_VRE/launch.yaml
 pupil_executable: /usr/bin/pupil_capture
-recording_base_path: /home/tblab/volumetric_drilling_data
-recording_script_executable: /home/tblab/volumetric_drilling_VRE/scripts/data_record.py
+recording_base_path: /home/nimesh/volumetric_drilling_data
+recording_script_executable: /nimesh/tblab/volumetric_drilling_VRE/scripts/data_record.py
 volume1:
   adf_path: ../../ADF/volume_256_RT143.yaml
   icon_path: ./assets/RT143.png
@@ -64,6 +64,10 @@ volume22:
   adf_path: ../../ADF/volume_512.yaml
   icon_path: ./assets/LT146.png
   name: Anatomy 512
+volume23:
+  adf_path: ../../ADF/gaze_marker.yaml
+  icon_path: ../../ADF/meshes/high_res/gaze_marker.png
+  name: Gaze Marker
 volume3:
   adf_path: ../../ADF/volume_256_RT147.yaml
   icon_path: ./assets/RT147.png
@@ -112,3 +116,4 @@ volumes:
 - volume20
 - volume21
 - volume22
+- volume23
