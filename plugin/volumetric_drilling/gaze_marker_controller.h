@@ -67,14 +67,10 @@ public:
 
 
 private:
-    double m_radius;
-    double m_maxRadius;
-    double m_radiusStep;
     cTransform m_T_c_w;
     cTransform m_T_m_w;
     cTransform m_T_m_c;
     double m_time;
-    double m_duration;
 
     afRigidBodyPtr m_gazeMarker;
     afCameraPtr m_mainCamera;
@@ -82,6 +78,16 @@ private:
     cLabel* m_gazeNotificationLabel;
     string m_textStr;
     double m_textShowDuration;
+
+    int m_posIdx;
+    double m_posDur;
+    double m_posStartTime;
+    double m_gridWidth;
+    double m_gridHeight;
+    double m_gridCenter;
+
+    std::vector<cVector3d> m_P_m_c_list;
+    
 };
 
 #endif

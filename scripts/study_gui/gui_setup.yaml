@@ -3,7 +3,7 @@ footpedal_device: /dev/input/js1
 launch_file: /home/nimesh/volumetric_drilling_VRE/launch.yaml
 pupil_executable: /usr/bin/pupil_capture
 recording_base_path: /home/nimesh/volumetric_drilling_data
-recording_script_executable: /nimesh/tblab/volumetric_drilling_VRE/scripts/data_record.py
+recording_script_executable: /home/nimesh/volumetric_drilling_VRE/scripts/data_record.py
 volume1:
   adf_path: ../../ADF/volume_256_RT143.yaml
   icon_path: ./assets/RT143.png
