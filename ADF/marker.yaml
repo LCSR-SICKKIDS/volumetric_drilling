@@ -12,6 +12,11 @@ marker:
   name: marker
   mesh: calibration.OBJ
   scale: 1.0
+  mass: 0.0
+  location:
+    position: {x: -4.0, y: 0.0, z: 0.0}  # placed 745mm away from camera given 1AU = 0.049664m
+  #   # orientation: {r: -1.57079, p: 0.0, y: 0}
+  #   orientation: {r: 0.0, p: -0.0, y: 0.0}
 
   
   
