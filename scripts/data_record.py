@@ -248,6 +248,7 @@ def write_to_hdf5():
     # TODO: Add metadata of what each column means
     voxel_idx = []
     voxel_color = []
+    vol_ts = []
 
     global voxel_data_lock
     voxel_data_lock.acquire()
@@ -276,13 +277,14 @@ def write_to_hdf5():
             idx_column = np.ones((num_of_removed, 1)) * idx
             voxel_idx.append(np.hstack((idx_column, collisions["voxel_removed"][idx])))
             voxel_color.append(np.hstack((idx_column, collisions["voxel_color"][idx])))
+            vol_ts.append(collisions["voxel_time_stamp"][idx])
 
     # Write data to hdf5
     try:
         voxel_idx = np.vstack(voxel_idx)
         voxel_color = np.vstack(voxel_color)
         voxel_data = dict(
-            voxel_time_stamp=collisions["voxel_time_stamp"],
+            voxel_time_stamp=vol_ts,
             voxel_removed=voxel_idx,
             voxel_color=voxel_color,
         )
