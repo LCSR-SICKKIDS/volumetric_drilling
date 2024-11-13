@@ -206,7 +206,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
 
 void DrillManager::update(double dt)
 {
-
+    m_toolCursorList[0]->updateFromDevice();
     cTransform T_c_w = m_mainCamera->getLocalTransform();
 
     // If a valid haptic device is found, then it should be available
@@ -214,10 +214,11 @@ void DrillManager::update(double dt)
         m_T_d = m_drillReferenceBody->getLocalTransform();
     }
     else if(m_hapticDevice->isDeviceAvailable()){
-        m_hapticDevice->getTransform(m_T_i);
-        m_hapticDevice->getLinearVelocity(m_V_i);
-        m_V_i = T_c_w.getLocalRot() * (m_V_i / m_toolCursorList[0]->getWorkspaceScaleFactor());
-        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.4 * !m_deviceClutch * !m_camClutch));
+//        m_hapticDevice->getTransform(m_T_i);
+//        m_hapticDevice->getLinearVelocity(m_V_i);
+        m_T_i = m_toolCursorList[0]->getDeviceLocalTransform();
+        m_V_i = T_c_w.getLocalRot() * m_toolCursorList[0]->getDeviceLocalLinVel();
+        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * !m_deviceClutch * !m_camClutch));
         m_T_d.setLocalRot(T_c_w.getLocalRot() * m_T_i.getLocalRot());
 
         // set zero forces when manipulating objects
@@ -320,7 +321,7 @@ void DrillManager::toolCursorInit(const afWorldPtr a_afWorld){
 
             // map the physical workspace of the haptic device to a larger virtual workspace.
 
-            m_toolCursorList[i]->setWorkspaceRadius(5.0);
+            m_toolCursorList[i]->setWorkspaceRadius(0.0001);
             m_toolCursorList[i]->setWaitForSmallForce(true);
             m_toolCursorList[i]->start();
             m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
@@ -392,7 +393,7 @@ void DrillManager::toolCursorsPosUpdate(cTransform a_targetPose){
 }
 
 void DrillManager::reset(){
-    m_hapticDevice->setForce(cVector3d(0., 0., 0.));
+    m_toolCursorList[0]->setDeviceGlobalForce(cVector3d(0., 0., 0.));
     m_T_d = m_T_d_init;
     toolCursorsPosUpdate(m_T_d);
     toolCursorsInitialize();

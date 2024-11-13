@@ -144,15 +144,11 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         m_textureCoordScale(2) = (m_maxTexCoord.z() - m_minTexCoord.z()) / (m_maxVolCorner.z() - m_minVolCorner.z());
     }
 
-    // read the scale factor between the physical workspace of the haptic
-    // device and the virtual workspace defined for the tool
-    double workspaceScaleFactor = m_drillManager.m_toolCursorList[0]->getWorkspaceScaleFactor();
-
     // stiffness properties
-    double maxStiffness = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearStiffness / workspaceScaleFactor;
+    double maxStiffness = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearStiffness;
 
     // Set voxels surface contact properties
-    m_voxelObj->m_material->setStiffness(2.0*maxStiffness);
+    m_voxelObj->m_material->setStiffness(3.0 * maxStiffness);
     m_voxelObj->m_material->setDamping(0.0);
     m_voxelObj->m_material->setDynamicFriction(0.0);
     m_voxelObj->setUseMaterial(true);
@@ -285,7 +281,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // Also orient the force to match the camera rotation
     cVector3d force = cTranspose(m_mainCamera->getLocalRot()) * m_drillManager.m_targetToolCursor->getDeviceLocalForce();
     if (m_drillManager.m_isOn){
-        force += (cVector3d(1.0, 1.0, 1.0) * m_waveGenerator.generate(dt));
+//        force += (cVector3d(1.0, 1.0, 1.0) * m_waveGenerator.generate(dt));
     }
     m_drillManager.m_toolCursorList[0]->setDeviceLocalForce(force);
     m_drillManager.m_drillingPub->publishForceFeedback(force, force, m_worldPtr->getCurrentTimeStamp());
