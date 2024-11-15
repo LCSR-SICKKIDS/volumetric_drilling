@@ -1,3 +1,5 @@
+# Edited by Jonathan to test for storing high frequency drill pose data
+
 import logging
 import math
 import os
@@ -22,10 +24,10 @@ import message_filters
 from msg_synchronizer import TimeSynchronizer
 import ros_numpy
 import rospy
-from ambf_msgs.msg import RigidBodyState, CameraState
+from ambf_msgs.msg import RigidBodyState, CameraState # from https://github.com/WPI-AIM/ambf/tree/ambf-2.0/ambf_ros_modules
 from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image, PointCloud2
-from geometry_msgs.msg import WrenchStamped
+from sensor_msgs.msg import Image, PointCloud2 # from https://github.com/ros/common_msgs
+from geometry_msgs.msg import WrenchStamped # from https://github.com/ros/common_msgs
 
 try:
     from volumetric_drilling_msgs.msg import Voxels, DrillSize, VolumeInfo
@@ -182,6 +184,9 @@ def init_hdf5(args):
     file.create_group("burr_change")
     file.create_group("drill_force_feedback")
 
+    # for storing high frequency drill pose data
+    file.create_group("high_frequency_drill_pose")
+    
     return file, img_height, img_width, s, volume_pose
 
 
@@ -309,6 +314,34 @@ def write_to_hdf5():
     except Exception as e:
 
         print('INFO! No data recorded in this batch since EXCEPTION:', str(e))
+        
+    # for storing high resolution drill pose data
+    global drill_pose_data_lock
+    drill_pose_data_lock.acquire()
+    
+    try:
+        # Write drill pose data to the "high_frequency_drill_pose" group
+        print("This is drill_pose_data_items")
+        print(drill_pose_data.items())
+        for key, value in drill_pose_data.items():
+            drill_data = dict(
+                drill_pose = value["drill_pose"],
+                time_stamp = value["time_stamp"]
+            )
+            print(f"Storing drill pose key: {key}")
+            for measure, list_data in drill_data.items():
+                print(f"Storing measure: {measure}")
+                f["high_frequency_drill_pose"].create_dataset(
+                measure, data=np.stack(list_data, axis=0), compression="gzip"
+                )
+                log.log(logging.INFO, (key, f["high_frequency_drill_pose"][measure].shape))
+            # Reset drill pose data list to free memory
+            drill_pose_data[key] = []
+    except Exception as e:
+        print("INFO! Drill pose data recording failed due to EXCEPTION:", str(e))
+    
+    drill_pose_data_lock.release()
+    
     f.close()
     return
 
@@ -387,7 +420,23 @@ def volume_prop_callback(volume_prop_msg):
     resolution = np.divide(dimensions, voxel_count) * 1000
     voxel_volume = np.prod(resolution) * scale ** 3
 
+def drill_pose_callback(pose_msg, name):
+    """
+    Callback function to capture drill pose data.
+    
+    Args:
+        pose_msg: The message containing drill pose information.
+    """
+    drill_pose = pose_gen(pose_msg)
+    timestamp = rospy.get_time()  # Or use other methods to capture timestamps
 
+    # Store in the drill_pose_data dictionary
+    with drill_pose_data_lock:
+        if name not in drill_pose_data:
+            drill_pose_data[name] = {"time_stamp": [], "drill_pose": []}
+        drill_pose_data[name]["time_stamp"].append(timestamp)
+        drill_pose_data[name]["drill_pose"].append(drill_pose)
+    
 def setup_subscriber(args):
     active_topics = [n for [n, _] in rospy.get_published_topics()]
     subscribers = []
@@ -472,18 +521,20 @@ def setup_subscriber(args):
         else:
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.force_topic)
             exit()
-
+            
     # poses
     for name in args.objects:
-        if "camera" in name:
+        if "camera" in name: # this is for Main Camera State
             topic = "/ambf/env/" + "cameras/" + name + "/State"
             pose_sub = message_filters.Subscriber(topic, CameraState)
-        else:
+        else: # this is for Mastoidectomy Drill State
             topic = "/ambf/env/" + name + "/State"
             pose_sub = message_filters.Subscriber(topic, RigidBodyState)
+            pose_sub.registerCallback(lambda msg, name=name: drill_pose_callback(msg, name))
 
         if topic in active_topics:
             container["pose_" + name] = []
+            # pose_sub.registerCallback(lambda msg, name=name: drill_pose_callback(msg, name))
             subscribers += [pose_sub]
             topics += [topic]
         else:
@@ -610,6 +661,7 @@ if __name__ == "__main__":
     finished_recording = True
     voxel_data_lock = Lock()
     drill_force_data_lock = Lock()
+    drill_pose_data_lock = Lock()
 
     f, h, w, scale, volume_pose = init_hdf5(args)
 
@@ -622,5 +674,6 @@ if __name__ == "__main__":
     burr_change = OrderedDict()
     drill_force_feedback = OrderedDict()
     voxel_volume = 0
+    drill_pose_data = OrderedDict()
 
     main(args)
