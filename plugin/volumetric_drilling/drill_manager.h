@@ -57,7 +57,7 @@ struct Drill{
 public:
     afRigidBodyPtr m_rigidBody;
     string m_name;
-    double m_size;
+    double m_radius;
 
     inline int getVoxelRemovalThreshold(){return m_voxelRemovalThreshold;}
     bool setVoxelRemvalThreshold(int val){

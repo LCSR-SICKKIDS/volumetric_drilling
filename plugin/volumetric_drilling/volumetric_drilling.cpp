@@ -128,8 +128,14 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     m_volumeObject = m_worldPtr->getVolume("mastoidectomy_volume");
     if (!m_volumeObject){
-        cerr << "ERROR! FAILED TO FIND VOLUME NAMED " << "mastoidectomy_volume" << endl;
-        return -1;
+        cerr << "WARNING! FAILED TO FIND VOLUME NAMED \"mastoidectomy_volume\". TRYING TO GET FIRST VOLUME" << endl;
+        if (m_worldPtr->getVolumes().size() > 0){
+            m_volumeObject = m_worldPtr->getVolumes()[0];
+        }
+        else{
+            cerr << "ERROR! FAILED TO FIND ANY VOLUME OBJECT. EXITING" << endl;
+            return -1;
+        }
     }
     else{
         m_voxelObj = m_volumeObject->getInternalVolume();
@@ -148,7 +154,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     double maxStiffness = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearStiffness;
 
     // Set voxels surface contact properties
-    m_voxelObj->m_material->setStiffness(3.0 * maxStiffness);
+    m_voxelObj->m_material->setStiffness(1.0*maxStiffness);
     m_voxelObj->m_material->setDamping(0.0);
     m_voxelObj->m_material->setDynamicFriction(0.0);
     m_voxelObj->setUseMaterial(true);
