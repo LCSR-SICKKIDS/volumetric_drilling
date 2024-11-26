@@ -85,6 +85,7 @@ private:
     double m_gridWidth;
     double m_gridHeight;
     double m_gridCenter;
+    double m_depth;
 
     std::vector<cVector3d> m_P_m_c_list;
     

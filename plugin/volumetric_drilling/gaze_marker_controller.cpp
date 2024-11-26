@@ -53,7 +53,7 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
         return -1;
     }
 
-    m_gazeMarker->scaleSceneObjects(0.5);
+    m_gazeMarker->scaleSceneObjects(0.01);
     m_mainCamera = a_worldPtr->getCamera("main_camera");
     m_panelManager = a_panelManager;
 
@@ -70,20 +70,21 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
     m_posDur = 2.0;
     m_posStartTime = 0.;
 
-    m_gridWidth = 0.40;
-    m_gridHeight = 0.40;
+    m_gridWidth = 0.005;
+    m_gridHeight = 0.005;
     m_gridCenter = 0.0;
+    m_depth = -0.2;
 
     m_P_m_c_list = {
-        cVector3d(-5.,  m_gridCenter, m_gridCenter),
-        cVector3d(-5., -m_gridWidth,  m_gridHeight),
-        cVector3d(-5.,  m_gridWidth, -m_gridHeight),
-        cVector3d(-5.,  m_gridWidth,  m_gridHeight),
-        cVector3d(-5., -m_gridWidth, -m_gridHeight),
-        cVector3d(-5.,  m_gridWidth,  m_gridCenter),
-        cVector3d(-5., -m_gridWidth, -m_gridCenter),
-        cVector3d(-5.,  m_gridCenter, m_gridHeight),
-        cVector3d(-5.,  m_gridCenter,-m_gridHeight),
+        cVector3d(m_depth,  m_gridCenter, m_gridCenter),
+        cVector3d(m_depth, -m_gridWidth,  m_gridHeight),
+        cVector3d(m_depth,  m_gridWidth, -m_gridHeight),
+        cVector3d(m_depth,  m_gridWidth,  m_gridHeight),
+        cVector3d(m_depth, -m_gridWidth, -m_gridHeight),
+        cVector3d(m_depth,  m_gridWidth,  m_gridCenter),
+        cVector3d(m_depth, -m_gridWidth, -m_gridCenter),
+        cVector3d(m_depth,  m_gridCenter, m_gridHeight),
+        cVector3d(m_depth,  m_gridCenter,-m_gridHeight),
     };
 
     initializeLabels();
