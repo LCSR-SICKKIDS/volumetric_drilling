@@ -97,6 +97,7 @@ class Ui(QtWidgets.QWidget):
         self.connect_gui_param_to_dialog('launch_file', self.gui_configuration.launch_file.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_script_executable', self.gui_configuration.recording_script.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_base_path', self.gui_configuration.recording_base_path.get_id(), DialogType.FOLDER)
+        self.connect_gui_param_to_dialog('footpedal_device', self.gui_configuration.footpedal_device.get_id(), DialogType.FILE)
 
         self.button_save_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_save_configuration')
         self.button_save_configuration.clicked.connect(self.gui_configuration.save)

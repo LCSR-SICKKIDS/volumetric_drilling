@@ -45,6 +45,8 @@ import numpy as np
 import nrrd
 from argparse import ArgumentParser
 import re
+from pathlib import Path
+from shutil import rmtree
 
 
 class RGBA:
@@ -239,9 +241,11 @@ class NrrdConverter:
         im = Image.fromarray(array.astype(np.uint8))
         im.save(im_name)
 
-    def save_image_matrix_as_images(self, im_prefix):
+    def save_image_matrix_as_images(self, dst_path: Path, im_prefix):
+        print("Saving volume to png images at " + str(dst_path) + "...")
         for nz in range(self.z_dim):
-            im_name = im_prefix + '0' + str(nz) + '.png'
+            im_name = im_prefix + f"{nz}" + ".png"
+            im_name = str(dst_path / im_name)
             self.save_image(self._images_matrix[:, :, nz, :], im_name)
 
     @staticmethod
@@ -265,11 +269,12 @@ class NrrdConverter:
 def main():
     # Begin Argument Parser Code
     parser = ArgumentParser()
-    parser.add_argument('-n', action='store', dest='nrrd_file', help='Specify Nrrd File')
+    parser.add_argument('-n', action='store', dest='nrrd_file', help='Specify Nrrd File', required = True)
     parser.add_argument('-p', action='store', dest='image_prefix', help='Specify Image Prefix', default='plane00')
-    parser.add_argument('--rx', action='store', dest='x_skip', help='X axis order [1-100]. Higher value indicates greater reduction', default=1)
-    parser.add_argument('--ry', action='store', dest='y_skip', help='Y axis order [1-100]. Higher value indicates greater reduction', default=1)
-    parser.add_argument('--rz', action='store', dest='z_skip', help='Z axis order [1-100]. Higher value indicates greater reduction', default=1)
+    parser.add_argument("-dst_p", action='store', help="Directory to save all images (Required)", required=True)
+    parser.add_argument('--rx', action='store', dest='x_skip', help='X axis order [1-100]. Higher value indicates greater reduction', default=2)
+    parser.add_argument('--ry', action='store', dest='y_skip', help='Y axis order [1-100]. Higher value indicates greater reduction', default=2)
+    parser.add_argument('--rz', action='store', dest='z_skip', help='Z axis order [1-100]. Higher value indicates greater reduction', default=2)
     parsed_args = parser.parse_args()
     print('Specified Arguments')
     print(parsed_args)
@@ -283,7 +288,12 @@ def main():
     nrrd_converter.copy_volume_to_image_matrix()
     # nrrd_converter.normalize_image_matrix_data()
     nrrd_converter.scale_image_matrix_data(255)
-    nrrd_converter.save_image_matrix_as_images(parsed_args.image_prefix)
+    
+    dst_path = Path(parsed_args.dst_p)
+    if dst_path.exists():
+        rmtree(dst_path)
+    dst_path.mkdir()
+    nrrd_converter.save_image_matrix_as_images(dst_path, parsed_args.image_prefix)
 
 
 if __name__ == '__main__':
