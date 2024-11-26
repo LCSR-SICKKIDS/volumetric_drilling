@@ -66,7 +66,7 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     cmd_opts.add_options()
             ("info", "Show Info")
             ("nt", p_opt::value<int>()->default_value(8), "Number Tool Cursors to Load. Default 8")
-            ("ds", p_opt::value<float>()->default_value(0.026), "Offset between shaft tool cursors. Default 0.026")
+            ("ds", p_opt::value<float>()->default_value(0.0015), "Offset between shaft tool cursors. Default 0.026")
             ("vm", p_opt::value<string>()->default_value("00ShinyWhite.jpg"), "Volume's Matcap Filename (Should be placed in the ./resources/matcap/ folder)")
             ("dm", p_opt::value<string>()->default_value("dark_metal_brushed.jpg"), "Drill's Matcap Filename (Should be placed in ./resources/matcap/ folder)")
             ("fp", p_opt::value<string>()->default_value("/dev/input/js0"), "Footpedal joystick input file description E.g. /dev/input/js0)")
@@ -128,8 +128,14 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
 
     m_volumeObject = m_worldPtr->getVolume("mastoidectomy_volume");
     if (!m_volumeObject){
-        cerr << "ERROR! FAILED TO FIND VOLUME NAMED " << "mastoidectomy_volume" << endl;
-        return -1;
+        cerr << "WARNING! FAILED TO FIND VOLUME NAMED \"mastoidectomy_volume\". TRYING TO GET FIRST VOLUME" << endl;
+        if (m_worldPtr->getVolumes().size() > 0){
+            m_volumeObject = m_worldPtr->getVolumes()[0];
+        }
+        else{
+            cerr << "ERROR! FAILED TO FIND ANY VOLUME OBJECT. EXITING" << endl;
+            return -1;
+        }
     }
     else{
         m_voxelObj = m_volumeObject->getInternalVolume();
@@ -144,15 +150,11 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
         m_textureCoordScale(2) = (m_maxTexCoord.z() - m_minTexCoord.z()) / (m_maxVolCorner.z() - m_minVolCorner.z());
     }
 
-    // read the scale factor between the physical workspace of the haptic
-    // device and the virtual workspace defined for the tool
-    double workspaceScaleFactor = m_drillManager.m_toolCursorList[0]->getWorkspaceScaleFactor();
-
     // stiffness properties
-    double maxStiffness = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearStiffness / workspaceScaleFactor;
+    double maxStiffness = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearStiffness;
 
     // Set voxels surface contact properties
-    m_voxelObj->m_material->setStiffness(2.0*maxStiffness);
+    m_voxelObj->m_material->setStiffness(1.0*maxStiffness);
     m_voxelObj->m_material->setDamping(0.0);
     m_voxelObj->m_material->setDynamicFriction(0.0);
     m_voxelObj->setUseMaterial(true);
@@ -285,7 +287,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // Also orient the force to match the camera rotation
     cVector3d force = cTranspose(m_mainCamera->getLocalRot()) * m_drillManager.m_targetToolCursor->getDeviceLocalForce();
     if (m_drillManager.m_isOn){
-        force += (cVector3d(1.0, 1.0, 1.0) * m_waveGenerator.generate(dt));
+//        force += (cVector3d(1.0, 1.0, 1.0) * m_waveGenerator.generate(dt));
     }
     m_drillManager.m_toolCursorList[0]->setDeviceLocalForce(force);
     m_drillManager.m_drillingPub->publishForceFeedback(force, force, m_worldPtr->getCurrentTimeStamp());
@@ -520,19 +522,6 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             }
         }
 
-        // option - polygonize model and save to file
-        else if (a_key == GLFW_KEY_P) {
-            cMultiMesh *surface = new cMultiMesh;
-            m_voxelObj->polygonize(surface, 0.01, 0.01, 0.01);
-            double SCALE = 0.1;
-            double METERS_TO_MILLIMETERS = 1000.0;
-            surface->scale(SCALE * METERS_TO_MILLIMETERS);
-            surface->setUseVertexColors(true);
-            surface->saveToFile("volume.obj");
-            cout << "> Volume has been polygonized and saved to disk                            \r";
-            delete surface;
-        }
-
         // toggles size of drill burr/tip tool cursor
         else if (a_key == GLFW_KEY_N){
             cerr << "INFO! RESETTING THE VOLUME" << endl;
@@ -602,6 +591,21 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             int val = cMax(1, m_drillManager.m_activeDrill->getVoxelRemovalThreshold() - 1);
             m_drillManager.m_activeDrill->setVoxelRemvalThreshold(val);
             cerr << "INFO! REMOVAL THRESHOLD " << val << endl;
+        }
+
+
+        // option - polygonize model and save to file
+        else if (a_key == GLFW_KEY_P) {
+            cMultiMesh *surface = new cMultiMesh;
+            m_voxelObj->polygonize(surface);
+            surface->setUseVertexColors(true);
+            std::string volume_filename = "volume.stl";
+            surface->saveToFile(volume_filename);
+            int buff_size = 512;
+            char current_dir[buff_size];
+            getcwd(current_dir, buff_size);
+            cout << "INFO! Volume has been polygonized and saved to disk as " << current_dir <<  "/" << volume_filename << "\n";
+            delete surface;
         }
 
         std::string text = "[ALT+S] Volume Smoothing: " + std::string(m_enableVolumeSmoothing ? "ENABLED" : "DISABLED");
