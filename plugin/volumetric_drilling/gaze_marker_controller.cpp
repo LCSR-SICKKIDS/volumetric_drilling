@@ -56,6 +56,10 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
     m_gazeMarker->scaleSceneObjects(0.01);
     m_mainCamera = a_worldPtr->getCamera("main_camera");
     m_panelManager = a_panelManager;
+    m_volumePtr = a_worldPtr->getVolumes()[0];
+    if (m_volumePtr == nullptr){
+        return -1;
+    }
 
     m_T_c_w = m_mainCamera->getLocalTransform();
     m_T_m_c = cTransform(cVector3d(-5., 0., 0.), cMatrix3d());
@@ -70,34 +74,7 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
     m_posDur = 2.0;
     m_posStartTime = 0.;
 
-    float fva = m_mainCamera->getInternalCamera()->getFieldViewAngleRad();
-    float ar = m_mainCamera->m_width / m_mainCamera->m_height;
-    float d = m_mainCamera->getLocalPos().distance(a_worldPtr->getVolumes()[0]->getLocalPos()) - 0.1;
-
-    float h = 2 * d * tan(fva / 2.0);
-    float w = h * ar;
-
-    cerr << "INFO! FVA: " << fva << endl;
-    cerr << "INFO! Depth: " << d << endl;
-    cerr << "INFO! Aspect ratio: " << ar << endl;
-    cerr << "INFO! GAZE MARKER VIEW WIDTH x HEIGHT IS: " << w << " x " << h << endl;
-
-    m_gridWidth = w/2.;
-    m_gridHeight = h/2.;
-    m_gridCenter = 0.0;
-    m_depth = -d - 0.05;
-
-    m_P_m_c_list = {
-        cVector3d(m_depth,  m_gridCenter, m_gridCenter),
-        cVector3d(m_depth, -m_gridWidth,  m_gridHeight),
-        cVector3d(m_depth,  m_gridWidth, -m_gridHeight),
-        cVector3d(m_depth,  m_gridWidth,  m_gridHeight),
-        cVector3d(m_depth, -m_gridWidth, -m_gridHeight),
-        cVector3d(m_depth,  m_gridWidth,  m_gridCenter),
-        cVector3d(m_depth, -m_gridWidth, -m_gridCenter),
-        cVector3d(m_depth,  m_gridCenter, m_gridHeight),
-        cVector3d(m_depth,  m_gridCenter,-m_gridHeight),
-    };
+    computeCalibrationPattern();
 
     initializeLabels();
 
@@ -123,6 +100,37 @@ void GazeMarkerController::initializeLabels(){
     m_panelManager->addPanel(m_gazeNotificationLabel, 0.5, 0.5, PanelReferenceOrigin::CENTER, PanelReferenceType::NORMALIZED);
 }
 
+void GazeMarkerController::computeCalibrationPattern(){
+    float fva = m_mainCamera->getInternalCamera()->getFieldViewAngleRad();
+    float ar = m_mainCamera->m_width / m_mainCamera->m_height;
+    float d = m_mainCamera->getLocalPos().distance(m_volumePtr->getLocalPos()) - 0.1;
+
+    float h = 2 * d * tan(fva / 2.0);
+    float w = h * ar;
+
+    cerr << "INFO! FVA: " << fva << endl;
+    cerr << "INFO! Depth: " << d << endl;
+    cerr << "INFO! Aspect ratio: " << ar << endl;
+    cerr << "INFO! GAZE MARKER VIEW WIDTH x HEIGHT IS: " << w << " x " << h << endl;
+
+    m_gridWidth = w/2.;
+    m_gridHeight = h/2.;
+    m_gridCenter = 0.0;
+    m_depth = -d - 0.05;
+
+    m_P_m_c_list = {
+        cVector3d(m_depth,  m_gridCenter, m_gridCenter),
+        cVector3d(m_depth, -m_gridWidth,  m_gridHeight),
+        cVector3d(m_depth,  m_gridWidth, -m_gridHeight),
+        cVector3d(m_depth,  m_gridWidth,  m_gridHeight),
+        cVector3d(m_depth, -m_gridWidth, -m_gridHeight),
+        cVector3d(m_depth,  m_gridWidth,  m_gridCenter),
+        cVector3d(m_depth, -m_gridWidth, -m_gridCenter),
+        cVector3d(m_depth,  m_gridCenter, m_gridHeight),
+        cVector3d(m_depth,  m_gridCenter,-m_gridHeight),
+    };
+}
+
 void GazeMarkerController::update(double dt){
 //    cerr << "INFO! Aspect ratio: " << m_mainCamera->getInternalCamera()->getAspectRatio() << endl;
     if (m_posIdx >= (m_P_m_c_list.size()+1) || m_gazeMarker == nullptr){
@@ -132,6 +140,7 @@ void GazeMarkerController::update(double dt){
 
     if (m_time == 0.){
         showMarker(true);
+        computeCalibrationPattern();
         cMatrix3d rot;
         rot.identity();
         cTransform trans(cVector3d(-100, 0, 0), rot);

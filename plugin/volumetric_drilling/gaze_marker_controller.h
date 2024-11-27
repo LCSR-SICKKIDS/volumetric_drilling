@@ -57,6 +57,8 @@ public:
 
     void initializeLabels();
 
+    void computeCalibrationPattern();
+
     void update(double dt);
 
     void showMarker(bool val);
@@ -74,6 +76,7 @@ private:
 
     afRigidBodyPtr m_gazeMarker;
     afCameraPtr m_mainCamera;
+    afVolumePtr m_volumePtr;
 
     cLabel* m_gazeNotificationLabel;
     string m_textStr;
