@@ -59,7 +59,7 @@ public:
 
     void update(double dt);
 
-    void hide(bool val);
+    void showMarker(bool val);
 
     void restart();
 

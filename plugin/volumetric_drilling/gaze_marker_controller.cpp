@@ -70,10 +70,22 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
     m_posDur = 2.0;
     m_posStartTime = 0.;
 
-    m_gridWidth = 0.005;
-    m_gridHeight = 0.005;
+    float fva = m_mainCamera->getInternalCamera()->getFieldViewAngleRad();
+    float ar = m_mainCamera->m_width / m_mainCamera->m_height;
+    float d = m_mainCamera->getLocalPos().distance(a_worldPtr->getVolumes()[0]->getLocalPos()) - 0.1;
+
+    float h = 2 * d * tan(fva / 2.0);
+    float w = h * ar;
+
+    cerr << "INFO! FVA: " << fva << endl;
+    cerr << "INFO! Depth: " << d << endl;
+    cerr << "INFO! Aspect ratio: " << ar << endl;
+    cerr << "INFO! GAZE MARKER VIEW WIDTH x HEIGHT IS: " << w << " x " << h << endl;
+
+    m_gridWidth = w/2.;
+    m_gridHeight = h/2.;
     m_gridCenter = 0.0;
-    m_depth = -0.2;
+    m_depth = -d - 0.05;
 
     m_P_m_c_list = {
         cVector3d(m_depth,  m_gridCenter, m_gridCenter),
@@ -112,13 +124,14 @@ void GazeMarkerController::initializeLabels(){
 }
 
 void GazeMarkerController::update(double dt){
+//    cerr << "INFO! Aspect ratio: " << m_mainCamera->getInternalCamera()->getAspectRatio() << endl;
     if (m_posIdx >= (m_P_m_c_list.size()+1) || m_gazeMarker == nullptr){
-        hide(true);
+        showMarker(false);
         return;
     }
 
     if (m_time == 0.){
-        hide(false);
+        showMarker(true);
         cMatrix3d rot;
         rot.identity();
         cTransform trans(cVector3d(-100, 0, 0), rot);
@@ -157,10 +170,10 @@ void GazeMarkerController::update(double dt){
 
 }
 
-void GazeMarkerController::hide(bool val){
+void GazeMarkerController::showMarker(bool val){
     if (m_gazeMarker){
-        m_gazeMarker->getVisualObject()->setShowEnabled(!val);
-        m_panelManager->setVisible(m_gazeNotificationLabel, !val);
+        m_gazeMarker->getVisualObject()->setShowEnabled(val);
+        m_panelManager->setVisible(m_gazeNotificationLabel, val);
     }
 }
 
