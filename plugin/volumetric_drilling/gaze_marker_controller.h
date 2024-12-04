@@ -85,11 +85,9 @@ private:
     int m_posIdx;
     double m_posDur;
     double m_posStartTime;
-    double m_gridWidth;
-    double m_gridHeight;
-    double m_gridCenter;
-    double m_depth;
-
+    double m_widthRatio = 0.8; // A number between 0.0-1.0. 1.0 means the marker span will be at the horizontal edge of the view window.
+    double m_heightRatio = 0.8; // A number between 0.0-1.0. 1.0 means the marker span will be at the vertical edge of the view window.
+    double m_depthRatio = 0.8; // A number between 0.0-1.0. Where 1.0 is farthest (at the point of anatomy) and 0.0 at camera origin.
     std::vector<cVector3d> m_P_m_c_list;
     
 };

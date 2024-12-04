@@ -101,9 +101,14 @@ void GazeMarkerController::initializeLabels(){
 }
 
 void GazeMarkerController::computeCalibrationPattern(){
+
+    m_widthRatio = cClamp(m_widthRatio, 0.0, 1.0);
+    m_heightRatio = cClamp(m_heightRatio, 0.0, 1.0);
+    m_depthRatio = cClamp(m_depthRatio, 0.0, 1.0);
+
     float fva = m_mainCamera->getInternalCamera()->getFieldViewAngleRad();
-    float ar = m_mainCamera->m_width / m_mainCamera->m_height;
-    float d = m_mainCamera->getLocalPos().distance(m_volumePtr->getLocalPos()) - 0.1;
+    float ar = m_mainCamera->getInternalCamera()->getAspectRatio();
+    float d = m_depthRatio * m_mainCamera->getLocalPos().distance(m_volumePtr->getLocalPos());
 
     float h = 2 * d * tan(fva / 2.0);
     float w = h * ar;
@@ -112,22 +117,24 @@ void GazeMarkerController::computeCalibrationPattern(){
     cerr << "INFO! Depth: " << d << endl;
     cerr << "INFO! Aspect ratio: " << ar << endl;
     cerr << "INFO! GAZE MARKER VIEW WIDTH x HEIGHT IS: " << w << " x " << h << endl;
+    cerr << "INFO! WIDTH X HEIGHT X DEPTH RATIOS: " << m_depthRatio << " x " << m_heightRatio << " x " << m_depthRatio << endl;
 
-    m_gridWidth = w/2.;
-    m_gridHeight = h/2.;
-    m_gridCenter = 0.0;
-    m_depth = -d - 0.05;
+
+    double gridCenterOffset = 0.0;
+    double gridWidth = (w * m_widthRatio) * 0.5;
+    double gridHeight = (h * m_heightRatio) * 0.5;
+    double depth = - d;
 
     m_P_m_c_list = {
-        cVector3d(m_depth,  m_gridCenter, m_gridCenter),
-        cVector3d(m_depth, -m_gridWidth,  m_gridHeight),
-        cVector3d(m_depth,  m_gridWidth, -m_gridHeight),
-        cVector3d(m_depth,  m_gridWidth,  m_gridHeight),
-        cVector3d(m_depth, -m_gridWidth, -m_gridHeight),
-        cVector3d(m_depth,  m_gridWidth,  m_gridCenter),
-        cVector3d(m_depth, -m_gridWidth, -m_gridCenter),
-        cVector3d(m_depth,  m_gridCenter, m_gridHeight),
-        cVector3d(m_depth,  m_gridCenter,-m_gridHeight),
+        cVector3d(depth,  gridCenterOffset, gridCenterOffset),
+        cVector3d(depth, -gridWidth,  gridHeight),
+        cVector3d(depth,  gridWidth, -gridHeight),
+        cVector3d(depth,  gridWidth,  gridHeight),
+        cVector3d(depth, -gridWidth, -gridHeight),
+        cVector3d(depth,  gridWidth,  gridCenterOffset),
+        cVector3d(depth, -gridWidth, -gridCenterOffset),
+        cVector3d(depth,  gridCenterOffset, gridHeight),
+        cVector3d(depth,  gridCenterOffset,-gridHeight),
     };
 }
 
