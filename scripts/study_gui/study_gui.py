@@ -65,6 +65,8 @@ class Ui(QtWidgets.QWidget):
 
         self.button_stream_depth = self.findChild(QtWidgets.QPushButton, 'button_stream_depth')
 
+        self.button_video_record = self.findChild(QtWidgets.QPushButton, 'button_video_record') # for video recording the study
+
         self.button_pupil_service = self.findChild(QtWidgets.QPushButton, 'button_pupil_capture')
         self.button_pupil_service.clicked.connect(self.pressed_pupil_service)
 
@@ -97,6 +99,7 @@ class Ui(QtWidgets.QWidget):
         self.connect_gui_param_to_dialog('launch_file', self.gui_configuration.launch_file.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_script_executable', self.gui_configuration.recording_script.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_base_path', self.gui_configuration.recording_base_path.get_id(), DialogType.FOLDER)
+        self.connect_gui_param_to_dialog('footpedal_device', self.gui_configuration.footpedal_device.get_id(), DialogType.FILE)
 
         self.button_save_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_save_configuration')
         self.button_save_configuration.clicked.connect(self.gui_configuration.save)
@@ -112,6 +115,8 @@ class Ui(QtWidgets.QWidget):
         self._ambf_process.finished.connect(self._simulation_closed)
         self._pupil_process = QProcess()
         self._recording_process = QProcess()
+        
+        self._current_args = []
 
         self.show()
 
@@ -151,21 +156,77 @@ class Ui(QtWidgets.QWidget):
             v.setText(self.gui_configuration.params[k].get_as_str())
 
     def pressed_start_simulation(self):
-        launch_file_adf_indices = '0,7'
-        if self.button_stream_depth.isChecked():
-            launch_file_adf_indices = launch_file_adf_indices + ',4'
-        if self.button_stream_stereo.isChecked():
-            launch_file_adf_indices = launch_file_adf_indices + ',5'
-        if self.button_launch_vr.isChecked():
-            launch_file_adf_indices = launch_file_adf_indices + ',6'
-        args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf]
-        # self.study_manager.start_simulation(args)
         if self._ambf_process.state() != QProcess.Running:
-            self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), args)
+            self._current_args = []
+            launch_file_adf_indices = '0,7'
+            if self.button_stream_depth.isChecked():
+                launch_file_adf_indices = launch_file_adf_indices + ',4'
+            if self.button_stream_stereo.isChecked():
+                launch_file_adf_indices = launch_file_adf_indices + ',5'
+            if self.button_launch_vr.isChecked():
+                launch_file_adf_indices = launch_file_adf_indices + ',6'
+            args = ['--launch_file', str(self.gui_configuration.launch_file.get()), 
+                    '-l', launch_file_adf_indices, 
+                    '-a', self.active_volume_adf,
+                    # '--plugins', '/home/nimesh/ambf_spacenav_plugin/build/libspacenav_plugin.so',
+                    # '--plugins', '/home/amunawa2/ambf_video_recording/build/libsimulator_video_recording.so', # for recording the world view
+                    "--spf", '/home/nimesh/ambf_spacenav_plugin/example/spacenav_config.yaml',
+                    # "--nt", "2",
+                    "--fp", str(self.gui_configuration.footpedal_device.get())]
+            self._current_args = args
+            if self.button_video_record.isChecked(): # for video recording pluginF
+                # if self.is_ready_to_record(): # can't check if ready to record because simulator can't be running yet
+                self.add_plugin('/home/amunawa2/ambf_video_recording/build/libsimulator_video_recording.so')
+            self._current_args = self.process_arg_list(self._current_args)
+            print("--fp", str(self.gui_configuration.footpedal_device.get()))
+            print(f"Starting simulation with arguments: {self._current_args}")
+            # self.study_manager.start_simulation(args)
+            self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), self._current_args)
             self.button_start_simulation.setText('Close Simulation')
             self.button_start_simulation.setStyleSheet("background-color: RED")
         else:
             self._ambf_process.close()
+
+    def process_arg_list(self, input_list):
+        processed_list = []
+        
+        for item in input_list:
+            # Check if the item contains a comma
+            if ',' in item:
+                # Split the item by the first comma and add a comma to the start of the second element
+                part1, part2 = item.split(',', 1)
+                processed_list.append(part1)
+                processed_list.append(',' + part2)  # Keep the comma in the second part
+            else:
+                # If no comma, just add the item as is
+                processed_list.append(item)
+        
+        return processed_list
+
+    def update_arguments(self, new_args):
+        """Update the current arguments for the process."""
+        for key, value in new_args.items():
+            if key not in self._current_args:
+                self._current_args.append(key)
+            if value is not None:
+                self._current_args.append(value)
+
+    def add_plugin(self, plugin_path):
+        if '--plugins' in self._current_args:
+            plugin_index = self._current_args.index('--plugins')
+            current_plugins = self._current_args[plugin_index + 1]
+            if plugin_path not in current_plugins:
+                self._current_args[plugin_index + 1] += f",{plugin_path}"
+        else:
+            self._current_args.extend(['--plugins', plugin_path])
+        
+        '''
+        # Restart the simulation with updated arguments
+        if self._ambf_process.state() == QProcess.Running:
+            self._ambf_process.terminate()
+            self._ambf_process.waitForFinished(5000)
+            self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), self._current_args)
+        '''
 
     def _simulation_closed(self):
         self.button_start_simulation.setText('Start Simulation')
@@ -174,6 +235,7 @@ class Ui(QtWidgets.QWidget):
 
     def pressed_pupil_service(self):
         try:
+            print("Launching ", self.gui_configuration.pupil_executable.get())
             self._pupil_process.start(str(self.gui_configuration.pupil_executable.get()))
         except Exception as e:
             self.print_info('ERROR! Cant launch Pupil Capture')
@@ -213,7 +275,7 @@ class Ui(QtWidgets.QWidget):
         record_options = RecordOptions()
         base_path = str(self.gui_configuration.recording_base_path.get())
         participant_name = '/' + self.text_participant_name.toPlainText().strip()
-        date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         record_options.path = base_path + participant_name + date_time
         record_options.simulator_data = True
 

@@ -1,5 +1,3 @@
-# Edited by Jonathan to test for storing high frequency drill pose data
-
 import logging
 import math
 import os
