@@ -1,8 +1,8 @@
 """
-Script Name: Data Record v2
-Authors: Jonathan Wang and Oren Wei
+Script Name: Data Record v3
+Authors: Oren Wei and Jonathan Wang
 Date Created: 2024-11-15
-Last Modified: 2024-11-15
+Last Modified: 2024-12-11
 Version: 1.0
 
 Description:
@@ -10,15 +10,15 @@ Description:
     while running the virtual reality simulator. Previous iteration of this 
     script have already incorporated the overarching data groups "burr_change", 
     "data", "drill_force_feedback", "metadata", and "voxels_removed". This iteration
-    adds the "high_frequency_drill_pose" data group. It also attempts to clean 
-    up the code for more efficiency.
+    adds the "high_frequency_poses" data group, saving the high frequency drill, camera, and anatomy poses.
+    It also attempts to clean up the code for more efficiency.
     
 Updated HDF5 File Structure:
     root/
       ├── burr_change/
       ├── data/
       ├── drill_force_feedback/
-      ├── high_frequency_drill_pose/
+      ├── high_frequency_poses/
       ├── metadata/
       └── voxels_removed/
 
@@ -273,7 +273,7 @@ def init_hdf5(args):
     file.create_group("burr_change")
     file.create_group("drill_force_feedback")
     file.create_group("high_frequency_poses")
-    
+
     return file, img_height, img_width, s, volume_pose
 
 
