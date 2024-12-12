@@ -1,30 +1,4 @@
-"""
-Script Name: Data Record v2
-Authors: Jonathan Wang and Oren Wei
-Date Created: 2024-11-15
-Last Modified: 2024-11-15
-Version: 1.0
-
-Description:
-    This script records the data in the background from both ROS and AMBF
-    while running the virtual reality simulator. Previous iteration of this 
-    script have already incorporated the overarching data groups "burr_change", 
-    "data", "drill_force_feedback", "metadata", and "voxels_removed". This iteration
-    adds the "high_frequency_drill_pose" data group. It also attempts to clean 
-    up the code for more efficiency.
-    
-Updated HDF5 File Structure:
-    root/
-      ├── burr_change/
-      ├── data/
-      ├── drill_force_feedback/
-      ├── high_frequency_drill_pose/
-      ├── metadata/
-      └── voxels_removed/
-
-Usage:
-    Called from within the gui_setup.yaml file
-"""
+# Edited by Jonathan to test for storing high frequency drill pose data
 
 import logging
 import math
@@ -63,81 +37,46 @@ except ImportError:
         + "Please source <volumetric_plugin_path>/build/devel/setup.bash \n"
     )
 
-voxel_data_lock = Lock()
-drill_force_data_lock = Lock()
-drill_pose_data_lock = Lock()
-log = logging.getLogger()
 
 def rpy_to_quat(roll, pitch, yaw):
-    """
-    Converts roll, pitch, and yaw (Euler angles) into a quaternion representation.
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
 
-    Parameters:
-    - roll (float): Rotation angle around the X-axis, in radians.
-    - pitch (float): Rotation angle around the Y-axis, in radians.
-    - yaw (float): Rotation angle around the Z-axis, in radians.
-
-    Returns:
-    - tuple: A tuple (x, y, z, w) representing the quaternion components.
-
-    Notes:
-    - The quaternion is normalized for consistency.
-    """
-    # Compute half-angles for efficiency
-    half_roll, half_pitch, half_yaw = roll * 0.5, pitch * 0.5, yaw * 0.5
-    # Compute trigonometric terms
-    cr, sr = np.cos(half_roll), np.sin(half_roll)
-    cp, sp = np.cos(half_pitch), np.sin(half_pitch)
-    cy, sy = np.cos(half_yaw), np.sin(half_yaw)
-    # Calculate quaternion components
     w = cr * cp * cy + sr * sp * sy
     x = sr * cp * cy - cr * sp * sy
     y = cr * sp * cy + sr * cp * sy
     z = cr * cp * sy - sr * sp * cy
+
     return x, y, z, w
 
 
 def depth_gen(depth_msg):
     """
-    Generates a depth map from a ROS depth message.
-
-    Parameters:
-    - depth_msg: The input ROS PointCloud2 message containing depth information.
-
-    Returns:
-    - numpy.ndarray: A (H x W) array of z-values representing the depth map.
-
-    Notes:
-    - The depth map is scaled and reshaped for compatibility with the AMBF simulation format.
-    - The output is converted to half-precision (float16) to optimize storage.
+    generate depth
+    :param depth_msg:
+    :return: HxW, z-values
     """
-   # Convert PointCloud2 message to structured numpy array
     xyz_array = ros_numpy.point_cloud2.pointcloud2_to_array(depth_msg)
-    # Extract and scale x, y, z coordinates
     xcol = xyz_array["x"][:, None] * scale
     ycol = xyz_array["y"][:, None] * scale
     zcol = xyz_array["z"][:, None] * scale
-    # Combine scaled coordinates into a single array
+
     scaled_depth = np.concatenate([xcol, ycol, zcol], axis=-1)
-    # Convert to half-precision (float16) to save storage
+    # halve precision to save storage
     scaled_depth = scaled_depth.astype(np.float16)
-    # Reshape depth data to match AMBF convention, reversing height direction
+    # reverse height direction due to AMBF reshaping
     scaled_depth = np.ascontiguousarray(scaled_depth.reshape([h, w, 3])[::-1])
-    # Project using extrinsic matrix and extract z-values (last column)
+    # convert to cv convention
     scaled_depth = np.einsum("ab,hwb->hwa", extrinsic[:3, :3], scaled_depth)[..., -1]
+
     return scaled_depth
 
 
 def image_gen(image_msg):
-    """
-    Converts a ROS image message to an OpenCV-compatible format.
-
-    Parameters:
-    - image_msg: The input ROS sensor_msgs/Image message containing image data.
-
-    Returns:
-    - numpy.ndarray: The image in BGR format as a numpy array (OpenCV compatible), or None if conversion fails.
-    """
     try:
         cv2_img = bridge.imgmsg_to_cv2(image_msg, "bgr8")
         return cv2_img
@@ -147,21 +86,7 @@ def image_gen(image_msg):
 
 
 def pose_gen(pose_msg):
-    """
-    Generates a numpy array representation of a pose from a ROS Pose message.
-
-    Parameters:
-    - pose_msg: The input ROS geometry_msgs/Pose message containing position and orientation.
-
-    Returns:
-    - numpy.ndarray: A 7-element numpy array containing the scaled position (x, y, z) and orientation (x, y, z, w).
-
-    Notes:
-    - The position values are scaled by a specified factor (`scale`).
-    """
-    # Extract position and orientation from the Pose message
     pose = pose_msg.pose
-    # Create a numpy array with the scaled position (x, y, z) and the orientation (x, y, z, w)
     pose_np = np.array(
         [
             pose.position.x * scale,
@@ -173,47 +98,44 @@ def pose_gen(pose_msg):
             pose.orientation.w,
         ]
     )
+
     return pose_np
 
 
-def load_yaml_file(file_path):
-    """Helper function to load YAML files."""
-    with open(file_path, "r") as f:
-        return yaml.safe_load(f)
+def init_hdf5(args):
+    world_adf = open(args.world_adf, "r")
+    world_params = yaml.safe_load(world_adf)
+    world_adf.close()
 
+    main_camera = world_params["main_camera"]
 
-def calculate_camera_intrinsics(main_camera):
-    """Calculate and return camera intrinsic matrix."""
+    # perspective camera intrinsics
     fva = main_camera["field view angle"]
     img_height = main_camera["publish image resolution"]["height"]
     img_width = main_camera["publish image resolution"]["width"]
+
     focal = img_height / (2 * math.tan(fva / 2))
     c_x = img_width / 2
     c_y = img_height / 2
     intrinsic = np.array([[focal, 0, c_x], [0, focal, c_y], [0, 0, 1]])
-    return intrinsic, img_height, img_width
 
-
-def calculate_conversion_factor(args, world_params):
-    """Calculate and return the conversion factor based on input."""
+    # conversion factor
     if sys.version_info[0] >= 3:
-        with open(args.nrrd_header, "rb") as nrrd_header:
-            header = pickle.load(nrrd_header)
-            directions = header["space directions"]
-            sizes = header["sizes"]
-            largest_dim = np.argmax(sizes)
-            s = np.linalg.norm(directions[largest_dim]) * sizes[largest_dim] / 1000.0
+        nrrd_header = open(args.nrrd_header, "rb")
+        header = pickle.load(nrrd_header)
+        directions = header["space directions"]
+        sizes = header["sizes"]
+        largest_dim = np.argmax(sizes)
+        s = np.linalg.norm(directions[largest_dim]) * sizes[largest_dim] / 1000.0
     else:
         s = world_params["conversion factor"]
-    return s
 
-
-def get_volume_pose(args, s):
-    """Generate volume pose from ADF file."""
-    volume_params = load_yaml_file(args.volume_adf)
+    # volume pose, which is fixed
+    volume_adf = open(args.volume_adf, "r")
+    volume_params = yaml.safe_load(volume_adf)
+    volume_adf.close()
     volume_name = volume_params["volumes"][0]
     volume_loc = volume_params[volume_name]["location"]
-    
     volume_position = [
         volume_loc["position"]["x"] * s,
         volume_loc["position"]["y"] * s,
@@ -223,287 +145,235 @@ def get_volume_pose(args, s):
         volume_loc["orientation"]["r"],
         volume_loc["orientation"]["p"],
         volume_loc["orientation"]["y"],
-    )
-    return np.concatenate([volume_position, volume_orientation])
+    )  # ZYX needs to be capitalized
+    volume_pose = np.concatenate([volume_position, volume_orientation])
 
-
-def create_hdf5_file(args, intrinsic, extrinsic, s, volume_pose):
-    """Create and initialize the HDF5 file with the appropriate metadata."""
+    # Create hdf5 file with date
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-
     time_str = time.strftime("%Y%m%d_%H%M%S")
-    file = h5py.File(os.path.join(args.output_dir, f"{time_str}.hdf5"), "w")
-    
+    file = h5py.File(args.output_dir + "/" + time_str + ".hdf5", "w")
+
     metadata = file.create_group("metadata")
     metadata.create_dataset("camera_intrinsic", data=intrinsic)
     metadata.create_dataset("camera_extrinsic", data=extrinsic)
-    metadata.create_dataset("README", data=(
-        "All position information is in meters unless specified otherwise. \n"
+    metadata.create_dataset(
+        "README",
+        data="All position information is in meters unless specified otherwise. \n"
         "Quaternion is a list in the order of [qx, qy, qz, qw]. \n"
         "Poses are defined to be T_world_obj. \n"
-        "Depth in CV convention (corrected by extrinsic, T_cv_ambf). \n"
-    ))
+        "Depth in CV convention (corrected by extrinsic, T_cv_ambf). \n",
+    )
 
-    return file, metadata
-
-
-def init_hdf5(args):
-    """Main function to initialize HDF5 file with camera, volume, and metadata."""
-    # Load world parameters
-    world_params = load_yaml_file(args.world_adf)
-    main_camera = world_params["main_camera"]
-    # Calculate camera intrinsics
-    intrinsic, img_height, img_width = calculate_camera_intrinsics(main_camera)
-    # Calculate conversion factor
-    s = calculate_conversion_factor(args, world_params)
-    # Get volume pose
-    volume_pose = get_volume_pose(args, s)
-    # Create the HDF5 file
-    file, metadata = create_hdf5_file(args, intrinsic, extrinsic, s, volume_pose)
-    # Optionally add stereo baseline info
+    # baseline info from stereo adf
     if args.stereo:
-        stereo_params = load_yaml_file(args.stereo_adf)
-        baseline = abs(stereo_params["stereoL"]["location"]["y"] - stereo_params["stereoR"]["location"]["y"]) * s
+        adf = args.stereo_adf
+        stereo_adf = open(adf, "r")
+        stereo_params = yaml.safe_load(stereo_adf)
+        baseline = (
+            math.fabs(
+                stereo_params["stereoL"]["location"]["y"]
+                - stereo_params["stereoR"]["location"]["y"]
+            )
+            * s
+        )
         metadata.create_dataset("baseline", data=baseline)
-    # Create other necessary groups
+
     file.create_group("data")
     file.create_group("voxels_removed")
     file.create_group("burr_change")
     file.create_group("drill_force_feedback")
+
+    # for storing high frequency drill pose data
     file.create_group("high_frequency_drill_pose")
+    
     return file, img_height, img_width, s, volume_pose
 
 
 def callback(*inputs):
     """
-    Callback function to process inputs and store them in a data queue.
-    The inputs are expected to be in a strict order: l_img, depth, r_img, segm, pose_A, pose_B, ...
-    
-    This function processes the input data, applies the corresponding transformation
-    (such as image generation or depth processing), and stores the processed data in a queue.
+    Current implementation strictly enforces the ordering
+    ordering - l_img, depth, r_img, segm, pose_A, pose_B, ..., data_keys
 
-    :param inputs: A list of input data, where the first element contains the timestamp,
-                   and the last element contains a dictionary with data keys.
-    :return: None
+    :param inputs:
+    :return:
     """
-    log.log(logging.DEBUG, "Callback function triggered")
-    # Extract keys and initialize data dictionary with timestamp
+    log.log(logging.DEBUG, "msg callback")
+
     keys = list(inputs[-1])
     data = dict(time=inputs[0].header.stamp.to_sec())
-    # Print progress every 5th data point
+
     if num_data % 5 == 0:
         print("Recording data: " + "#" * (num_data // 10))
-    # Define a mapping from data keys to their respective processing functions
-    data_processing_map = {
-        "l_img": image_gen,
-        "r_img": image_gen,
-        "segm": image_gen,
-        "depth": depth_gen,
-        "pose_": pose_gen
-    }
-    # Process each input and add it to the data dictionary
-    for idx, key in enumerate(keys[1:]):  # skip the first element (time)
-        for data_key, processing_func in data_processing_map.items():
-            if key.startswith(data_key):
-                data[key] = processing_func(inputs[idx])
-    # Try to add processed data to the queue, catch the Full exception
+
+    for idx, key in enumerate(keys[1:]):  # skip time
+        if "l_img" == key or "r_img" == key or "segm" == key:
+            data[key] = image_gen(inputs[idx])
+        if "depth" == key:
+            # print("depth")
+            data[key] = depth_gen(inputs[idx])
+        if "pose_" in key:
+            # print("pose")
+            data[key] = pose_gen(inputs[idx])
+
     try:
         data_queue.put_nowait(data)
     except Full:
-        log.log(logging.DEBUG, "Queue is full, data not added")
-
-
-def create_and_store_dataset(group, key, data, compression="gzip"):
-    """
-    Helper function to create and store a dataset in the HDF5 group.
-    
-    :param group: HDF5 group where the dataset will be created.
-    :param key: Key for the dataset.
-    :param data: Data to be stored in the dataset.
-    :param compression: Compression type for the dataset.
-    """
-    if len(data) > 0:
-        print(f"key {key}")
-        group.create_dataset(key, data=np.stack(data, axis=0), compression=compression)
-        log.log(logging.INFO, (key, group[key].shape))
-
-
-def write_voxel_data(collisions):
-    """
-    Process and write voxel data to HDF5.
-    
-    :param collisions: Dictionary containing voxel-related data.
-    :return: None
-    """
-    voxel_idx, voxel_color = [], []
-
-    try:
-        assert len(collisions["voxel_color"]) == len(collisions["voxel_removed"]) == len(collisions["voxel_time_stamp"]), \
-            "Dimension mismatch in voxel data"
-    except AssertionError:
-        print("Voxel data dimension mismatch:", collisions)
-        raise
-
-    for idx in range(len(collisions["voxel_time_stamp"])):
-        num_removed = collisions["voxel_removed"][idx].shape[0]
-        if num_removed > 0:
-            idx_column = np.ones((num_removed, 1)) * idx
-            voxel_idx.append(np.hstack((idx_column, collisions["voxel_removed"][idx])))
-            voxel_color.append(np.hstack((idx_column, collisions["voxel_color"][idx])))
-
-    # Combine the voxel data and write it to the HDF5 file
-    try:
-        voxel_idx = np.vstack(voxel_idx)
-        voxel_color = np.vstack(voxel_color)
-        voxel_data = {
-            "voxel_time_stamp": collisions["voxel_time_stamp"],
-            "voxel_removed": voxel_idx,
-            "voxel_color": voxel_color,
-        }
-        for key, value in voxel_data.items():
-            print(f"key {key}")
-            f["voxels_removed"].create_dataset(key, data=value, compression="gzip")
-            log.log(logging.INFO, (key, f["voxels_removed"][key].shape))
-            collisions[key] = []  # Reset to free memory
-        f["voxels_removed"].create_dataset("README", data = "voxels_removed contains a group of voxels (Gv) removed. \n"
-                                           "The voxel_time_stamp contains the time that the Gv was removed. The voxels_removed contains the voxels that comprise the Gv. \n"
-                                           "The voxel_color contains the color of voxels that comprise the Gv. \n")
-    except Exception as e:
-        print("INFO! No voxels removed in this batch due to exception:", str(e))
-
-
-def write_drill_pose_data(drill_pose_data):
-    """
-    Process and write drill pose data to HDF5.
-    
-    :param drill_pose_data: Dictionary containing drill pose-related data.
-    :return: None
-    """
-    try:
-        print(f"The drill pose data: {drill_pose_data}")
-        for key, value in drill_pose_data.items():
-            drill_data = {
-                "drill_pose": value["drill_pose"],
-                "time_stamp": value["time_stamp"]
-            }
-            print(f"Storing drill pose key: {key}")
-            for measure, list_data in drill_data.items():
-                print(f"Storing measure: {measure}")
-                f["high_frequency_drill_pose"].create_dataset(
-                    measure, data=np.stack(list_data, axis=0), compression="gzip"
-                )
-                log.log(logging.INFO, (key, f["high_frequency_drill_pose"][measure].shape))
-            drill_pose_data[key] = []  # Reset list to free memory
-    except Exception as e:
-        print("INFO! Drill pose data recording failed due to EXCEPTION:", str(e))
-
-
-def write_volume_pose(volume_pose, num_samples):
-    """
-    Write volume pose data to the HDF5 file.
-    
-    :param volume_pose: The volume pose data.
-    :param num_samples: The number of samples to write.
-    :return: None
-    """
-    try:
-        key = "pose_mastoidectomy_volume"
-        f["data"].create_dataset(
-            key, data=np.stack([volume_pose] * num_samples, axis=0), compression="gzip"
-        )
-        log.log(logging.INFO, (key, f["data"][key].shape))
-    except Exception as e:
-        print('INFO! No data recorded in this batch due to exception:', str(e))
+        log.log(logging.DEBUG, "Queue full")
 
 
 def write_to_hdf5():
-    """
-    Main function to write data to an HDF5 file. It stores voxel data, drill pose data,
-    and volume pose data in their respective HDF5 datasets.
-    
-    :return: None
-    """
-    # Create and store voxel volume dataset
     try:
         hdf5_vox_vol = f["metadata"].create_dataset("voxel_volume", data=voxel_volume)
         hdf5_vox_vol.attrs["units"] = "mm^3, millimeters cubed"
-    except Exception:
+    except:
         f.close()
         print("File writing interrupted.")
         return
-    # Save image data and burr_change data
+
+    ##################################
+    #### Save img data and burr_change
     containers = [(f["data"], container), (f["burr_change"], burr_change), (f["drill_force_feedback"], drill_force_feedback)]
     for group, data in containers:
         if group.name == "/drill_force_feedback":
             drill_force_data_lock.acquire()
         for key, value in data.items():
-            create_and_store_dataset(group, key, value)
-            data[key] = []  # Reset to free memory
+            if len(value) > 0:
+                print(f"key {key}")
+                group.create_dataset(
+                    key, data=np.stack(value, axis=0), compression="gzip"
+                )  # write to disk
+                log.log(logging.INFO, (key, group[key].shape))
+            data[key] = []  # reset list to empty memory
         if group.name == "/drill_force_feedback":
             drill_force_data_lock.release()
-    # Save voxel data
-    write_voxel_data(collisions)
+    
+    ########################
+    #### Save voxels removed
+    # TODO: Add metadata of what each column means
+    voxel_idx = []
+    voxel_color = []
+
+    global voxel_data_lock
+    voxel_data_lock.acquire()
+    ###
+
+    ###
+
     try:
-        num_samples = len(f["data"][list(f["data"].keys())[0]])  # Number of samples in data
-        write_volume_pose(volume_pose, num_samples)
+        assert len(collisions["voxel_color"]) == len(
+            collisions["voxel_removed"]
+        ), "dimension errors"
+        assert len(collisions["voxel_color"]) == len(
+            collisions["voxel_time_stamp"]
+        ), "dimension errors"
+    except:
+        print(f"voxel_color len: {len(collisions['voxel_color'])}")
+        print(f"voxel_removed len: {len(collisions['voxel_removed'])}")
+        print(f"voxel_time_stamp len: {len(collisions['voxel_time_stamp'])}")
+        raise Exception()
+
+    # Add ts index column to voxels_idx and voxels color
+    for idx in range(len(collisions["voxel_time_stamp"])):
+        num_of_removed = collisions["voxel_removed"][idx].shape[0]
+
+        if num_of_removed > 0:
+            idx_column = np.ones((num_of_removed, 1)) * idx
+            voxel_idx.append(np.hstack((idx_column, collisions["voxel_removed"][idx])))
+            voxel_color.append(np.hstack((idx_column, collisions["voxel_color"][idx])))
+
+    # Write data to hdf5
+    try:
+        voxel_idx = np.vstack(voxel_idx)
+        voxel_color = np.vstack(voxel_color)
+        voxel_data = dict(
+            voxel_time_stamp=collisions["voxel_time_stamp"],
+            voxel_removed=voxel_idx,
+            voxel_color=voxel_color,
+        )
+        for key, value in voxel_data.items():
+            print(f"key {key}")
+            f["voxels_removed"].create_dataset(key, data=value, compression="gzip")  # write to disk
+            log.log(logging.INFO, (key, f["voxels_removed"][key].shape))
+            # Reset collisions list -  empty memory
+            collisions[key] = []
     except Exception as e:
+        print("INFO! No voxels removed in this batch since EXCEPTION:", str(e))
+
+    voxel_data_lock.release()
+
+    try:
+        # write volume pose
+        key = "pose_mastoidectomy_volume"
+        num_samples = len(f["data"][list(f["data"].keys())[0]])
+        f["data"].create_dataset(
+            key, data=np.stack([volume_pose] * num_samples, axis=0), compression="gzip"
+        )  # write to disk
+        log.log(logging.INFO, (key, f["data"][key].shape))
+        print("finish writing and closing hdf5 file")
+    except Exception as e:
+
         print('INFO! No data recorded in this batch since EXCEPTION:', str(e))
-    # Store drill pose data
+        
+    # for storing high resolution drill pose data
+    global drill_pose_data_lock
     drill_pose_data_lock.acquire()
-    write_drill_pose_data(drill_pose_data)
+    
+    try:
+        # Write drill pose data to the "high_frequency_drill_pose" group
+        print("This is drill_pose_data_items")
+        print(drill_pose_data.items())
+        for key, value in drill_pose_data.items():
+            drill_data = dict(
+                drill_pose = value["drill_pose"],
+                time_stamp = value["time_stamp"]
+            )
+            print(f"Storing drill pose key: {key}")
+            for measure, list_data in drill_data.items():
+                print(f"Storing measure: {measure}")
+                f["high_frequency_drill_pose"].create_dataset(
+                measure, data=np.stack(list_data, axis=0), compression="gzip"
+                )
+                log.log(logging.INFO, (key, f["high_frequency_drill_pose"][measure].shape))
+            # Reset drill pose data list to free memory
+            drill_pose_data[key] = []
+    except Exception as e:
+        print("INFO! Drill pose data recording failed due to EXCEPTION:", str(e))
+    
     drill_pose_data_lock.release()
-    # Close the file after all data is written
+    
     f.close()
-    print("Finished writing and closing HDF5 file")
-
-
-def write_and_reinitialize_hdf5(f, args):
-    """
-    Helper function to write data to HDF5 and reinitialize the file.
-    This function is called when the chunk size is reached or when the recording is done.
-    """
-    log.log(logging.INFO, "\nWrite data to disk")
-    write_to_hdf5()  # Write the data to disk
-    f, _, _, _, _ = init_hdf5(args)  # Re-initialize the HDF5 file
-    return f, 0  # Reset num_data to 0 after writing
-
-
-def process_data(data_dict, container):
-    """
-    Helper function to process and store data in containers.
-    This function appends the incoming data to the respective containers.
-    """
-    for key, data in data_dict.items():
-        container[key].append(data)
+    return
 
 
 def timer_callback():
-    """
-    Callback function that continuously checks for new data in the queue and writes it to an HDF5 file
-    when a specified chunk size is reached. This function is designed to handle data in real-time,
-    minimizing any potential performance overhead while ensuring data integrity.
-    """
-    global terminate_recording, finished_recording, num_data, f
+    global terminate_recording, finished_recording
     terminate_recording = False
     finished_recording = False
-    while not terminate_recording:
-        log.log(logging.NOTSET, "Timer callback - Checking for data")
+    while terminate_recording == False:
+        log.log(logging.NOTSET, "timer callback")
         try:
-            data_dict = data_queue.get_nowait()  # Non-blocking call to get data
-            # Process and store data
-            process_data(data_dict, container)
-            num_data += 1
+            data_dict = data_queue.get_nowait()
+
+            global num_data, f
+            for key, data in data_dict.items():
+                container[key].append(data)
+
+            num_data = num_data + 1
             if num_data >= chunk:
-                f, num_data = write_and_reinitialize_hdf5(f, args)
+                log.log(logging.INFO, "\nWrite data to disk")
+                write_to_hdf5()
+                f, _, _, _, _ = init_hdf5(args)
+                num_data = 0
         except Empty:
-            log.log(logging.NOTSET, "Queue is empty, waiting for data")
-        # Dynamically adjust sleep time based on the load or any external factors
-        time.sleep(0.002)  # Sleep for 2ms (adjustable based on real-time needs)
-    # Ensure that any remaining data is written to disk after recording finishes
+            log.log(logging.NOTSET, "Empty queue")
+
+        time.sleep(0.002)
+
+    # Write one more time for any data that hasn't been saved
     write_to_hdf5()
+
     finished_recording = True
-    log.log(logging.INFO, "Finished recording and data written to disk")
 
 
 def rm_vox_callback(rm_vox_msg):
@@ -664,6 +534,7 @@ def setup_subscriber(args):
 
         if topic in active_topics:
             container["pose_" + name] = []
+            # pose_sub.registerCallback(lambda msg, name=name: drill_pose_callback(msg, name))
             subscribers += [pose_sub]
             topics += [topic]
         else:
