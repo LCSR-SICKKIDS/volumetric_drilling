@@ -45,8 +45,12 @@
 
 #include "volumetric_drilling.h"
 #include <boost/program_options.hpp>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 
 using namespace std;
+namespace fs = std::filesystem;
 
 
 //------------------------------------------------------------------------------
@@ -194,7 +198,6 @@ int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_af
     }
 
     m_gazeMarkerController.init(m_worldPtr, &m_panelManager, var_map);
-
     return 1;
 }
 
@@ -222,6 +225,9 @@ void afVolmetricDrillingPlugin::graphicsUpdate(){
     m_gazeMarkerController.update(dt);
     updateButtons();
     m_panelManager.update();
+    if (m_isRecording) {
+        m_videoRecordingController.update();
+    }
 }
 
 void afVolmetricDrillingPlugin::physicsUpdate(double dt){
@@ -541,6 +547,39 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
 
         else if (a_key == GLFW_KEY_G){
             m_gazeMarkerController.restart();
+            // commands for video_recording_controller
+            // Fetch the recording path from the environment variable or a pre-defined location
+            m_isRecording = !m_isRecording;
+            if (m_isRecording) {
+                const std::string tempPath = "/home/amunawa2/volumetric_drilling_VRE/scripts/study_gui/Simulator_Recordings/tmp/recording_path.txt";
+                std::string recordingPath;
+                std::ifstream inputFile(tempPath);
+                if (inputFile.is_open()) {
+                    std::getline(inputFile, recordingPath);
+                    inputFile.close();
+                    std::cerr << "Read recording path from file: " << recordingPath << std::endl;
+                } else {
+                    std::cerr << "Failed to open temp file: " << tempPath << std::endl;
+                    recordingPath = "/home/amunawa2/UserStudy_24_25"; // Fallback path if no environment variable is set
+                }
+                // Ensure the directory exists
+                if (!fs::exists(recordingPath)) {
+                    if (!fs::create_directories(recordingPath)) {
+                        cerr << "Failed to create recording directory: " << recordingPath << endl;
+                        return;
+                    }
+                }
+                m_videoRecordingController.init(m_worldPtr, recordingPath);
+                // Set the save directory and proceed with video recording logic
+                m_videoRecordingController.start_recording();
+                // Visual or log confirmation for the user
+                cout << "Video recording started at: " << recordingPath << endl;
+            }
+        }
+
+        else if (a_key == GLFW_KEY_Y){ // Stop recording key
+            m_videoRecordingController.close();    
+            m_isRecording = false;
         }
 
         else if (a_key == GLFW_KEY_E){

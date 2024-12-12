@@ -48,6 +48,7 @@
 #include "wave_generator.h"
 #include "gaze_marker_controller.h"
 #include "drill_manager.h"
+#include "video_recording_controller.h"
 
 using namespace std;
 using namespace ambf;
@@ -136,6 +137,10 @@ private:
     GazeMarkerController m_gazeMarkerController;
 
     CameraPanelManager m_panelManager;
+
+    VideoRecordingController m_videoRecordingController; // Adapting ambf video recording plugin
+
+    bool m_isRecording = false;
 };
 
 

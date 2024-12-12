@@ -40,7 +40,7 @@
 cmake_minimum_required (VERSION 3.1)
 project (volumetric_plugin)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(AMBF)
 find_package(Boost COMPONENTS program_options filesystem)
@@ -79,7 +79,9 @@ add_library(volumetric_drilling SHARED
     ${vol_plugin_prefix}/camera_panel_manager.h
     ${vol_plugin_prefix}/camera_panel_manager.cpp
     ${vol_plugin_prefix}/gaze_marker_controller.h
-  ${vol_plugin_prefix}/gaze_marker_controller.cpp)
+    ${vol_plugin_prefix}/gaze_marker_controller.cpp
+    ${vol_plugin_prefix}/video_recording_controller.h
+    ${vol_plugin_prefix}/video_recording_controller.cpp)
 add_dependencies(volumetric_drilling ${catkin_EXPORTED_TARGETS})
 target_link_libraries (volumetric_drilling ${Boost_LIBRARIES} ${AMBF_LIBRARIES} ${catkin_LIBRARIES})
 set_property(TARGET volumetric_drilling PROPERTY POSITION_INDEPENDENT_CODE TRUE)
