@@ -160,8 +160,13 @@ def pose_gen(pose_msg):
     Notes:
     - The position values are scaled by a specified factor (`scale`).
     """
-    # Extract position and orientation from the Pose message
-    pose = pose_msg.pose
+    # CHANGED
+    if hasattr(pose_msg, 'pose'):
+        # For RigidBodyState messages, the pose is in pose_msg.pose
+        pose = pose_msg.pose
+    else:
+        # For CameraState messages, position/orientation is directly in pose_msg
+        pose = pose_msg
     # Create a numpy array with the scaled position (x, y, z) and the orientation (x, y, z, w)
     pose_np = np.array(
         [
@@ -214,7 +219,7 @@ def get_volume_pose(args, s):
     volume_params = load_yaml_file(args.volume_adf)
     volume_name = volume_params["volumes"][0]
     volume_loc = volume_params[volume_name]["location"]
-    
+
     volume_position = [
         volume_loc["position"]["x"] * s,
         volume_loc["position"]["y"] * s,
@@ -272,6 +277,8 @@ def init_hdf5(args):
     file.create_group("voxels_removed")
     file.create_group("burr_change")
     file.create_group("drill_force_feedback")
+    # CHANGED: Instead of just "high_frequency_drill_pose", create a general group for all high frequency poses.
+    # This group will contain subgroups for drill, camera, anatomy, etc.
     file.create_group("high_frequency_poses")
 
     return file, img_height, img_width, s, volume_pose
@@ -375,27 +382,37 @@ def write_voxel_data(collisions):
         print("INFO! No voxels removed in this batch due to exception:", str(e))
 
 
-def write_high_frequency_pose_data(high_frequency_pose_data):
+# CHANGED, NEW FUNCTION
+def write_high_frequency_pose_data(high_freq_pose_data):
     """
-    Process and write high-frequency pose data to HDF5.
+    Process and write high-frequency pose data (e.g., drill, camera, anatomy) to HDF5.
+    Each object gets its own subgroup under "high_frequency_poses".
 
-    :param high_frequency_pose_data: Dictionary containing pose data for multiple objects.
-    :return: None
+    Changes Made:
+    - Instead of a single group for drill, we now create one subgroup per object under "high_frequency_poses".
+    - Each subgroup contains "time_stamp" and "pose" datasets.
+    - The pose data for each object is stored at the original, higher frequency.
+    - Timestamps are aligned for each pose sample of that object.
     """
     try:
-        for obj_name, data in high_frequency_pose_data.items():
-            print(f"Storing high-frequency pose data for object: {obj_name}")
-            group = f["high_frequency_poses"].create_group(obj_name)
-            for key in ["pose", "time_stamp"]:
-                print(f"Storing {key} data for {obj_name}")
-                group.create_dataset(
-                    key, data=np.stack(data[key], axis=0), compression="gzip"
-                )
-                log.log(logging.INFO, (key, group[key].shape))
-            # Reset the data
-            high_frequency_pose_data[obj_name] = {"time_stamp": [], "pose": []}
+        for name, pose_dict in high_freq_pose_data.items():
+            # Create a subgroup for this object under "high_frequency_poses"
+            obj_group_name = name + "_pose"
+            obj_group = f["high_frequency_poses"].create_group(obj_group_name)
+
+            # Write pose and timestamps
+            obj_group.create_dataset("time_stamp", data=np.stack(pose_dict["time_stamp"], axis=0), compression="gzip")
+            obj_group.create_dataset("pose", data=np.stack(pose_dict["pose"], axis=0), compression="gzip")
+
+            # Log info
+            log.log(logging.INFO, (obj_group_name, obj_group["time_stamp"].shape))
+            log.log(logging.INFO, (obj_group_name, obj_group["pose"].shape))
+
+        # Reset dictionary after writing
+        high_freq_pose_data.clear()
+
     except Exception as e:
-        print("INFO! High-frequency pose data recording failed due to EXCEPTION:", str(e))
+        print("INFO! High frequency pose data recording failed due to EXCEPTION:", str(e))
 
 
 def write_volume_pose(volume_pose, num_samples):
@@ -449,10 +466,10 @@ def write_to_hdf5():
     except Exception as e:
         print('INFO! No data recorded in this batch since EXCEPTION:', str(e))
     
-    # Store high-frequency pose data
-    high_frequency_pose_data_lock.acquire()
-    write_high_frequency_pose_data(high_frequency_pose_data)
-    high_frequency_pose_data_lock.release()
+    # CHANGED: Store high frequency pose data
+    drill_pose_data_lock.acquire()
+    write_high_frequency_pose_data(high_freq_pose_data)
+    drill_pose_data_lock.release()
 
     # Close the file after all data is written
     f.close()
@@ -551,42 +568,24 @@ def volume_prop_callback(volume_prop_msg):
     resolution = np.divide(dimensions, voxel_count) * 1000
     voxel_volume = np.prod(resolution) * scale ** 3
 
-def high_frequency_pose_callback(pose_msg, name):
+# CHANGED: Each object's data is stored in high_freq_pose_data under its own key.
+def high_freq_pose_callback(pose_msg, name):
     """
-    Callback function to capture high-frequency pose data for multiple objects.
+    Callback function to capture high-frequency pose data for drill, camera, and anatomy.
 
-    Args:
-        pose_msg: The message containing pose information.
-        name: The name of the object (e.g., 'mastoidectomy_drill', 'main_camera', etc.).
+    Changes Made:
+    - Originally, drill poses were stored in a specialized section. Now we do the same for camera and anatomy.
+    - We store all these high-frequency poses in a dictionary called high_freq_pose_data.
+    - This data will be written out by write_high_frequency_pose_data() in the "high_frequency_poses" group.
     """
-    # Extract position and orientation based on message type
-    if hasattr(pose_msg, 'pose'):
-        pose = pose_msg.pose
-    else:
-        # Handle other message types if necessary
-        return
+    pose = pose_gen(pose_msg)
+    timestamp = rospy.get_time()
 
-    # Create a numpy array with the scaled position (x, y, z) and the orientation (x, y, z, w)
-    pose_np = np.array(
-        [
-            pose.position.x * scale,
-            pose.position.y * scale,
-            pose.position.z * scale,
-            pose.orientation.x,
-            pose.orientation.y,
-            pose.orientation.z,
-            pose.orientation.w,
-        ]
-    )
-
-    timestamp = pose_msg.header.stamp.to_sec()  # Use the timestamp from the message header
-
-    # Store in the high_frequency_pose_data dictionary
-    with high_frequency_pose_data_lock:
-        if name not in high_frequency_pose_data:
-            high_frequency_pose_data[name] = {"time_stamp": [], "pose": []}
-        high_frequency_pose_data[name]["time_stamp"].append(timestamp)
-        high_frequency_pose_data[name]["pose"].append(pose_np)
+    with drill_pose_data_lock:
+        if name not in high_freq_pose_data:
+            high_freq_pose_data[name] = {"time_stamp": [], "pose": []}
+        high_freq_pose_data[name]["time_stamp"].append(timestamp)
+        high_freq_pose_data[name]["pose"].append(pose)
     
 def setup_subscriber(args):
     active_topics = [n for [n, _] in rospy.get_published_topics()]
@@ -673,18 +672,21 @@ def setup_subscriber(args):
             log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.force_topic)
             exit()
             
-    # poses
+    # CHANGED
+    # For camera: we subscribe to CameraState. For drill/anatomy: RigidBodyState.
+    # Both call high_freq_pose_callback with their respective object name.
     for name in args.objects:
-        if "camera" in name: # this is for Main Camera State
+        if "camera" in name:
             topic = "/ambf/env/" + "cameras/" + name + "/State"
             pose_sub = message_filters.Subscriber(topic, CameraState)
-        else: # this is for Mastoidectomy Drill State
+        else:
             topic = "/ambf/env/" + name + "/State"
             pose_sub = message_filters.Subscriber(topic, RigidBodyState)
-            pose_sub.registerCallback(lambda msg, name=name: drill_pose_callback(msg, name))
 
         if topic in active_topics:
             container["pose_" + name] = []
+            # Register high frequency pose callback
+            pose_sub.registerCallback(lambda msg, name=name: high_freq_pose_callback(msg, name))
             subscribers += [pose_sub]
             topics += [topic]
         else:
@@ -776,13 +778,14 @@ if __name__ == "__main__":
     parser.add_argument("--rm_vox_topic", default=ambf_prefix + "/plugin/volumetric_drilling/voxels_removed", type=str,)
     parser.add_argument("--burr_change_topic", default=ambf_prefix + "/plugin/volumetric_drilling/drill_size", type=str,)
     parser.add_argument("--volume_prop_topic", default=ambf_prefix + "/plugin/volumetric_drilling/volume_info", type=str,)
-    parser.add_argument("--objects", default=["mastoidectomy_drill", "main_camera"], type=str, nargs="+")
+
+    # CHANGED: This now includes multiple objects such as drill, main_camera, and potentially an anatomy object
+    parser.add_argument("--objects", default=["mastoidectomy_drill", "main_camera", "anatomy_object_name"], type=str, nargs="+")
     parser.add_argument("--drill_force_feedback_topic", default=ambf_prefix + "/plugin/volumetric_drilling/drill_force_feedback", type=str,)
 
     parser.add_argument("--sync", action="store_true")
-    parser.add_argument(
-        "--chunk_size", type=int, default=500, help="Write to disk every chunk size"
-    )
+    parser.add_argument("--chunk_size", type=int, default=500, help="Write to disk every chunk size")
+    
     #fmt: on
 
     parser.add_argument("--debug", action="store_true")
@@ -835,8 +838,7 @@ if __name__ == "__main__":
     voxel_volume = 0
     drill_pose_data = OrderedDict()
 
-    # Initialize high-frequency pose data
-    high_frequency_pose_data = OrderedDict()
-    high_frequency_pose_data_lock = Lock()
+    # CHANGED: Initialize high-frequency pose data
+    high_freq_pose_data = OrderedDict()
 
     main(args)
