@@ -171,7 +171,7 @@ if __name__ == '__main__':
                              'Files (ADF) that need to be synchronized')
 
     # world parameters
-    parser.add_argument('--scale', type=float, default=0.049664,
+    parser.add_argument('--scale', type=float, default=1.0,
                         help='Scale factor is the dimension of the volume in 1 axis'
                              'AMBF unit = Meter / scale')
 
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     parser.add_argument('--look_at', nargs='+', default=None,
                         help='outwards direction of camera (unit vector), positive z of pixel coordinate.\n'
                              'Default set to the location of the volume.')
-    parser.add_argument('--clipping_plane', nargs='+', default=[0.1, 50.0], help='[near, far], meters, for accuracy\n'
+    parser.add_argument('--clipping_plane', nargs='+', default=[0.001, 50.0], help='[near, far], meters, for accuracy\n'
                                                                                  'set far plane as far as possible')
     parser.add_argument('--res', nargs='+', default=[640, 480], help='image [width, height]')
     parser.add_argument('--image_interval', type=int, default=5, help='Publish every nth scene update')
