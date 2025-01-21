@@ -4,6 +4,7 @@ pupil_executable: "pupil_capture"
 recording_script_executable: "../data_record.py"
 launch_file: "../../launch.yaml"
 recording_base_path: "../../../Volumetric Drilling Userstudy/"
+footpedal_device: /dev/input/js1
 
 volumes: [volume1, volume2, volume3, volume4, volume5]
 volume1:
