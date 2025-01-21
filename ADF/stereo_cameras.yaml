@@ -11,10 +11,10 @@ stereoL:
   namespace: cameras/
   name: stereoL
   location: {x: 0.0, y: 0.0, z: 0.0}
-  look at: {x: -1.0, y: 0.0, z: 0.0}
+  look at: {x: -0.3, y: 0.0, z: 0.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 0.1, far: 50.0}
-  field view angle: 0.17951634837990105
+  clipping plane: {near: 0.001, far: 50.0}
+  field view angle: 0.2
   monitor: 0
   # multipass: true
   publish image: true
@@ -38,10 +38,10 @@ stereoR:
   namespace: cameras/
   name: stereoR
   location: {x: 0.0, y: 0.025, z: 0.0}
-  look at: {x: -1.0, y: 0.025, z: 0.0}
+  look at: {x: -0.3, y: 0.025, z: 0.0}
   up: {x: 0.0, y: 0.0, z: 1.0}
-  clipping plane: {near: 0.1, far: 50.0}
-  field view angle: 0.17951634837990105
+  clipping plane: {near: 0.001, far: 50.0}
+  field view angle: 0.2
   monitor: 0
   # multipass: true
   publish image: true
