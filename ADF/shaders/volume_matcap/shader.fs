@@ -150,8 +150,8 @@ void main(void)
 
             float dt = length(tcr - tc) / length(tc_step);
             vec3 position = vPosition.xyz + (t - dt * t_step) * raydir;
-            vec3 normal = -normalize(nabla);
-            vec3 view = -raydir;
+            vec3 normal = normalize(nabla);
+            vec3 view = raydir;
 
             vec3 lp = vec3(gl_LightSource[0].spotDirection);
             float bias = max(0.01 * (1.0 - dot(normal, lp)), 0.001);
