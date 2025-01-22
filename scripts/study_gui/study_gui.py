@@ -271,12 +271,22 @@ class Ui(QtWidgets.QWidget):
 
     def get_time_as_str(self):
         return '[' + datetime.datetime.now().strftime("%H:%M:%S") + '] - '
+    
+    def move_text_cursor_to_start(self, textEdit):
+        cursor = textEdit.textCursor()
+        cursor.setPosition(0)
+        textEdit.setTextCursor(cursor)
+
+    def scroll_textedit_to_end(self, textEdit):
+        textEdit.verticalScrollBar().setValue(textEdit.verticalScrollBar().maximum())
 
     def print_info(self, msg):
         self.textEdit_info.insertPlainText(self.get_time_as_str() + msg + '\n')
+        self.scroll_textedit_to_end(self.textEdit_info)
 
     def print_debug(self, msg):
         self.textEdit_debug.insertPlainText(self.get_time_as_str() + msg)
+        self.scroll_textedit_to_end(self.textEdit_debug)
 
     def handle_stderr(self):
         msg = bytes(self._ambf_process.readAllStandardError()).decode('utf-8')
