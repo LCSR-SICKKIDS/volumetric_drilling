@@ -66,6 +66,9 @@ class RGBA:
     def to_str(self):
         string = str(self.R) + ', ' + str(self.G) + ', ' + str(self.B) + ', ' + str(self.A)
         return string
+    
+    def as_list(self):
+        return [self.R, self.G, self.B, self.A]
 
 
 class SegmentInfo:
@@ -178,46 +181,13 @@ class NrrdConverter:
             print('-------------------')
 
     def copy_volume_to_image_matrix(self):
-        are_label_maps_collapsed = self.are_labelmaps_collapsed(self.nrrd_hdr)
         if self.num_channels == 4:
-            # for nl in range(self.num_layers):
-            #     seg_data = self.nrrd_data[nl, :, :, :]
-            #     print('Layer Number: ', nl)
-            #     R = seg_data * self._segments_colors[nl, 0]
-            #     print('\tStep: ', 1)
-            #     G = seg_data * self._segments_colors[nl, 1]
-            #     print ('\tStep: ', 2)
-            #     B = seg_data * self._segments_colors[nl, 2]
-            #     print('\tStep: ', 3)
-            #     A = seg_data * self._segments_colors[nl, 3]
-            #     print('\tStep: ', 4)
-            #     RGBA = np.stack((R, G, B, A), axis=-1)
-            #     print('\tStep: ', 5)
-            #     self._images_matrix += RGBA
-            #     print('\tStep: ', 6)
-
             for seg_info in self._segments_infos:
+                # The segments can be separated into layers or collapsed. This implementation handles both
+                print('\t Processing Segment', seg_info.index, ": ", seg_info.name)
                 seg_data = self.nrrd_data[seg_info.layer, :, :, :]
-                if are_label_maps_collapsed:
-                    label = seg_info.label
-                    print('Processing Segmentation')
-                    seg_info.print_info()
-                    data = (seg_data == label).astype(int)
-                else:
-                    data = seg_data
-                print('Layer Number: ', seg_info.layer)
-                R = data * seg_info.color.R
-                print('\tStep: ', 1)
-                G = data * seg_info.color.G
-                print('\tStep: ', 2)
-                B = data * seg_info.color.B
-                print('\tStep: ', 3)
-                A = data * seg_info.color.A
-                print('\tStep: ', 4)
-                RGBA = np.stack((R, G, B, A), axis=-1)
-                print('\tStep: ', 5)
-                self._images_matrix += RGBA
-                print('\tStep: ', 6)
+                rgba_data = self.binary_to_rgba(seg_data, seg_info.label, seg_info.color.as_list())
+                self._images_matrix += rgba_data
 
     def normalize_image_matrix_data(self):
         max = self._images_matrix.max()
@@ -264,6 +234,20 @@ class NrrdConverter:
                 if segment_idx > num_segs:
                     num_segs = segment_idx
         return num_segs + 1
+    
+    @staticmethod
+    def binary_to_rgba(binary_array, label, rgba):
+        """
+        Convert a 3D binary array (0s and 1s) to an RGBA array.
+        """
+        x, y, z = binary_array.shape
+        rgba_array = np.zeros((x, y, z, 4))
+
+        # Set white (255,255,255,255) for 1s and black (0,0,0,255) for 0s
+        rgba_array[binary_array == label] = rgba
+
+        return rgba_array
+
 
 
 def main():
