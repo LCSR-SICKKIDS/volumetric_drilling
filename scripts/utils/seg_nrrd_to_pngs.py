@@ -138,12 +138,12 @@ class NrrdConverter:
             # Throw some error or warning
             pass
 
-    def initialize_segments_infos(self):
-        self.num_segments = self.find_number_of_segments(self.nrrd_hdr)
+    def initialize_segments_infos(self, nrrd_hdr):
+        self.num_segments = self.find_number_of_segments(nrrd_hdr)
         for i in range(self.num_segments):
             self._segments_infos.append(SegmentInfo())
 
-        for k, i in self.nrrd_hdr.items():
+        for k, i in nrrd_hdr.items():
             key_str = '_ID'
             if k.find(key_str) != -1:
                 prefix = k.split(key_str)[0]
@@ -153,20 +153,20 @@ class NrrdConverter:
                 label_str = prefix + '_LabelValue'
 
                 idx = int(re.findall(r'\d+', k)[0])
-                name = self.nrrd_hdr[name_str]
+                name = nrrd_hdr[name_str]
                 try:
-                    label = int(self.nrrd_hdr[label_str])
+                    label = int(nrrd_hdr[label_str])
                 except:
                     print('WARN! For segmentation ', name, ' no label data specified, setting to 1')
                     label = 1
 
                 try:
-                    layer = int(self.nrrd_hdr[layer_str])
+                    layer = int(nrrd_hdr[layer_str])
                 except:
                     print('WARN! For segmentation ', name, ' no layer data specified, setting to ', idx)
                     layer = idx
 
-                color_data_str = self.nrrd_hdr[color_str]
+                color_data_str = nrrd_hdr[color_str]
                 color_data = np.fromstring(color_data_str, dtype=float, sep=' ')
 
                 self._segments_infos[idx].fill(idx, name, layer, label, color_data)
