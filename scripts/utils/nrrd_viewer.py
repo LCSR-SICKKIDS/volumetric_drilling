@@ -46,7 +46,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QFileDialog, QLabel
 from PyQt5.QtCore import Qt
-from seg_nrrd_to_pngs import SegmentInfo, NrrdConverter
+from seg_nrrd_to_pngs import SegmentInfo, SegNrrdCoalescer
+import PIL.Image
 
 
 class NRRDViewer(QWidget):
@@ -64,7 +65,7 @@ class NRRDViewer(QWidget):
         self.label = QLabel("No file loaded", self)
         layout.addWidget(self.label)
         
-        self.loadButton = QPushButton("Load NRRD File", self)
+        self.loadButton = QPushButton("Load File (NRRD or SEG NRRD)", self)
         self.loadButton.clicked.connect(self.load_nrrd)
         layout.addWidget(self.loadButton)
         
@@ -72,9 +73,14 @@ class NRRDViewer(QWidget):
         self.showButton.clicked.connect(self.show_slices)
         self.showButton.setEnabled(False)
         layout.addWidget(self.showButton)
+
+        self.saveButton = QPushButton("Save slices as PNGs", self)
+        self.saveButton.clicked.connect(self.save_slices_as_pngs)
+        self.saveButton.setEnabled(False)
+        layout.addWidget(self.saveButton)
         
         self.setLayout(layout)
-        self.setWindowTitle("NRRD Viewer")
+        self.setWindowTitle("NRRD and SEG NRRD")
         self.setGeometry(100, 100, 300, 150)
 
     def binary_to_rgba(self, binary_array, rgba, threshold=1):
@@ -99,18 +105,19 @@ class NRRDViewer(QWidget):
             self.nrrd_data, self.nrrd_header = nrrd.read(filePath)
             if len(self.nrrd_data.shape) == 4:  # Handle 4D segmentation data
                 # self.nrrd_data = np.sum(self.nrrd_data, axis=-1)  # Coalesce along the last dimension
-                nrrd_conv = NrrdConverter(1, 1, 1)
-                nrrd_conv.read_nrrd(filePath)
-                nrrd_conv.initialize_image_matrix()
-                nrrd_conv.initialize_segments_infos(self.nrrd_header)
-                nrrd_conv.copy_volume_to_image_matrix()
-                self.nrrd_data = nrrd_conv._images_matrix
+                nrrd_coalescer = SegNrrdCoalescer()
+                nrrd_coalescer.read_nrrd(filePath)
+                nrrd_coalescer.initialize_image_matrix()
+                nrrd_coalescer.initialize_segments_infos(self.nrrd_header)
+                nrrd_coalescer.coalesce_segments_into_3D_data()
+                self.nrrd_data = nrrd_coalescer._images_matrix
 
             
             self.label.setText(f"Loaded: {filePath.split('/')[-1]}")
             self.showButton.setEnabled(True)
+            self.saveButton.setEnabled(True)
             self.current_slice = [self.nrrd_data.shape[0] // 2, self.nrrd_data.shape[1] // 2, self.nrrd_data.shape[2] // 2]
-            print("NRRD Metadata:", self.nrrd_header)
+            # print("NRRD Metadata:", self.nrrd_header)
             self.show_slices()
 
     def show_slices(self):
@@ -121,6 +128,18 @@ class NRRDViewer(QWidget):
             
             self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
             plt.show()
+
+    def save_slices_as_pngs(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Directory")
+
+        if folder:
+            print("INFO! Path selected", folder) 
+            if self.nrrd_data is not None:
+                cmap = 'gray' if 'segmentation' not in self.nrrd_header.get('type', '').lower() else 'jet'
+                for i in range(self.nrrd_data.shape[2]):
+                    im_name = folder + '/slice0' + str(i) + '.png'
+                    plt.imsave(im_name, self.nrrd_data[:, :, i], cmap=cmap)
+
     
     def update_slices(self):
         cmap = 'gray' if 'segmentation' not in self.nrrd_header.get('type', '').lower() else 'jet'

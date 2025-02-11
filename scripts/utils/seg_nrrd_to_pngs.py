@@ -47,6 +47,7 @@ from argparse import ArgumentParser
 import re
 from pathlib import Path
 from shutil import rmtree
+import time
 
 
 class RGBA:
@@ -94,8 +95,8 @@ class SegmentInfo:
         print('Segmentation Color: ', self.color.to_str())
 
 
-class NrrdConverter:
-    def __init__(self, x_ratio, y_ratio, z_ratio):
+class SegNrrdCoalescer:
+    def __init__(self, x_ratio=1, y_ratio=1, z_ratio=1):
         self._images_matrix = None
         self.num_layers = 1 # Number of layers, could be 1
         self.num_segments = 0 # Number of segmentations, could be 1
@@ -180,19 +181,20 @@ class NrrdConverter:
             self._segments_infos[i].print_info()
             print('-------------------')
 
-    def copy_volume_to_image_matrix(self):
+    def coalesce_segments_into_3D_data(self):
         if self.num_channels == 4:
+            start_time = time.time()
             for seg_info in self._segments_infos:
                 # The segments can be separated into layers or collapsed. This implementation handles both
-                print('\t Processing Segment', seg_info.index, ": ", seg_info.name)
+                print('\t INFO! Processing Segment', seg_info.index, ": ", seg_info.name)
                 seg_data = self.nrrd_data[seg_info.layer, :, :, :]
                 rgba_data = self.binary_to_rgba(seg_data, seg_info.label, seg_info.color.as_list())
                 self._images_matrix += rgba_data
 
-    def normalize_image_matrix_data(self):
-        max = self._images_matrix.max()
-        min = self._images_matrix.min()
-        self._images_matrix = (self._images_matrix - min) / float(max - min)
+            self._images_matrix = np.clip(self._images_matrix, 0., 1.)
+            print("INFO! Coalescing segments took", time.time() - start_time, "seconds")
+        else:
+            raise Exception("ERROR! Expecting 4D data while provided data dimensions are", self.num_channels)
 
     def scale_image_matrix_data(self, scale):
         self._images_matrix = self._images_matrix * scale
@@ -263,13 +265,13 @@ def main():
     print('Specified Arguments')
     print(parsed_args)
 
-    nrrd_converter = NrrdConverter(int(parsed_args.x_skip), int(parsed_args.y_skip), int(parsed_args.z_skip))
+    nrrd_converter = SegNrrdCoalescer(int(parsed_args.x_skip), int(parsed_args.y_skip), int(parsed_args.z_skip))
     nrrd_converter.read_nrrd(parsed_args.nrrd_file)
     nrrd_converter.initialize_image_matrix()
     nrrd_converter.initialize_segments_infos()
     nrrd_converter.print_segments_infos()
 
-    nrrd_converter.copy_volume_to_image_matrix()
+    nrrd_converter.coalesce_segments_into_3D_data()
     # nrrd_converter.normalize_image_matrix_data()
     nrrd_converter.scale_image_matrix_data(255)
     
