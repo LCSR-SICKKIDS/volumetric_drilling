@@ -41,40 +41,17 @@
 # */
 # //==============================================================================
 import nrrd
-import PIL.Image
-import numpy as np
 from argparse import ArgumentParser
-
-
-def save_image(array, im_name):
-	im = PIL.Image.fromarray(array.astype(np.uint8))
-	im.save(im_name)
-
-
-def normalize_data(data):
-	max = data.max()
-	min = data.min()
-	normalized_data = (data - min) / float(max - min)
-	return normalized_data
-
-
-def scale_data(data, scale):
-	scaled_data = data * scale
-	return scaled_data
-
-
-def save_volume_as_images(data, im_prefix):
-	for i in range(data.shape[2]):
-		im_name = im_prefix + '0' + str(i) + '.png'
-		save_image(data[:, :, i], im_name)
+from volume_data_to_slices import *
 
 
 def main():
 	# Begin Argument Parser Code
 	parser = ArgumentParser()
-	parser.add_argument('-n', action='store', dest='nrrd_file', help='Specify Nrrd File')
-	parser.add_argument('-p', action='store', dest='image_prefix', help='Specify Image Prefix',
-						default='plane0')
+	parser.add_argument('-n', action='store', dest='nrrd_file', help='Specify NRRD File')
+	parser.add_argument('-s', action='store', dest='slices_path', help='Specify folder to store slices')
+	parser.add_argument('-p', action='store', dest='slices_prefix', help='Specify prefix for slices',
+						default='slice0')
 
 	parsed_args = parser.parse_args()
 	print('Specified Arguments')
@@ -82,9 +59,7 @@ def main():
 
 	data, header = nrrd.read(parsed_args.nrrd_file)
 
-	normalized_data = normalize_data(data)
-	scaled_data = scale_data(normalized_data, 255.9)
-	save_volume_as_images(scaled_data, parsed_args.image_prefix)
+	save_volume_data_as_slices(data, parsed_args.slices_path, parsed_args.slices_prefix, "gray")
 
 if __name__ == '__main__':
     main()

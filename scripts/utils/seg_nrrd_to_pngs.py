@@ -40,7 +40,6 @@
 #     \version   1.0
 # */
 # //==============================================================================
-from PIL import Image
 import numpy as np
 import nrrd
 from argparse import ArgumentParser
@@ -48,6 +47,7 @@ import re
 from pathlib import Path
 from shutil import rmtree
 import time
+from volume_data_to_slices import *
 
 
 class RGBA:
@@ -70,6 +70,7 @@ class RGBA:
     
     def as_list(self):
         return [self.R, self.G, self.B, self.A]
+    
 
 
 class SegmentInfo:
@@ -97,7 +98,7 @@ class SegmentInfo:
 
 class SegNrrdCoalescer:
     def __init__(self, x_ratio=1, y_ratio=1, z_ratio=1):
-        self._images_matrix = None
+        self._coalesced_data = None
         self.num_layers = 1 # Number of layers, could be 1
         self.num_segments = 0 # Number of segmentations, could be 1
         self.num_channels = 1 # Number of color channels, 1 for Grayscale and 4 for RGBA
@@ -112,15 +113,11 @@ class SegNrrdCoalescer:
         self.y_dim_ratio = y_ratio
         self.z_dim_ratio = z_ratio
 
-    def read_nrrd(self, filename):
-        data, self.nrrd_hdr = nrrd.read(filename)
-        z_step = self.z_dim_ratio
-        y_step = self.y_dim_ratio
-        x_step = self.x_dim_ratio
+    def set_nrrd(self, hdr, data):
+        self.nrrd_hdr = hdr
+        self.nrrd_data = data[:, ::self.x_dim_ratio, ::self.y_dim_ratio, ::self.z_dim_ratio]
 
-        self.nrrd_data = data[:, ::x_step, ::y_step, ::z_step]
-
-    def initialize_image_matrix(self):
+    def _initialize_coalesced_data(self):
         # Create a 3D block where the first index refers to individual images,
         # The second index refers to x_dim, the third to y_dim and the fourth to z_dim(e.g. Z)
 
@@ -135,14 +132,14 @@ class SegNrrdCoalescer:
             self.num_channels = 1
 
         if self.num_channels == 1:
-            self._images_matrix = np.zeros([self.x_dim, self.y_dim,  self.z_dim])
+            self._coalesced_data = np.zeros([self.x_dim, self.y_dim,  self.z_dim])
         if self.num_channels == 4:
-            self._images_matrix = np.zeros([self.x_dim, self.y_dim, self.z_dim, self.num_channels])
+            self._coalesced_data = np.zeros([self.x_dim, self.y_dim, self.z_dim, self.num_channels])
         else:
             # Throw some error or warning
             pass
 
-    def initialize_segments_infos(self, nrrd_hdr):
+    def _initialize_segments_infos(self, nrrd_hdr):
         self.num_segments = self.find_number_of_segments(nrrd_hdr)
         for i in range(self.num_segments):
             self._segments_infos.append(SegmentInfo())
@@ -181,7 +178,9 @@ class SegNrrdCoalescer:
             self._segments_infos[i].print_info()
             print('-------------------')
 
-    def coalesce_segments_into_3D_data(self):
+    def _coalesce_segments_into_3D_data(self):
+        self._initialize_coalesced_data()
+        self._initialize_segments_infos(self.nrrd_hdr)
         if self.num_channels == 4:
             start_time = time.time()
             for seg_info in self._segments_infos:
@@ -189,36 +188,17 @@ class SegNrrdCoalescer:
                 print('\t INFO! Processing Segment', seg_info.index, ": ", seg_info.name)
                 seg_data = self.nrrd_data[seg_info.layer, :, :, :]
                 rgba_data = self.binary_to_rgba(seg_data, seg_info.label, seg_info.color.as_list())
-                self._images_matrix += rgba_data
+                self._coalesced_data += rgba_data
 
-            self._images_matrix = np.clip(self._images_matrix, 0., 1.)
+            self._coalesced_data = np.clip(self._coalesced_data, 0., 1.)
             print("INFO! Coalescing segments took", time.time() - start_time, "seconds")
         else:
             raise Exception("ERROR! Expecting 4D data while provided data dimensions are", self.num_channels)
+        
+    def get_coalesced_data(self):
+        self._coalesce_segments_into_3D_data()
+        return self._coalesced_data
 
-    def scale_image_matrix_data(self, scale):
-        self._images_matrix = self._images_matrix * scale
-
-    def normalize_data(self, data):
-        max = data.max()
-        min = data.min()
-        normalized_data = (data - min) / float(max - min)
-        return normalized_data
-
-    def scale_data(self, data, scale):
-        scaled_data = data * scale
-        return scaled_data
-
-    def save_image(self, array, im_name):
-        im = Image.fromarray(array.astype(np.uint8))
-        im.save(im_name)
-
-    def save_image_matrix_as_images(self, dst_path: Path, im_prefix):
-        print("Saving volume to png images at " + str(dst_path) + "...")
-        for nz in range(self.z_dim):
-            im_name = im_prefix + f"{nz}" + ".png"
-            im_name = str(dst_path / im_name)
-            self.save_image(self._images_matrix[:, :, nz, :], im_name)
 
     @staticmethod
     def are_labelmaps_collapsed(h):
@@ -256,31 +236,23 @@ def main():
     # Begin Argument Parser Code
     parser = ArgumentParser()
     parser.add_argument('-n', action='store', dest='nrrd_file', help='Specify Nrrd File', required = True)
-    parser.add_argument('-p', action='store', dest='image_prefix', help='Specify Image Prefix', default='plane00')
-    parser.add_argument("-dst_p", action='store', help="Directory to save all images (Required)", required=True)
-    parser.add_argument('--rx', action='store', dest='x_skip', help='X axis order [1-100]. Higher value indicates greater reduction', default=2)
-    parser.add_argument('--ry', action='store', dest='y_skip', help='Y axis order [1-100]. Higher value indicates greater reduction', default=2)
-    parser.add_argument('--rz', action='store', dest='z_skip', help='Z axis order [1-100]. Higher value indicates greater reduction', default=2)
+    parser.add_argument('-p', action='store', dest='slices_prefix', help='Specify Image Prefix', default='slice0')
+    parser.add_argument('-s', action='store', dest='slices_path', help='Specify folder to store slices')
+    parser.add_argument('--rx', action='store', dest='x_skip', help='X axis order [1-100]. Higher value indicates greater reduction', default=1)
+    parser.add_argument('--ry', action='store', dest='y_skip', help='Y axis order [1-100]. Higher value indicates greater reduction', default=1)
+    parser.add_argument('--rz', action='store', dest='z_skip', help='Z axis order [1-100]. Higher value indicates greater reduction', default=1)
     parsed_args = parser.parse_args()
     print('Specified Arguments')
     print(parsed_args)
 
     nrrd_converter = SegNrrdCoalescer(int(parsed_args.x_skip), int(parsed_args.y_skip), int(parsed_args.z_skip))
-    nrrd_converter.read_nrrd(parsed_args.nrrd_file)
-    nrrd_converter.initialize_image_matrix()
-    nrrd_converter.initialize_segments_infos()
+    data, hdr = nrrd.read(parsed_args.nrrd_file)
+    nrrd_converter.set_nrrd(hdr, data)
     nrrd_converter.print_segments_infos()
 
-    nrrd_converter.coalesce_segments_into_3D_data()
-    # nrrd_converter.normalize_image_matrix_data()
-    nrrd_converter.scale_image_matrix_data(255)
+    data = nrrd_converter.get_coalesced_data()
     
-    dst_path = Path(parsed_args.dst_p)
-    if dst_path.exists():
-        rmtree(dst_path)
-    dst_path.mkdir()
-    nrrd_converter.save_image_matrix_as_images(dst_path, parsed_args.image_prefix)
-
+    save_volume_data_as_slices(data, parsed_args.slices_path, parsed_args.slices_prefix, "jet")
 
 if __name__ == '__main__':
     main()
