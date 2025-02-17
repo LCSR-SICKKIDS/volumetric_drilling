@@ -188,7 +188,8 @@ def nrrd_to_adf(nrrd_kin_data: NrrdKinematicsData, nrrd_data, nrrd_filepath, adf
     adf_data.set_volume_kinematics_attributes(nrrd_kin_data)
     adf_data.set_volume_name_from_nrrd_filepath(nrrd_filepath)
 
-    rel_slices_path = os.path.relpath(slices_path, adf_filepath)
+    print("INFO! \n\t SLICES PATH {} \n\tADF FILEPATH {}".format(slices_path, adf_filepath))
+    rel_slices_path = os.path.relpath(slices_path, os.path.dirname(adf_filepath))
     adf_data.set_volume_data_info_attributes(rel_slices_path, slices_prefix, nrrd_data.shape[2], "png")
 
     adf_data.set_parent_body_name_attribute(adf_data.volume_data["name"] + "_Anatomical_Origin")
