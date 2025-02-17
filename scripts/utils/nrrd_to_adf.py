@@ -58,6 +58,7 @@ class NrrdKinematicsData:
         self.orientation_rpy = []
         self.resolution = []
         self.dimensions = []
+        self.sizes = []
         self.coordinate_representation = ""
 
     def load(self, nrrd_hdr):
@@ -71,7 +72,8 @@ class NrrdKinematicsData:
         if sizes.shape[0] == 4: # Seg NRRD, take the last three values
             sizes = sizes[1:4]
 
-        self.dimensions = self.resolution * sizes
+        self.sizes = sizes
+        self.dimensions = self.resolution * self.sizes
         self.coordinate_representation = nrrd_hdr['space'] # Usually LPS or RAS
 
         if self.coordinate_representation.lower() != 'left-posterior-superior':

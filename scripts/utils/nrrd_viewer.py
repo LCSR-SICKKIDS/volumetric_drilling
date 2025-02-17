@@ -45,10 +45,10 @@ import os
 import nrrd
 import numpy as np
 import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout, QFileDialog, QLabel, QLineEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout, QFileDialog, QLabel, QLineEdit, QCheckBox
 from PyQt5.QtCore import Qt
 from seg_nrrd_to_pngs import SegmentInfo, SegNrrdCoalescer
-from nrrd_to_adf import NrrdKinematicsData, nrrd_to_adf
+from nrrd_to_adf import NrrdKinematicsData, nrrd_to_adf, ADFData
 from volume_data_to_slices import save_volume_data_as_slices
 
 
@@ -62,6 +62,7 @@ class NRRDViewer(QWidget):
         self.current_slice = [0, 0, 0]
         self.segment_infos = SegmentInfo()
         self.adf_handler = ADFData()
+        self.nrrd_kinematics_data = NrrdKinematicsData()
 
     def initUI(self):
         layout = QGridLayout()
@@ -78,46 +79,141 @@ class NRRDViewer(QWidget):
         self.show_slices_button.setEnabled(False)
         layout.addWidget(self.show_slices_button, 1, 0, 1, 3)
 
+        self.override_kinematics = QCheckBox("Override:")
+        self.override_kinematics.checkState = False
+        layout.addWidget(self.override_kinematics, 1, 4)
+
+        self.origin_label = QLabel("Origin:")
+        layout.addWidget(self.origin_label, 2, 0, 1, 1)
+
+        self.origin_x = QLineEdit("0.")
+        layout.addWidget(self.origin_x, 2, 1, 1, 1)
+
+        self.origin_y = QLineEdit("0.")
+        layout.addWidget(self.origin_y, 2, 2, 1, 1)
+
+        self.origin_z = QLineEdit("0.")
+        layout.addWidget(self.origin_z, 2, 3, 1, 1)
+
+        self.orientation_label = QLabel("Orientation (RPY):")
+        layout.addWidget(self.orientation_label, 3, 0, 1, 1)
+
+        self.orientation_roll = QLineEdit("0.")
+        layout.addWidget(self.orientation_roll, 3, 1, 1, 1)
+
+        self.orientation_pitch = QLineEdit("0.")
+        layout.addWidget(self.orientation_pitch, 3, 2, 1, 1)
+
+        self.orientation_yaw = QLineEdit("0.")
+        layout.addWidget(self.orientation_yaw, 3, 3, 1, 1)
+
+        self.dimensions_label = QLabel("Dimensions:")
+        layout.addWidget(self.dimensions_label, 4, 0, 1, 1)
+
+        self.dim_x = QLineEdit("0.")
+        layout.addWidget(self.dim_x, 4, 1, 1, 1)
+
+        self.dim_y = QLineEdit("0.")
+        layout.addWidget(self.dim_y, 4, 2, 1, 1)
+
+        self.dim_z = QLineEdit("0.")
+        layout.addWidget(self.dim_z, 4, 3, 1, 1)
+
+        self.sizes_label = QLabel("Size:")
+        layout.addWidget(self.sizes_label, 5, 0, 1, 1)
+
+        self.sizes_x = QLineEdit("0")
+        layout.addWidget(self.sizes_x, 5, 1, 1, 1)
+
+        self.sizes_y = QLineEdit("0")
+        layout.addWidget(self.sizes_y, 5, 2, 1, 1)
+
+        self.sizes_z = QLineEdit("0")
+        layout.addWidget(self.sizes_z, 5, 3, 1, 1)
+
+        self.units_scale_label = QLabel("Units Scale (SI)")
+        layout.addWidget(self.units_scale_label,6, 0, 1, 1)
+
+        self.units_scale = QLineEdit("0.001")
+        layout.addWidget(self.units_scale, 6, 1, 1, 3)
+
         self.prefix_label = QLabel("Slices Prefix:", self)
-        layout.addWidget(self.prefix_label, 2, 0)
+        layout.addWidget(self.prefix_label, 7, 0)
 
         self.slices_prefix = QLineEdit(self)
         self.slices_prefix.setText("slice0")
-        layout.addWidget(self.slices_prefix, 2, 1)
+        layout.addWidget(self.slices_prefix, 7, 1)
         
         self.slices_path_label = QLabel("Output Slices Dir:", self)
-        layout.addWidget(self.slices_path_label, 3, 0)
+        layout.addWidget(self.slices_path_label, 8, 0)
 
         self.slices_path = QLineEdit(self)
-        layout.addWidget(self.slices_path, 3, 1)
+        layout.addWidget(self.slices_path, 8, 1)
 
         self.select_folder_button = QPushButton("...", self)
         self.select_folder_button.clicked.connect(self.select_folder)
-        layout.addWidget(self.select_folder_button, 3, 2)
+        layout.addWidget(self.select_folder_button, 8, 2)
 
         self.save_slices_button = QPushButton("Save slices as PNGs", self)
         self.save_slices_button.clicked.connect(self.save_slices_as_pngs)
         self.save_slices_button.setEnabled(False)
-        layout.addWidget(self.save_slices_button, 4, 0, 1, 3)
+        layout.addWidget(self.save_slices_button, 9, 0, 1, 3)
 
         self.adf_filepath_label = QLabel("ADF:", self)
-        layout.addWidget(self.adf_filepath_label, 5, 0)
+        layout.addWidget(self.adf_filepath_label, 10, 0)
 
         self.adf_filepath = QLineEdit(self)
-        layout.addWidget(self.adf_filepath, 5, 1)
+        layout.addWidget(self.adf_filepath, 10, 1)
 
         self.select_adf_filepath_button = QPushButton("...", self)
         self.select_adf_filepath_button.clicked.connect(self.select_adf_filepath)
-        layout.addWidget(self.select_adf_filepath_button, 5, 2)
+        layout.addWidget(self.select_adf_filepath_button, 10, 2)
 
         self.save_adf_button = QPushButton("Save ADF file", self)
         self.save_adf_button.clicked.connect(self.save_adf)
         self.save_adf_button.setEnabled(False)
-        layout.addWidget(self.save_adf_button, 6, 0, 1, 3)
+        layout.addWidget(self.save_adf_button, 11, 0, 1, 3)
         
         self.setLayout(layout)
         self.setWindowTitle("NRRD and SEG NRRD")
-        self.setGeometry(100, 100, 300, 150)
+        self.setGeometry(100, 100, 1000, 200)
+
+    def _set_layout_from_nrrd_kinematics_data(self, nrrd_kin: NrrdKinematicsData):
+        self.origin_x.setText(str(nrrd_kin.origin[0]))
+        self.origin_y.setText(str(nrrd_kin.origin[1]))
+        self.origin_z.setText(str(nrrd_kin.origin[2]))
+
+        self.orientation_roll.setText(str(nrrd_kin.orientation_rpy[0]))
+        self.orientation_pitch.setText(str(nrrd_kin.orientation_rpy[1]))
+        self.orientation_yaw.setText(str(nrrd_kin.orientation_rpy[2]))
+
+        self.dim_x.setText(str(nrrd_kin.dimensions[0]))
+        self.dim_y.setText(str(nrrd_kin.dimensions[1]))
+        self.dim_z.setText(str(nrrd_kin.dimensions[2]))
+
+        self.sizes_x.setText(str(nrrd_kin.sizes[0]))
+        self.sizes_y.setText(str(nrrd_kin.sizes[1]))
+        self.sizes_z.setText(str(nrrd_kin.sizes[2]))
+
+    def _get_nrrd_kinematics_data_from_layout(self):
+        nrrd_kin = NrrdKinematicsData()
+        nrrd_kin.origin[0] = float(self.origin_x.text())
+        nrrd_kin.origin[1] = float(self.origin_y.text())
+        nrrd_kin.origin[2] = float(self.origin_z.text())
+
+        nrrd_kin.orientation_rpy[0] = float(self.orientation_roll.text())
+        nrrd_kin.orientation_rpy[1] = float(self.orientation_pitch.text())
+        nrrd_kin.orientation_rpy[2] = float(self.orientation_yaw.text())
+
+        nrrd_kin.dimensions[0] = float(self.dim_x.text())
+        nrrd_kin.dimensions[1] = float(self.dim_y.text())
+        nrrd_kin.dimensions[2] = float(self.dim_z.text())
+
+        nrrd_kin.sizes[0] = int(self.sizes_x.text())
+        nrrd_kin.sizes[1] = int(self.sizes_y.text())
+        nrrd_kin.sizes[2] = int(self.sizes_z.text())
+
+        return nrrd_kin
 
     def binary_to_rgba(self, binary_array, rgba, threshold=1):
         """
@@ -139,6 +235,9 @@ class NRRDViewer(QWidget):
         
         if self.nrrd_filepath:
             self.nrrd_data, self.nrrd_header = nrrd.read(self.nrrd_filepath)
+            self.nrrd_kinematics_data.load(self.nrrd_header)
+            self._update_layout_from_nrrd_kinematics_data(self.nrrd_kinematics_data)
+
             if len(self.nrrd_data.shape) == 4:  # Handle 4D segmentation data
                 # self.nrrd_data = np.sum(self.nrrd_data, axis=-1)  # Coalesce along the last dimension
                 nrrd_coalescer = SegNrrdCoalescer()
@@ -172,7 +271,12 @@ class NRRDViewer(QWidget):
         save_volume_data_as_slices(self.nrrd_data, self.slices_path.text(), self.slices_prefix.text(), color_map)
 
     def save_adf(self):
-        nrrd_to_adf(self.nrrd_header,
+        if self.override_kinematics:
+            nrrd_kinematics_data = self._get_nrrd_kinematics_data_from_layout()
+        else:
+            nrrd_kinematics_data = self.nrrd_kinematics_data
+
+        nrrd_to_adf(nrrd_kinematics_data,
                     self.nrrd_data,
                     self.nrrd_filepath,
                     self.adf_filepath.text(),
