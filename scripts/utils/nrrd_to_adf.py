@@ -60,6 +60,7 @@ class NrrdKinematicsData:
         self.dimensions = []
         self.sizes = []
         self.coordinate_representation = ""
+        self.units_scale = 0.001 # NRRD is commonly in mm, convert to SI
 
     def load(self, nrrd_hdr):
         self.origin = nrrd_hdr['space origin']
@@ -91,7 +92,7 @@ class NrrdKinematicsData:
     
 
 class ADFData:
-    def __init__(self, units_scale=0.001):
+    def __init__(self):
         self.meta_data = OrderedDict()
         self.meta_data["ADF Version"] = 1.0
         self.meta_data["volumes"] = []
@@ -113,8 +114,6 @@ class ADFData:
         self.parent_body_data["location"]["orientation"] = {"r": 0.0, "p": 0.0, "y": 0.0}
         self.parent_body_data["mass"] = 0.0
 
-        self.units_scale = units_scale # NRRD is commonly in mm, convert to SI
-
     def set_volume_name_from_nrrd_filepath(self, nrrd_filepath):
         self.volume_data["volume filepath"] = nrrd_filepath
         self.set_volume_name(os.path.basename(nrrd_filepath).split('.')[0])
@@ -123,8 +122,8 @@ class ADFData:
         self.volume_data["name"] = name
 
     def set_volume_kinematics_attributes(self, kinematic_data: NrrdKinematicsData):
-        origin = kinematic_data.origin * self.units_scale
-        dimensions = kinematic_data.dimensions * self.units_scale
+        origin = kinematic_data.origin * kinematic_data.units_scale
+        dimensions = kinematic_data.dimensions * kinematic_data.units_scale
         self.set_location_attributes(self.volume_data, origin, kinematic_data.orientation_rpy)
 
         self.volume_data["dimensions"]["x"] = float(dimensions[0])
