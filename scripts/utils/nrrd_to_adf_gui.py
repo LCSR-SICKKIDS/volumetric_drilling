@@ -52,7 +52,7 @@ from nrrd_to_adf import NrrdGeometricData, nrrd_to_adf, ADFData
 from volume_data_to_slices import save_volume_data_as_slices
 
 
-class NRRDViewer(QWidget):
+class NRRD2ADFConverterGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.nrrd_data = None
@@ -262,7 +262,7 @@ class NRRDViewer(QWidget):
         
         # Finalize
         self.setLayout(layout)
-        self.setWindowTitle("NRRD and SEG NRRD")
+        self.setWindowTitle("NRRD TO ADF CONVERTER")
         self.setGeometry(100, 100, 800, 600)
 
         self.override_geometric_cb()
@@ -445,6 +445,6 @@ class NRRDViewer(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    viewer = NRRDViewer()
+    viewer = NRRD2ADFConverterGUI()
     viewer.show()
     sys.exit(app.exec_())
