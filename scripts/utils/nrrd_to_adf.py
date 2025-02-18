@@ -52,7 +52,7 @@ from seg_nrrd_to_pngs import SegNrrdCoalescer
 import matplotlib.pyplot as plt
 from volume_data_to_slices import *
 
-class NrrdKinematicsData:
+class NrrdGeometricData:
     def __init__(self):
         self.origin = []
         self.orientation_rpy = []
@@ -121,10 +121,10 @@ class ADFData:
     def set_volume_name(self, name):
         self.volume_data["name"] = name
 
-    def set_volume_kinematics_attributes(self, kinematic_data: NrrdKinematicsData):
-        origin = kinematic_data.origin * kinematic_data.units_scale
-        dimensions = kinematic_data.dimensions * kinematic_data.units_scale
-        self.set_location_attributes(self.volume_data, origin, kinematic_data.orientation_rpy)
+    def set_volume_geometric_attributes(self, geometric_data: NrrdGeometricData):
+        origin = geometric_data.origin * geometric_data.units_scale
+        dimensions = geometric_data.dimensions * geometric_data.units_scale
+        self.set_location_attributes(self.volume_data, origin, geometric_data.orientation_rpy)
 
         self.volume_data["dimensions"]["x"] = float(dimensions[0])
         self.volume_data["dimensions"]["y"] = float(dimensions[1])
@@ -136,11 +136,16 @@ class ADFData:
         self.volume_data["images"]["count"] = int(image_count)
         self.volume_data["images"]["format"] = image_format
 
+    def set_volume_shader_data(self, basepath, vs_filepath, fs_filepath):
+        self.volume_data["shaders"] = OrderedDict()
+        self.volume_data["shaders"]["path"] = basepath
+        self.volume_data["shaders"]["vertex"] = vs_filepath
+        self.volume_data["shaders"]["fragment"] = fs_filepath
     def set_parent_body_name_attribute(self, name):
         self.parent_body_data["name"] = name
         self.volume_data["parent"] = "BODY " + self.parent_body_data["name"]
     
-    def set_parent_body_kinematics_attributes(self, position, orientation):
+    def set_parent_body_geometric_attributes(self, position, orientation):
         self.set_location_attributes(self.parent_body_data, position, orientation)
 
     def _coalesce_adf_data(self):
@@ -159,7 +164,7 @@ class ADFData:
 
     def save(self, filepath):
         adf_data = self._coalesce_adf_data()
-        print("ADF Data\n", adf_data)
+        # print("ADF Data\n", adf_data)
         setup_yaml()
         with open(filepath, 'w') as adffile:
             yaml.dump(adf_data, adffile, default_flow_style=False)
@@ -184,17 +189,13 @@ def setup_yaml():
     yaml.add_representer(OrderedDict, represent_dictionary_order)
 
 
-def nrrd_to_adf(nrrd_kin_data: NrrdKinematicsData, nrrd_data, nrrd_filepath, adf_filepath, slices_path="", slices_prefix=""):
+def nrrd_to_adf(nrrd_geometric_data: NrrdGeometricData, nrrd_filepath="", slices_path="", slices_prefix=""):
     adf_data = ADFData()
-    adf_data.set_volume_kinematics_attributes(nrrd_kin_data)
+    adf_data.set_volume_geometric_attributes(nrrd_geometric_data)
     adf_data.set_volume_name_from_nrrd_filepath(nrrd_filepath)
-
-    print("INFO! \n\t SLICES PATH {} \n\tADF FILEPATH {}".format(slices_path, adf_filepath))
-    rel_slices_path = os.path.relpath(slices_path, os.path.dirname(adf_filepath))
-    adf_data.set_volume_data_info_attributes(rel_slices_path, slices_prefix, nrrd_data.shape[2], "png")
-
+    adf_data.set_volume_data_info_attributes(slices_path, slices_prefix, nrrd_geometric_data.sizes[2], "png")
     adf_data.set_parent_body_name_attribute(adf_data.volume_data["name"] + "_Anatomical_Origin")
-    adf_data.save(adf_filepath)
+    return adf_data
 
 
 def main():
@@ -211,8 +212,8 @@ def main():
 
     nrrd_data, nrrd_hdr = nrrd.read(parsed_args.nrrd_file)
 
-    nrrd_kin_data = NrrdKinematicsData()
-    nrrd_kin_data.load(nrrd_hdr)
+    nrrd_geometric_data = NrrdGeometricData()
+    nrrd_geometric_data.load(nrrd_hdr)
 
     save_slices = False
     if parsed_args.save_slices in ['True', 'true', 'TRUE', 1, '1']:
@@ -228,12 +229,13 @@ def main():
 
         save_volume_data_as_slices(nrrd_data, parsed_args.slices_path, parsed_args.slices_prefix, color_map)
 
-    nrrd_to_adf(nrrd_kin_data,
-                nrrd_data,
-                parsed_args.nrrd_file,
-                parsed_args.adf_filepath,
-                parsed_args.slices_path,
-                parsed_args.slices_prefix)
+    rel_slices_path = os.path.relpath(parsed_args.slices_path, os.path.dirname(parsed_args.adf_filepath))
+
+    adf_data =  nrrd_to_adf(nrrd_geometric_data,
+                            parsed_args.nrrd_file,
+                            rel_slices_path,
+                            parsed_args.slices_prefix)
+    adf_data.save(parsed_args.adf_filepath)
     
 
 if __name__ == "__main__":
