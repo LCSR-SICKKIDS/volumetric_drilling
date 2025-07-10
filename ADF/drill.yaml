@@ -2,24 +2,25 @@
 bodies: [BODY mastoidectomy_drill]
 joints: []
 volumes: []
-high resolution path: ./meshes/high_res/
-low resolution path: ./meshes/low_res/
+high resolution path: meshes/high_res/
+low resolution path: meshes/low_res/
 ignore inter-collision: true
 namespace: /ambf/env/
 
 BODY mastoidectomy_drill:
   name: mastoidectomy_drill
-  mesh: drillMesh.obj
+  mesh: 6mm.OBJ
+  collision mesh type: CONCAVE_MESH
   mass: 0.0
   inertia:
     ix: 0.0
     iy: 0.0
     iz: 0.0
   collision margin: 0.001
-  scale: 1.0 # this is probably not the right scale now, need to double check?
+  scale: 10.0 # this is probably not the right scale now, need to double check?
   location:
     position:
-      x: -5.0
+      x: 0.0
       y: 0.0
       z: 0.0
     orientation:
@@ -39,7 +40,7 @@ BODY mastoidectomy_drill:
   publish children names: false
   publish joint names: false
   publish joint positions: false
-  shaders:
-    path: ./shaders/matcap/
-    vertex: shader.vs
-    fragment: shader.fs
+  # shaders:
+  #   path: ./shaders/matcap/
+  #   vertex: shader.vs
+  #   fragment: shader.fs
