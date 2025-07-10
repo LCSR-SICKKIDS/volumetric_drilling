@@ -137,6 +137,10 @@ def sync_volumes(args):
             params[volume_name]['location']['position']['x'] = args.volume_location[0] / args.scale
             params[volume_name]['location']['position']['y'] = args.volume_location[1] / args.scale
             params[volume_name]['location']['position']['z'] = args.volume_location[2] / args.scale
+
+            params[volume_name]['dimensions']['x'] = args.dimensions[0] / args.scale
+            params[volume_name]['dimensions']['y'] = args.dimensions[1] / args.scale
+            params[volume_name]['dimensions']['z'] = args.dimensions[2] / args.scale
             f.close()
         with open(file, 'w') as f:
             yaml.dump(params, f)
@@ -178,6 +182,10 @@ if __name__ == '__main__':
     # volume parameters
     parser.add_argument('--volume_location', nargs='?', default=[-0.3, 0.0, 0.0], help='volume location (meters)')
 
+    # volume parameters
+    parser.add_argument('--dimensions', nargs='?', default=[0.0492027, 0.0492027, 0.048485],
+                        help='XYZ Dimensions of the volume. These are divided by the Scale factor above')
+    
     # stereo parameters
     parser.add_argument('--baseline', type=float, nargs='?', default=0.025, help='meters')
 
