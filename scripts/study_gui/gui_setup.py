@@ -41,7 +41,8 @@ class GUIConfiguration:
                            "pupil_executable",
                            "recording_script_executable",
                            "recording_base_path",
-                           "launch_file"]
+                           "launch_file",
+                           "footpedal_device"]
         self.params = {}
 
         self.yaml_data = yaml.safe_load(self.yaml_file)
@@ -54,6 +55,7 @@ class GUIConfiguration:
         self.recording_script = self.params["recording_script_executable"]
         self.recording_base_path = self.params['recording_base_path']
         self.launch_file = self.params["launch_file"]
+        self.footpedal_device = self.params["footpedal_device"]
 
         volumes_data = self.yaml_data['volumes']
         self.volumes_info = []
@@ -78,6 +80,7 @@ class GUIConfiguration:
     def save(self):
         for k, v in self.params.items():
             self.yaml_data[k] = v.get_as_str()
+            print(k, v.get_as_str())
         self.yaml_file = open(str(self.yaml_file_path), 'w')
         yaml.dump(self.yaml_data, self.yaml_file)
         self.yaml_file.close()
@@ -92,6 +95,7 @@ class GUIConfiguration:
         self.recording_script = self.params["recording_script_executable"]
         self.recording_base_path = self.params['recording_base_path']
         self.launch_file = self.params["launch_file"]
+        self.footpedal_device = self.params["footpedal_device"]
         self.yaml_file.close()
         # self.print()
 

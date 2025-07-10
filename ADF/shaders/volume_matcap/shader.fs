@@ -150,8 +150,8 @@ void main(void)
 
             float dt = length(tcr - tc) / length(tc_step);
             vec3 position = vPosition.xyz + (t - dt * t_step) * raydir;
-            vec3 normal = -normalize(nabla);
-            vec3 view = -raydir;
+            vec3 normal = normalize(nabla);
+            vec3 view = raydir;
 
             vec3 lp = vec3(gl_LightSource[0].spotDirection);
             float bias = max(0.01 * (1.0 - dot(normal, lp)), 0.001);
@@ -185,9 +185,9 @@ void main(void)
       float q = dot(gl_EyePlaneQ[1], dpos);
       vec4 depos = vec4(s, t, r, q);
       vec4 shadow = shadow2DProj(shadowMap, depos);
-      gl_FragColor = vec4(sum.rgb, shadow.a);
+      if (shadow.a == 0.0){
+        sum = sum * 0.2;
+      }
     }
-    else{
       gl_FragColor = sum;
-    }
 }

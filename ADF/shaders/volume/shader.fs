@@ -176,10 +176,8 @@ void main(void)
       float q = dot(gl_EyePlaneQ[1], dpos);
       vec4 depos = vec4(s, t, r, q);
       vec4 shadow = shadow2DProj(shadowMap, depos);
-      gl_FragColor = vec4(sum.rgb, shadow.a);
+      sum.a = shadow.a;
     }
-    else{
       gl_FragColor = sum;
-    }
 
 }

@@ -421,16 +421,16 @@
     </layout>
    </item>
    <item row="8" column="1" rowspan="2">
-    <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0" columnstretch="0,0,0,0,0,0">
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_9">
+    <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0" columnstretch="0,0,0,0,0">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Launch File:</string>
+        <string>AMBF Simulator Executable: </string>
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
-      <widget class="QPushButton" name="pushButton_recording_script_executable">
+     <item row="3" column="2">
+      <widget class="QPushButton" name="pushButton_launch_file">
        <property name="maximumSize">
         <size>
          <width>20</width>
@@ -449,8 +449,70 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
-      <widget class="QTextEdit" name="textEdit_launch_file">
+     <item row="0" column="1">
+      <widget class="QTextEdit" name="textEdit_ambf_executable">
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Pupil Capture Executable:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4" rowspan="2">
+      <widget class="QPushButton" name="pushButton_reload_configuration">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>50</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Reload Configuration</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QPushButton" name="pushButton_recording_base_path">
+       <property name="maximumSize">
+        <size>
+         <width>20</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3" rowspan="5">
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Minimum</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="2" column="1">
+      <widget class="QTextEdit" name="textEdit_recording_script_executable">
        <property name="maximumSize">
         <size>
          <width>16777215</width>
@@ -475,21 +537,12 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="3" rowspan="5">
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Launch File:</string>
        </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Minimum</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
+      </widget>
      </item>
      <item row="0" column="2">
       <widget class="QPushButton" name="pushButton_ambf_executable">
@@ -501,26 +554,6 @@
        </property>
        <property name="text">
         <string>...</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>AMBF Simulator Executable: </string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QTextEdit" name="textEdit_pupil_capture_executable">
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>30</height>
-        </size>
-       </property>
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOff</enum>
        </property>
       </widget>
      </item>
@@ -537,8 +570,8 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QTextEdit" name="textEdit_recording_script_executable">
+     <item row="1" column="1">
+      <widget class="QTextEdit" name="textEdit_pupil_capture_executable">
        <property name="maximumSize">
         <size>
          <width>16777215</width>
@@ -550,26 +583,6 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>Pupil Capture Executable:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="2">
-      <widget class="QPushButton" name="pushButton_recording_base_path">
-       <property name="maximumSize">
-        <size>
-         <width>20</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>...</string>
-       </property>
-      </widget>
-     </item>
      <item row="4" column="0">
       <widget class="QLabel" name="label_10">
        <property name="text">
@@ -577,8 +590,21 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="2">
-      <widget class="QPushButton" name="pushButton_launch_file">
+     <item row="3" column="1">
+      <widget class="QTextEdit" name="textEdit_launch_file">
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QPushButton" name="pushButton_recording_script_executable">
        <property name="maximumSize">
         <size>
          <width>20</width>
@@ -590,16 +616,33 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="4" rowspan="2">
-      <widget class="QPushButton" name="pushButton_reload_configuration">
-       <property name="minimumSize">
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Footpedal Device:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QTextEdit" name="textEdit_footpedal_device">
+       <property name="maximumSize">
         <size>
-         <width>0</width>
-         <height>50</height>
+         <width>16777215</width>
+         <height>30</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="2">
+      <widget class="QPushButton" name="pushButton_footpedal_device">
+       <property name="maximumSize">
+        <size>
+         <width>20</width>
+         <height>16777215</height>
         </size>
        </property>
        <property name="text">
-        <string>Reload Configuration</string>
+        <string>...</string>
        </property>
       </widget>
      </item>
@@ -613,19 +656,6 @@
        </property>
        <property name="text">
         <string>Save Configuration</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QTextEdit" name="textEdit_ambf_executable">
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>30</height>
-        </size>
-       </property>
-       <property name="verticalScrollBarPolicy">
-        <enum>Qt::ScrollBarAlwaysOff</enum>
        </property>
       </widget>
      </item>

@@ -44,7 +44,7 @@
 #include <boost/program_options.hpp>
 
 DrillManager::DrillManager(){
-    m_units_mmToSim = 0.01007;
+    m_units_mmToSim = 0.001;
 }
 
 void DrillManager::cleanup()
@@ -91,17 +91,17 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
         return -1;
     }
 
-    vector<int> drillTypes = {1, 2, 4, 6};
+    vector<int> drillDiameters = {1, 2, 4, 6};
     vector<int> voxelRemovalThresholds = {1, 3, 6, 10};
 
-    for (int i = 0 ; i < drillTypes.size() ; i++){
-        string drillName = to_string(drillTypes[i]) + "mm";
+    for (int i = 0 ; i < drillDiameters.size() ; i++){
+        string drillName = to_string(drillDiameters[i]) + "mm";
         afRigidBodyPtr drillRB = a_worldPtr->getRigidBody(drillName);
         if (drillRB){
             Drill* drill = new Drill();
             drill->m_name = drillName;
             drill->m_rigidBody = drillRB;
-            drill->m_size = drillTypes[i] * m_units_mmToSim;
+            drill->m_radius = drillDiameters[i] * m_units_mmToSim / 2.0;
             drill->setVoxelRemvalThreshold(voxelRemovalThresholds[i]);
             m_drills.push_back(drill);
         }
@@ -120,8 +120,8 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
 
     string drill_matcap = var_map["dm"].as<string>();
 
-    m_burrMesh = new cShapeSphere(m_activeDrill->m_size);
-    m_burrMesh->setRadius(m_activeDrill->m_size);
+    m_burrMesh = new cShapeSphere(m_activeDrill->m_radius);
+    m_burrMesh->setRadius(m_activeDrill->m_radius);
     m_burrMesh->m_material->setBlack();
     m_burrMesh->m_material->setShininess(0);
     m_burrMesh->m_material->m_specular.set(0, 0, 0);
@@ -189,6 +189,15 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
     // get access to the first available haptic device found
     m_deviceHandler->getDevice(m_hapticDevice, 0);
 
+    m_toolCursorRadii.push_back(0.001);
+    m_toolCursorRadii.push_back(0.00065);
+    m_toolCursorRadii.push_back(0.00075);
+    m_toolCursorRadii.push_back(0.00085);
+    m_toolCursorRadii.push_back(0.00095);
+    m_toolCursorRadii.push_back(0.00105);
+    m_toolCursorRadii.push_back(0.00115);
+    m_toolCursorRadii.push_back(0.00125);
+
     // Initializing tool cursors
     toolCursorInit(a_worldPtr);
 
@@ -197,7 +206,7 @@ int DrillManager::init(afWorldPtr a_worldPtr, CameraPanelManager* a_panelManager
 
 void DrillManager::update(double dt)
 {
-
+    m_toolCursorList[0]->updateFromDevice();
     cTransform T_c_w = m_mainCamera->getLocalTransform();
 
     // If a valid haptic device is found, then it should be available
@@ -205,10 +214,11 @@ void DrillManager::update(double dt)
         m_T_d = m_drillReferenceBody->getLocalTransform();
     }
     else if(m_hapticDevice->isDeviceAvailable()){
-        m_hapticDevice->getTransform(m_T_i);
-        m_hapticDevice->getLinearVelocity(m_V_i);
-        m_V_i = T_c_w.getLocalRot() * (m_V_i / m_toolCursorList[0]->getWorkspaceScaleFactor());
-        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * 0.4 * !m_deviceClutch * !m_camClutch));
+//        m_hapticDevice->getTransform(m_T_i);
+//        m_hapticDevice->getLinearVelocity(m_V_i);
+        m_T_i = m_toolCursorList[0]->getDeviceLocalTransform();
+        m_V_i = T_c_w.getLocalRot() * m_toolCursorList[0]->getDeviceLocalLinVel();
+        m_T_d.setLocalPos(m_T_d.getLocalPos() + (m_V_i * !m_deviceClutch * !m_camClutch));
         m_T_d.setLocalRot(T_c_w.getLocalRot() * m_T_i.getLocalRot());
 
         // set zero forces when manipulating objects
@@ -311,7 +321,7 @@ void DrillManager::toolCursorInit(const afWorldPtr a_afWorld){
 
             // map the physical workspace of the haptic device to a larger virtual workspace.
 
-            m_toolCursorList[i]->setWorkspaceRadius(5.0);
+            m_toolCursorList[i]->setWorkspaceRadius(m_units_mmToSim * 0.1);
             m_toolCursorList[i]->setWaitForSmallForce(true);
             m_toolCursorList[i]->start();
             m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->setShowFrame(false);
@@ -323,14 +333,14 @@ void DrillManager::toolCursorInit(const afWorldPtr a_afWorld){
 
             // if the haptic device has a gripper, enable it as a user switch
             m_hapticDevice->setEnableGripperUserSwitch(true);
-            m_toolCursorList[i]->setRadius(m_activeDrill->m_size); // Set the correct radius for the tip which is not from the list of cursor radii
+            m_toolCursorList[i]->setRadius(m_activeDrill->m_radius); // Set the correct radius for the tip which is not from the list of cursor radii
         }
         else
         {
             m_toolCursorList[i]->setShowContactPoints(m_showGoalProxySpheres, m_showGoalProxySpheres);
             m_toolCursorList[i]->m_hapticPoint->m_sphereProxy->m_material->setGreenChartreuse();
             m_toolCursorList[i]->m_hapticPoint->m_sphereGoal->m_material->setOrangeCoral();
-            m_toolCursorList[i]->setRadius(m_toolCursorRadius[i]);
+            m_toolCursorList[i]->setRadius(m_toolCursorRadii[i]);
         }
      }
 
@@ -383,7 +393,7 @@ void DrillManager::toolCursorsPosUpdate(cTransform a_targetPose){
 }
 
 void DrillManager::reset(){
-    m_hapticDevice->setForce(cVector3d(0., 0., 0.));
+    m_toolCursorList[0]->setDeviceGlobalForce(cVector3d(0., 0., 0.));
     m_T_d = m_T_d_init;
     toolCursorsPosUpdate(m_T_d);
     toolCursorsInitialize();
@@ -478,24 +488,20 @@ void DrillManager::updatePoseFromCursors(){
 void DrillManager::cycleDrillTypes(){
     m_activeDrillIdx = (m_activeDrillIdx - 1) % m_drills.size();
     m_activeDrill = m_drills[m_activeDrillIdx];
-    m_toolCursorList[0]->setRadius(m_activeDrill->m_size);
-    m_burrMesh->setRadius(m_activeDrill->m_size);
+    m_toolCursorList[0]->setRadius(m_activeDrill->m_radius);
+    m_burrMesh->setRadius(m_activeDrill->m_radius);
     cout << "Drill Type changed to " << m_activeDrill->m_name << endl;
     m_panelManager->setText(m_sizeLabel, "Drill Type: " + m_activeDrill->m_name);
-
-    updatePoseFromCursors();
     showOnlyActive();
+    updatePoseFromCursors();
 
     double sim_time = m_activeDrill->m_rigidBody->getCurrentTimeStamp();
-    m_drillingPub->publishDrillSize((int)(m_activeDrill->m_size / m_units_mmToSim), sim_time);
+    m_drillingPub->publishDrillSize((int)(m_activeDrill->m_radius * 2.0 / m_units_mmToSim), sim_time);
 }
 
 void DrillManager::showOnlyActive(){
     for (int di = 0 ; di < m_drills.size() ; di++){
-        bool show = false;
-        if (di == m_activeDrillIdx){
-            show = true;
-        }
-        m_drills[di]->m_rigidBody->getVisualObject()->setShowEnabled(show);
+        m_drills[di]->m_rigidBody->getVisualObject()->setShowEnabled(false);
     }
+    m_activeDrill->m_rigidBody->getVisualObject()->setShowEnabled(true);
 }

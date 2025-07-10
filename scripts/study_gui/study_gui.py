@@ -97,6 +97,7 @@ class Ui(QtWidgets.QWidget):
         self.connect_gui_param_to_dialog('launch_file', self.gui_configuration.launch_file.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_script_executable', self.gui_configuration.recording_script.get_id(), DialogType.FILE)
         self.connect_gui_param_to_dialog('recording_base_path', self.gui_configuration.recording_base_path.get_id(), DialogType.FOLDER)
+        self.connect_gui_param_to_dialog('footpedal_device', self.gui_configuration.footpedal_device.get_id(), DialogType.FILE)
 
         self.button_save_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_save_configuration')
         self.button_save_configuration.clicked.connect(self.gui_configuration.save)
@@ -158,8 +159,10 @@ class Ui(QtWidgets.QWidget):
             launch_file_adf_indices = launch_file_adf_indices + ',5'
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
-        args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf]
+        args = ['--launch_file', str(self.gui_configuration.launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
+                "--fp", str(self.gui_configuration.footpedal_device.get())]
         # self.study_manager.start_simulation(args)
+        print("LAUNCHING AMBF WITH ARGS: ", args)
         if self._ambf_process.state() != QProcess.Running:
             self._ambf_process.start(str(self.gui_configuration.ambf_executable.get()), args)
             self.button_start_simulation.setText('Close Simulation')
@@ -174,6 +177,7 @@ class Ui(QtWidgets.QWidget):
 
     def pressed_pupil_service(self):
         try:
+            print("Launching ", self.gui_configuration.pupil_executable.get())
             self._pupil_process.start(str(self.gui_configuration.pupil_executable.get()))
         except Exception as e:
             self.print_info('ERROR! Cant launch Pupil Capture')
@@ -267,12 +271,22 @@ class Ui(QtWidgets.QWidget):
 
     def get_time_as_str(self):
         return '[' + datetime.datetime.now().strftime("%H:%M:%S") + '] - '
+    
+    def move_text_cursor_to_start(self, textEdit):
+        cursor = textEdit.textCursor()
+        cursor.setPosition(0)
+        textEdit.setTextCursor(cursor)
+
+    def scroll_textedit_to_end(self, textEdit):
+        textEdit.verticalScrollBar().setValue(textEdit.verticalScrollBar().maximum())
 
     def print_info(self, msg):
         self.textEdit_info.insertPlainText(self.get_time_as_str() + msg + '\n')
+        self.scroll_textedit_to_end(self.textEdit_info)
 
     def print_debug(self, msg):
         self.textEdit_debug.insertPlainText(self.get_time_as_str() + msg)
+        self.scroll_textedit_to_end(self.textEdit_debug)
 
     def handle_stderr(self):
         msg = bytes(self._ambf_process.readAllStandardError()).decode('utf-8')

@@ -57,9 +57,11 @@ public:
 
     void initializeLabels();
 
+    void computeCalibrationPattern();
+
     void update(double dt);
 
-    void hide(bool val);
+    void showMarker(bool val);
 
     void restart();
 
@@ -67,21 +69,27 @@ public:
 
 
 private:
-    double m_radius;
-    double m_maxRadius;
-    double m_radiusStep;
     cTransform m_T_c_w;
     cTransform m_T_m_w;
     cTransform m_T_m_c;
     double m_time;
-    double m_duration;
 
     afRigidBodyPtr m_gazeMarker;
     afCameraPtr m_mainCamera;
+    afVolumePtr m_volumePtr;
 
     cLabel* m_gazeNotificationLabel;
     string m_textStr;
     double m_textShowDuration;
+
+    int m_posIdx;
+    double m_posDur;
+    double m_posStartTime;
+    double m_widthRatio = 0.8; // A number between 0.0-1.0. 1.0 means the marker span will be at the horizontal edge of the view window.
+    double m_heightRatio = 0.8; // A number between 0.0-1.0. 1.0 means the marker span will be at the vertical edge of the view window.
+    double m_depthRatio = 0.8; // A number between 0.0-1.0. Where 1.0 is farthest (at the point of anatomy) and 0.0 at camera origin.
+    std::vector<cVector3d> m_P_m_c_list;
+    
 };
 
 #endif

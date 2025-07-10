@@ -53,13 +53,13 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
         return -1;
     }
 
-    m_duration = var_map["gcdr"].as<double>() + m_textShowDuration;
-    m_gazeMarker->scaleSceneObjects(0.5);
+    m_gazeMarker->scaleSceneObjects(0.01);
     m_mainCamera = a_worldPtr->getCamera("main_camera");
     m_panelManager = a_panelManager;
-    m_radius = 0.;
-    m_maxRadius = 0.0004;
-    m_radiusStep = (m_maxRadius - m_radius) / m_duration;
+    m_volumePtr = a_worldPtr->getVolumes()[0];
+    if (m_volumePtr == nullptr){
+        return -1;
+    }
 
     m_T_c_w = m_mainCamera->getLocalTransform();
     m_T_m_c = cTransform(cVector3d(-5., 0., 0.), cMatrix3d());
@@ -68,9 +68,17 @@ int GazeMarkerController::init(afWorldPtr a_worldPtr, CameraPanelManager* a_pane
     m_gazeMarker->setLocalTransform(m_T_m_w);
 
     m_textShowDuration = 5.0;
-    m_time = m_duration;
+    m_time = m_textShowDuration;
+
+    m_posIdx = 10;
+    m_posDur = 2.0;
+    m_posStartTime = 0.;
+
+    computeCalibrationPattern();
 
     initializeLabels();
+
+    restart();
 
     return 1;
 }
@@ -79,7 +87,7 @@ void GazeMarkerController::initializeLabels(){
     cFontPtr font = NEW_CFONTCALIBRI36();
     m_gazeNotificationLabel = new cLabel(font);
     m_gazeNotificationLabel->m_fontColor.setBlack();
-    m_textStr = "PLEASE FOCUS ON THE SPIRALLING MARKER \n\n"
+    m_textStr = "PLEASE FOCUS ON THE CIRCULAR MARKER \n\n"
                 "             SHOWING MARKER IN : ";
     m_gazeNotificationLabel->setText(m_textStr);
 
@@ -92,14 +100,54 @@ void GazeMarkerController::initializeLabels(){
     m_panelManager->addPanel(m_gazeNotificationLabel, 0.5, 0.5, PanelReferenceOrigin::CENTER, PanelReferenceType::NORMALIZED);
 }
 
+void GazeMarkerController::computeCalibrationPattern(){
+
+    m_widthRatio = cClamp(m_widthRatio, 0.0, 1.0);
+    m_heightRatio = cClamp(m_heightRatio, 0.0, 1.0);
+    m_depthRatio = cClamp(m_depthRatio, 0.0, 1.0);
+
+    float fva = m_mainCamera->getInternalCamera()->getFieldViewAngleRad();
+    float ar = m_mainCamera->getInternalCamera()->getAspectRatio();
+    float d = m_depthRatio * m_mainCamera->getLocalPos().distance(m_volumePtr->getLocalPos());
+
+    float h = 2 * d * tan(fva / 2.0);
+    float w = h * ar;
+
+    cerr << "INFO! FVA: " << fva << endl;
+    cerr << "INFO! Depth: " << d << endl;
+    cerr << "INFO! Aspect ratio: " << ar << endl;
+    cerr << "INFO! GAZE MARKER VIEW WIDTH x HEIGHT IS: " << w << " x " << h << endl;
+    cerr << "INFO! WIDTH X HEIGHT X DEPTH RATIOS: " << m_depthRatio << " x " << m_heightRatio << " x " << m_depthRatio << endl;
+
+
+    double gridCenterOffset = 0.0;
+    double gridWidth = (w * m_widthRatio) * 0.5;
+    double gridHeight = (h * m_heightRatio) * 0.5;
+    double depth = - d;
+
+    m_P_m_c_list = {
+        cVector3d(depth,  gridCenterOffset, gridCenterOffset),
+        cVector3d(depth, -gridWidth,  gridHeight),
+        cVector3d(depth,  gridWidth, -gridHeight),
+        cVector3d(depth,  gridWidth,  gridHeight),
+        cVector3d(depth, -gridWidth, -gridHeight),
+        cVector3d(depth,  gridWidth,  gridCenterOffset),
+        cVector3d(depth, -gridWidth, -gridCenterOffset),
+        cVector3d(depth,  gridCenterOffset, gridHeight),
+        cVector3d(depth,  gridCenterOffset,-gridHeight),
+    };
+}
+
 void GazeMarkerController::update(double dt){
-    if (m_time >= m_duration || m_gazeMarker == nullptr){
-        hide(true);
+//    cerr << "INFO! Aspect ratio: " << m_mainCamera->getInternalCamera()->getAspectRatio() << endl;
+    if (m_posIdx >= (m_P_m_c_list.size()+1) || m_gazeMarker == nullptr){
+        showMarker(false);
         return;
     }
 
     if (m_time == 0.){
-        hide(false);
+        showMarker(true);
+        computeCalibrationPattern();
         cMatrix3d rot;
         rot.identity();
         cTransform trans(cVector3d(-100, 0, 0), rot);
@@ -116,34 +164,45 @@ void GazeMarkerController::update(double dt){
 
     m_panelManager->setVisible(m_gazeNotificationLabel, false);
 
-    double offset_time = m_time - m_textShowDuration;
+    double elapsed_time = m_time - m_textShowDuration - m_posStartTime;
 
-    cVector3d dP(0., m_radius * sin(offset_time), m_radius * cos(offset_time));
+    if ((m_time - m_textShowDuration) <= m_posDur && m_posIdx == 0){
+        m_T_m_c = cTransform(m_P_m_c_list[m_posIdx], cMatrix3d());
+        m_T_m_w = m_T_c_w * m_T_m_c;
+        m_gazeMarker->setLocalTransform(m_T_m_w);
+        
+        m_posIdx++;
+        return;
+    }
 
-    m_T_m_w.setLocalPos(m_T_m_w.getLocalPos() + m_T_c_w.getLocalRot() * dP);
-    m_T_m_w.setLocalRot(m_T_c_w.getLocalRot());
+    if (elapsed_time >= m_posDur){
+        m_T_m_c = cTransform(m_P_m_c_list[m_posIdx], cMatrix3d());
+        m_T_m_w = m_T_c_w * m_T_m_c;
+        m_gazeMarker->setLocalTransform(m_T_m_w);
 
-    m_gazeMarker->setLocalTransform(m_T_m_w);
+        m_posIdx++;
+        m_posStartTime = m_time - m_textShowDuration;
+    }
 
-//    cerr << m_time << ": " << m_radius << " :: " << m_T_m_w.getLocalPos().str(2) << endl;
-
-    m_radius += (m_radiusStep * dt);
 }
 
-void GazeMarkerController::hide(bool val){
+void GazeMarkerController::showMarker(bool val){
     if (m_gazeMarker){
-        m_gazeMarker->getVisualObject()->setShowEnabled(!val);
-        m_panelManager->setVisible(m_gazeNotificationLabel, !val);
+        m_gazeMarker->getVisualObject()->setShowEnabled(val);
+        m_panelManager->setVisible(m_gazeNotificationLabel, val);
     }
 }
 
 void GazeMarkerController::restart(){
     if (m_gazeMarker){
         cerr << "Restarting Gaze Marker Motion" << endl;
-        m_radius = 0.;
         m_time = 0.;
         m_gazeMarker->reset();
         m_T_c_w = m_mainCamera->getLocalTransform();
         m_T_m_w = m_T_c_w * m_T_m_c;;
+
+        m_posIdx = 0;
+        m_posStartTime = 0.;
+
     }
 }
