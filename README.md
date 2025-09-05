@@ -50,7 +50,8 @@ image-transport # Can be installed via apt install ros-<version>-image-transport
 ```
 
 
-### 1.2 Clone and Build Drilling Simulator
+### 1.2 Clone and Build Drilling Simulator [OLD]
+This is the old instruction using ROS1.
 ``` bash
 git clone https://github.com/LCSR-SICKKIDS/volumetric_drilling
 cd <volumetric_plugin_path>
@@ -60,6 +61,27 @@ cmake ..
 make
 ```
 If everything went smoothly, we are good to go.
+
+### 1.2 Clone and Build Drilling Simulator [NEW]
+This new instruction to build is not been fully tested.
+Hisashi Ishida tested on ROS2(Galactic) with Ubuntu 20.04.  
+
+``` bash
+cd ~/ros2_ws/src # Move to your ros2 workspace
+source /opt/ros/<ros2 distribute>/setup.bash # Source ros2
+git clone https://github.com/LCSR-SICKKIDS/volumetric_drilling
+cd <volumetric_plugin_path>
+git checkout feature-ros2 # Make sure to use the correct branch
+cd ~/ros2_ws
+colcon build
+```
+
+Once your build is successfully performed, use the following command to run FIVRS.
+```bash
+cd ~/ros2_ws/src # Move to your ros2 workspace
+source ~/ros2_ws/devel/setup.bash
+ambf_simulator --launch_file src/volumetric_drilling/launch.yaml -l 0,1
+```
 
 ## 2 Running FIVRS with an intuitive GUI:
 Head to the scripts folder.

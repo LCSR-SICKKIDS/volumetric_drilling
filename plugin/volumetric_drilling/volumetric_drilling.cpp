@@ -58,7 +58,9 @@ namespace p_opt = boost::program_options;
 
 
 afVolmetricDrillingPlugin::afVolmetricDrillingPlugin(){
-
+    cout << "/*********************************************" << endl;
+    cout << "/* AMBF VOLUMETRIC DRILLING PLUGIN" << endl;
+    cout << "/*********************************************" << endl;
 }
 
 int afVolmetricDrillingPlugin::init(int argc, char **argv, const afWorldPtr a_afWorld){
@@ -294,27 +296,6 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     double maxF = m_drillManager.m_hapticDevice->getSpecifications().m_maxLinearForce;
     double force_mag = cClamp(force.length(), 0.0, maxF);
     m_drillManager.setAudioPitch(3.0 - force_mag / maxF);
-
-    if (m_flagStart)
-    {
-        if (force.length() != 0.0)
-        {
-            m_counter = 0;
-        }
-        else
-        {
-            m_counter++;
-            if (m_counter > 10)
-                m_flagStart = false;
-        }
-    }
-    else
-    {
-        if (force.length() > 10.0)
-        {
-            m_flagStart = true;
-        }
-    }
 
     /////////////////////////////////////////////////////////////////////////
     // FINALIZE
