@@ -2,6 +2,8 @@
 #define GL_SILENCE_DEPRECATION
 #include <afFramework.h>
 #include "collision_publisher.h"
+#include <ctime>
+#include <sys/stat.h> // For mkdir
 
 using namespace std;
 using namespace ambf;
