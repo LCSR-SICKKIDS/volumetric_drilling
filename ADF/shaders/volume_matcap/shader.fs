@@ -127,14 +127,14 @@ void main(void)
               nabla = vec3(0., 0., 0.);
               vec3 tr;
               int cnt = uSmoothingLevel;
-              vec3 half = vec3(1., 1., 1.) * float(cnt)/2.0;
+              vec3 half_vec = vec3(1., 1., 1.) * float(cnt)/2.0;
               // vec3 tcr = tc;
               for (int x = 0 ; x < cnt ; x++){
                 for (int y = 0 ; y < cnt ; y++){
                   for (int z = 0 ; z < cnt ; z++){
-                    tr[0] = tcr[0] + (float(x) - half[0]) * uGradientDelta[0];
-                    tr[1] = tcr[1] + (float(y) - half[1]) * uGradientDelta[1];
-                    tr[2] = tcr[2] + (float(z) - half[2]) * uGradientDelta[2];
+                    tr[0] = tcr[0] + (float(x) - half_vec[0]) * uGradientDelta[0];
+                    tr[1] = tcr[1] + (float(y) - half_vec[1]) * uGradientDelta[1];
+                    tr[2] = tcr[2] + (float(z) - half_vec[2]) * uGradientDelta[2];
                     nabla += gradient(tr);
                   }
                 }
