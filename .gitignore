@@ -5,3 +5,6 @@ build/
 .idea/
 
 *.pyc
+.vscode
+
+resources/intermidiate_volumes/
