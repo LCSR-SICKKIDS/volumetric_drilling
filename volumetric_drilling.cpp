@@ -797,9 +797,9 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             std::strftime(date, sizeof date, "%Y-%m-%d_%H%M%S", std::localtime(&t));
             
             mode_t mode = 0755; // Permissions: rwxr-xr-x (owner: read, write, execute; group, others: read, execute)
-            string dir_name = ("resources/intermidiate_volumes/" + volumeName + "/" + date);
-            mkdir("resources/intermidiate_volumes/", mode);
-            mkdir(("resources/intermidiate_volumes/" + volumeName).c_str(), mode);
+            string dir_name = ("resources/intermediate_volumes/" + volumeName + "/" + date);
+            mkdir("resources/intermediate_volumes/", mode);
+            mkdir(("resources/intermediate_volumes/" + volumeName).c_str(), mode);
             mkdir(dir_name.c_str(), mode);
 
             // Loop through each Z-slice and save it as a 2D image

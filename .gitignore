@@ -7,4 +7,4 @@ build/
 *.pyc
 .vscode
 
-resources/intermidiate_volumes/
+resources/intermediate_volumes/
