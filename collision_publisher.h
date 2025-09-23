@@ -6,7 +6,9 @@
 #include <vdrilling_msgs/points.h>
 #include <vdrilling_msgs/UInt8Stamped.h>
 #include <vdrilling_msgs/VolumeProp.h>
+#include <vector>
 
+using namespace std;
 
 class DrillingPublisher{
 public:
@@ -16,15 +18,23 @@ public:
     ros::NodeHandle* m_rosNode;
 
     void voxelsRemoved(double ray[3], float vcolor[4], double time);
+    void voxelsCallback(vdrilling_msgs::points voxel_msg);
     void burrChange(int burrSize, double time);
     void volumeProp(float dimensions[3], int voxelCount[3]);
+    bool getRemoveVoxelsIdx(double* vector);
+
 private:
     ros::Publisher m_voxelsRemovedPub;
     ros::Publisher m_burrChangePub;
     ros::Publisher m_volumePropPub;
+    ros::Subscriber m_voxelsSub;
+
     vdrilling_msgs::points voxel_msg;
     vdrilling_msgs::UInt8Stamped burr_msg;
     vdrilling_msgs::VolumeProp volume_msg;
+
+    double m_voxelRemoving_idx[3];
+    bool m_removingVoxel = false;
 
 };
 
