@@ -1,29 +1,35 @@
 """
-Script Name: Data Record v3
+Script Name: Data Record
 Authors: Oren Wei and Jonathan Wang
 Date Created: 2024-11-15
-Last Modified: 2024-12-11
-Version: 1.0
+Last Modified: 2025-10-06
+Version: 3.0
 
 Description:
     This script records the data in the background from both ROS and AMBF
-    while running the virtual reality simulator. Previous iteration of this 
-    script have already incorporated the overarching data groups "burr_change", 
-    "data", "drill_force_feedback", "metadata", and "voxels_removed". This iteration
-    adds the "high_frequency_poses" data group, saving the high frequency drill, camera, and anatomy poses.
-    It also attempts to clean up the code for more efficiency.
-    
+    while running the virtual reality simulator. This version reorganizes the data
+    structure into a hierarchical format with three main categories: metadata_v3,
+    vision_data, and physics_data. Each data category is further subdivided into
+    continuous and intermittent data streams for better organization and access.
+
 Updated HDF5 File Structure:
     root/
-      ├── burr_change/
-      ├── data/
-      ├── drill_force_feedback/
-      ├── high_frequency_poses/
-      ├── metadata/
-      └── voxels_removed/
+      ├── metadata_v3/
+      ├── vision_data/
+      │   ├── intermittent_data/
+      │   └── continuous_data/
+          │   ├── stereo L/R/
+          │   ├── segmentation images/
+          │   ├── depth data/
+          │   └── low frequency poses/
+      └── physics_data/
+          ├── intermittent_data/
+          │   ├── voxels_removed/
+          │   ├── burr_change/
+          │   └── drill_force_feedback/
+          └── continuous_data/
+              └── high_frequency_poses/
 
-Usage:
-    Called from within the gui_setup.yaml file
 """
 
 import logging
@@ -240,8 +246,9 @@ def create_hdf5_file(args, intrinsic, extrinsic, s, volume_pose):
 
     time_str = time.strftime("%Y%m%d_%H%M%S")
     file = h5py.File(os.path.join(args.output_dir, f"{time_str}.hdf5"), "w")
-    
-    metadata = file.create_group("metadata")
+
+    # Create new structure: metadata_v3, vision_data, physics_data
+    metadata = file.create_group("metadata_v3")
     metadata.create_dataset("camera_intrinsic", data=intrinsic)
     metadata.create_dataset("camera_extrinsic", data=extrinsic)
     metadata.create_dataset("README", data=(
@@ -272,14 +279,19 @@ def init_hdf5(args):
         stereo_params = load_yaml_file(args.stereo_adf)
         baseline = abs(stereo_params["stereoL"]["location"]["y"] - stereo_params["stereoR"]["location"]["y"]) * s
         metadata.create_dataset("baseline", data=baseline)
-    # Create other necessary groups
-    file.create_group("data")
-    file.create_group("voxels_removed")
-    file.create_group("burr_change")
-    file.create_group("drill_force_feedback")
-    # CHANGED: Instead of just "high_frequency_drill_pose", create a general group for all high frequency poses.
-    # This group will contain subgroups for drill, camera, anatomy, etc.
-    file.create_group("high_frequency_poses")
+    # Create new hierarchical structure
+    # Vision Data
+    vision_data = file.create_group("vision_data")
+    vision_intermittent = vision_data.create_group("intermittent_data")
+    vision_continuous = vision_data.create_group("continuous_data")
+
+    # Physics Data
+    physics_data = file.create_group("physics_data")
+    physics_intermittent = physics_data.create_group("intermittent_data")
+    physics_continuous = physics_data.create_group("continuous_data")
+
+    # Create subgroups for high frequency poses under physics continuous
+    physics_continuous.create_group("high_frequency_poses")
 
     return file, img_height, img_width, s, volume_pose
 
@@ -370,12 +382,14 @@ def write_voxel_data(collisions):
             "voxel_removed": voxel_idx,
             "voxel_color": voxel_color,
         }
+        # Create voxels_removed group under physics_data/intermittent_data
+        voxels_group = f["physics_data/intermittent_data"].create_group("voxels_removed")
         for key, value in voxel_data.items():
             print(f"key {key}")
-            f["voxels_removed"].create_dataset(key, data=value, compression="gzip")
-            log.log(logging.INFO, (key, f["voxels_removed"][key].shape))
+            voxels_group.create_dataset(key, data=value, compression="gzip")
+            log.log(logging.INFO, (key, voxels_group[key].shape))
             collisions[key] = []  # Reset to free memory
-        f["voxels_removed"].create_dataset("README", data = "voxels_removed contains a group of voxels (Gv) removed. \n"
+        voxels_group.create_dataset("README", data = "voxels_removed contains a group of voxels (Gv) removed. \n"
                                            "The voxel_time_stamp contains the time that the Gv was removed. The voxels_removed contains the voxels that comprise the Gv. \n"
                                            "The voxel_color contains the color of voxels that comprise the Gv. \n")
     except Exception as e:
@@ -396,9 +410,9 @@ def write_high_frequency_pose_data(high_freq_pose_data):
     """
     try:
         for name, pose_dict in high_freq_pose_data.items():
-            # Create a subgroup for this object under "high_frequency_poses"
+            # Create a subgroup for this object under "physics_data/continuous_data/high_frequency_poses"
             obj_group_name = name + "_pose"
-            obj_group = f["high_frequency_poses"].create_group(obj_group_name)
+            obj_group = f["physics_data/continuous_data/high_frequency_poses"].create_group(obj_group_name)
 
             # Write pose and timestamps
             obj_group.create_dataset("time_stamp", data=np.stack(pose_dict["time_stamp"], axis=0), compression="gzip")
@@ -425,10 +439,10 @@ def write_volume_pose(volume_pose, num_samples):
     """
     try:
         key = "pose_mastoidectomy_volume"
-        f["data"].create_dataset(
+        f["vision_data/continuous_data"].create_dataset(
             key, data=np.stack([volume_pose] * num_samples, axis=0), compression="gzip"
         )
-        log.log(logging.INFO, (key, f["data"][key].shape))
+        log.log(logging.INFO, (key, f["vision_data/continuous_data"][key].shape))
     except Exception as e:
         print('INFO! No data recorded in this batch due to exception:', str(e))
 
@@ -442,26 +456,44 @@ def write_to_hdf5():
     """
     # Create and store voxel volume dataset
     try:
-        hdf5_vox_vol = f["metadata"].create_dataset("voxel_volume", data=voxel_volume)
+        hdf5_vox_vol = f["metadata_v3"].create_dataset("voxel_volume", data=voxel_volume)
         hdf5_vox_vol.attrs["units"] = "mm^3, millimeters cubed"
     except Exception:
         f.close()
         print("File writing interrupted.")
         return
-    # Save image data and burr_change data
-    containers = [(f["data"], container), (f["burr_change"], burr_change), (f["drill_force_feedback"], drill_force_feedback)]
-    for group, data in containers:
-        if group.name == "/drill_force_feedback":
-            drill_force_data_lock.acquire()
-        for key, value in data.items():
-            create_and_store_dataset(group, key, value)
-            data[key] = []  # Reset to free memory
-        if group.name == "/drill_force_feedback":
-            drill_force_data_lock.release()
+    # Save vision continuous data (images and poses)
+    vision_continuous = f["vision_data/continuous_data"]
+    for key, value in container.items():
+        create_and_store_dataset(vision_continuous, key, value)
+        container[key] = []  # Reset to free memory
+
+    # Save physics intermittent data (burr_change and drill_force_feedback)
+    physics_intermittent = f["physics_data/intermittent_data"]
+
+    # Create burr_change group and save data
+    if burr_change and any(len(v) > 0 for v in burr_change.values()):
+        burr_group = physics_intermittent.create_group("burr_change")
+        for key, value in burr_change.items():
+            create_and_store_dataset(burr_group, key, value)
+            burr_change[key] = []  # Reset to free memory
+
+    # Create drill_force_feedback group and save data
+    if drill_force_feedback and any(len(v) > 0 for v in drill_force_feedback.values()):
+        drill_force_data_lock.acquire()
+        force_group = physics_intermittent.create_group("drill_force_feedback")
+        for key, value in drill_force_feedback.items():
+            create_and_store_dataset(force_group, key, value)
+            drill_force_feedback[key] = []  # Reset to free memory
+        drill_force_data_lock.release()
     # Save voxel data
     write_voxel_data(collisions)
     try:
-        num_samples = len(f["data"][list(f["data"].keys())[0]])  # Number of samples in data
+        vision_data_keys = list(f["vision_data/continuous_data"].keys())
+        if vision_data_keys:
+            num_samples = len(f["vision_data/continuous_data"][vision_data_keys[0]])  # Number of samples in data
+        else:
+            num_samples = 0
         write_volume_pose(volume_pose, num_samples)
     except Exception as e:
         print('INFO! No data recorded in this batch since EXCEPTION:', str(e))
