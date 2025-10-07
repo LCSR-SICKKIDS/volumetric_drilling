@@ -1,7 +1,53 @@
 # New Data Structure Format
 
 ## Overview
-This document describes the proposed reorganized data structure for the FIVRS surgical simulator system. The new structure divides data into three main categories based on data type and collection frequency, improving organization and data access patterns.
+This document describes the reorganized data structure for the FIVRS surgical simulator system. The new structure divides data into three main categories based on data type and collection frequency, improving organization and data access patterns.
+
+## Complete HDF5 File Structure
+
+```
+root/
+├── metadata_v3/
+│   ├── camera_intrinsic
+│   ├── camera_extrinsic
+│   ├── voxel_volume
+│   ├── baseline (optional, if stereo)
+│   └── README
+├── vision_data/
+│   ├── intermittent_data/ (currently empty - reserved for future)
+│   └── continuous_data/
+│       ├── l_img
+│       ├── r_img
+│       ├── depth
+│       ├── segm
+│       ├── pose_<object_name> (e.g., pose_mastoidectomy_drill)
+│       ├── pose_mastoidectomy_volume
+│       └── time
+└── physics_data/
+    ├── intermittent_data/
+    │   ├── voxels_removed/
+    │   │   ├── voxel_removed
+    │   │   ├── voxel_color
+    │   │   ├── voxel_time_stamp
+    │   │   └── README
+    │   ├── burr_change/
+    │   │   ├── burr_size
+    │   │   └── time_stamp
+    │   └── drill_force_feedback/
+    │       ├── wrench
+    │       └── time_stamp
+    └── continuous_data/
+        └── high_frequency_poses/
+            ├── <object_name>_pose/ (e.g., mastoidectomy_drill_pose)
+            │   ├── time_stamp
+            │   └── pose
+            ├── main_camera_pose/
+            │   ├── time_stamp
+            │   └── pose
+            └── <anatomy_object>_pose/ (e.g., anatomy_object_name_pose)
+                ├── time_stamp
+                └── pose
+```
 
 ## Main Data Categories
 
@@ -53,15 +99,16 @@ This document describes the proposed reorganized data structure for the FIVRS su
 #### 3.2 Continuous Data (`/physics_data/continuous_data/`)
 **Purpose**: High-frequency continuously sampled pose data
 - **High-Frequency Poses** (`high_frequency_poses/`)
-  - **Drill Pose** (`drill_pose/`)
-    - `time_stamp` - Timestamps for each pose sample (~2kHz)
-    - `pose` - 7-element arrays [x, y, z, qx, qy, qz, qw]
-  - **Camera Pose** (`camera_pose/`)
-    - `time_stamp` - Timestamps for each pose sample (~2kHz)
-    - `pose` - 7-element arrays [x, y, z, qx, qy, qz, qw]
-  - **Anatomy Pose** (`anatomy_pose/`)
-    - `time_stamp` - Timestamps for each pose sample (~2kHz)
-    - `pose` - 7-element arrays [x, y, z, qx, qy, qz, qw]
+  - **Object Poses** (`<object_name>_pose/`)
+    - Group names are generated from the `--objects` parameter
+    - Default objects: `mastoidectomy_drill`, `main_camera`, `anatomy_object_name`
+    - Each object creates a subgroup: `<object_name>_pose/`
+      - `time_stamp` - Timestamps for each pose sample (~2kHz)
+      - `pose` - 7-element arrays [x, y, z, qx, qy, qz, qw]
+    - Examples:
+      - `mastoidectomy_drill_pose/` - Drill tool pose at high frequency
+      - `main_camera_pose/` - Camera pose at high frequency
+      - `anatomy_object_name_pose/` - Anatomy pose at high frequency
 
 ## Data Migration Mapping
 
@@ -132,6 +179,9 @@ This document describes the proposed reorganized data structure for the FIVRS su
 
 ### Scalability
 - **Multi-object Support**: Configurable object tracking via `--objects` parameter
+  - Default: `["mastoidectomy_drill", "main_camera", "anatomy_object_name"]`
+  - Can be customized to track any objects in the simulation
+  - Each object automatically creates corresponding pose groups in both vision and physics data streams
 - **Flexible Topics**: All ROS topics configurable via command-line arguments
 - **Extensible Structure**: Easy to add new data types to existing HDF5 groups
 
@@ -140,3 +190,6 @@ This document describes the proposed reorganized data structure for the FIVRS su
 - Requires AMBF simulation to be running before data recording starts
 - All ROS topics must be active for successful data recording
 - Camera calibration data loaded from YAML configuration files
+- Object names specified in `--objects` parameter determine the naming of pose groups:
+  - Vision data: `pose_<object_name>` (synchronized, ~50Hz)
+  - Physics data: `<object_name>_pose` (high-frequency, ~2kHz)
