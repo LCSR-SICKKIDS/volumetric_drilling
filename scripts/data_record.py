@@ -13,22 +13,48 @@ Description:
     continuous and intermittent data streams for better organization and access.
 
 Updated HDF5 File Structure:
-    root/
-      ├── metadata_v3/
-      ├── vision_data/
-      │   ├── intermittent_data/
-      │   └── continuous_data/
-          │   ├── stereo L/R/
-          │   ├── segmentation images/
-          │   ├── depth data/
-          │   └── low frequency poses/
-      └── physics_data/
-          ├── intermittent_data/
-          │   ├── voxels_removed/
-          │   ├── burr_change/
-          │   └── drill_force_feedback/
-          └── continuous_data/
-              └── high_frequency_poses/
+```
+root/
+├── metadata_v3/
+│   ├── camera_intrinsic
+│   ├── camera_extrinsic
+│   ├── voxel_volume
+│   ├── baseline (optional, if stereo)
+│   └── README
+├── vision_data/
+│   ├── intermittent_data/ (currently empty - reserved for future)
+│   └── continuous_data/
+│       ├── l_img
+│       ├── r_img
+│       ├── depth
+│       ├── segm
+│       ├── pose_<object_name> (e.g., pose_mastoidectomy_drill)
+│       ├── pose_mastoidectomy_volume
+│       └── time
+└── physics_data/
+    ├── intermittent_data/
+    │   ├── voxels_removed/
+    │   │   ├── voxel_removed
+    │   │   ├── voxel_color
+    │   │   ├── voxel_time_stamp
+    │   │   └── README
+    │   ├── burr_change/
+    │   │   ├── burr_size
+    │   │   └── time_stamp
+    │   └── drill_force_feedback/
+    │       ├── wrench
+    │       └── time_stamp
+    └── continuous_data/
+        └── high_frequency_poses/
+            ├── <object_name>_pose/ (e.g., mastoidectomy_drill_pose)
+            │   ├── time_stamp
+            │   └── pose
+            ├── main_camera_pose/
+            │   ├── time_stamp
+            │   └── pose
+            └── <anatomy_object>_pose/ (e.g., anatomy_object_name_pose)
+                ├── time_stamp
+                └── pose
 
 """
 
@@ -600,7 +626,7 @@ def volume_prop_callback(volume_prop_msg):
     resolution = np.divide(dimensions, voxel_count) * 1000
     voxel_volume = np.prod(resolution) * scale ** 3
 
-# CHANGED: Each object's data is stored in high_freq_pose_data under its own key.
+# Each object's data is stored in high_freq_pose_data under its own key.
 def high_freq_pose_callback(pose_msg, name):
     """
     Callback function to capture high-frequency pose data for drill, camera, and anatomy.
@@ -697,11 +723,10 @@ def setup_subscriber(args):
     if args.drill_force_feedback_topic != 'None':
         if args.drill_force_feedback_topic in active_topics:
             rospy.Subscriber(args.drill_force_feedback_topic, WrenchStamped, drill_force_feedback_callback)
-            # Can I just use omni_force here or do I have to use a different variable?
             drill_force_feedback['time_stamp'] = []
-            drill_force_feedback['wrench'] =[]
+            drill_force_feedback['wrench'] = []
         else:
-            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.force_topic)
+            log.log(logging.CRITICAL, "CRITICAL! Failed to subscribe to " + args.drill_force_feedback_topic)
             exit()
             
     # CHANGED
@@ -740,10 +765,10 @@ def main(args):
     for name in args.objects:
         if "camera" in name:
             topic = "/ambf/env/" + "cameras/" + name + "/State"
-            rospy.Subscriber(topic, CameraState, high_frequency_pose_callback, callback_args=name)
+            rospy.Subscriber(topic, CameraState, high_freq_pose_callback, callback_args=name)
         else:
             topic = "/ambf/env/" + name + "/State"
-            rospy.Subscriber(topic, RigidBodyState, high_frequency_pose_callback, callback_args=name)
+            rospy.Subscriber(topic, RigidBodyState, high_freq_pose_callback, callback_args=name)
 
     print("Synchronous? : ", args.sync)
     # NOTE: don't set queue size to a large number (e.g. 1000).
@@ -868,9 +893,8 @@ if __name__ == "__main__":
     burr_change = OrderedDict()
     drill_force_feedback = OrderedDict()
     voxel_volume = 0
-    drill_pose_data = OrderedDict()
 
-    # CHANGED: Initialize high-frequency pose data
+    # Initialize high-frequency pose data
     high_freq_pose_data = OrderedDict()
 
     main(args)
