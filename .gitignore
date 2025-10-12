@@ -7,6 +7,9 @@ build/
 
 *.pyc
 
+# macOS
+.DS_Store
+
 # EDT files
 *.edt
 *.ply
