@@ -19,8 +19,7 @@ void DrillingPublisher::init(string a_namespace, string a_plugin){
     m_voxelsRemovedPub = m_rosNode-> advertise<vdrilling_msgs::points>(a_namespace + "/" + a_plugin + "/voxels_removed", 1);
     m_burrChangePub = m_rosNode -> advertise<vdrilling_msgs::UInt8Stamped>(a_namespace + "/" + a_plugin + "/burr_change", 1, true);
     m_volumePropPub = m_rosNode -> advertise<vdrilling_msgs::VolumeProp>(a_namespace + "/" + a_plugin + "/volume_prop", 1, true);
-
-    m_voxelsSub = m_rosNode->subscribe(a_namespace + "/" + a_plugin + "/voxels_removing", 1, &DrillingPublisher::voxelsCallback, this);
+    m_removeVoxelsSub = m_rosNode->subscribe(a_namespace + "/" + a_plugin + "/remove_voxels", 1, &DrillingPublisher::removeVoxelsCallback, this);
 
 }
 
@@ -37,7 +36,7 @@ void DrillingPublisher::voxelsRemoved(double vray[3], float vcolor[4], double ti
     m_voxelsRemovedPub.publish(voxel_msg);
 }
 
-void DrillingPublisher::voxelsCallback(vdrilling_msgs::points voxel_msg){
+void DrillingPublisher::removeVoxelsCallback(vdrilling_msgs::points voxel_msg){
     m_voxelRemoving_idx[0] = voxel_msg.voxel_removed.x;
     m_voxelRemoving_idx[1] = voxel_msg.voxel_removed.y;
     m_voxelRemoving_idx[2] = voxel_msg.voxel_removed.z;

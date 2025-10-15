@@ -18,7 +18,7 @@ public:
     ros::NodeHandle* m_rosNode;
 
     void voxelsRemoved(double ray[3], float vcolor[4], double time);
-    void voxelsCallback(vdrilling_msgs::points voxel_msg);
+    void removeVoxelsCallback(vdrilling_msgs::points voxel_msg);
     void burrChange(int burrSize, double time);
     void volumeProp(float dimensions[3], int voxelCount[3]);
     bool getRemoveVoxelsIdx(double* vector);
@@ -27,7 +27,7 @@ private:
     ros::Publisher m_voxelsRemovedPub;
     ros::Publisher m_burrChangePub;
     ros::Publisher m_volumePropPub;
-    ros::Subscriber m_voxelsSub;
+    ros::Subscriber m_removeVoxelsSub;
 
     vdrilling_msgs::points voxel_msg;
     vdrilling_msgs::UInt8Stamped burr_msg;
