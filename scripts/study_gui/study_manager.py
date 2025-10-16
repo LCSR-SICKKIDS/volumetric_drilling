@@ -12,9 +12,9 @@ class RecordOptions:
 
 
 class StudyManager:
-    def __init__(self, ambf_executable_path, pupil_executable_path, recording_script_path):
+    def __init__(self, ambf_executable_path, pupil_capture_executable_path, recording_script_path):
         self.ambf_executable_path = str(ambf_executable_path)
-        self.pupil_executable_path = str(pupil_executable_path)
+        self.pupil_capture_executable_path = str(pupil_capture_executable_path)
         self.recording_script_path = str(recording_script_path)
         self.pupil_manager = PupilManager()
         self.ambf_handle = None
@@ -126,7 +126,7 @@ class StudyManager:
 
     def _launch_pupil_service(self):
         self.pupil_service_handle = None
-        self.pupil_service_handle = subprocess.Popen(self.pupil_executable_path)
+        self.pupil_service_handle = subprocess.Popen(self.pupil_capture_executable_path)
 
     def _launch_recording_script(self, path):
         print('Recording Path: ', path)

@@ -1,5 +1,6 @@
 import yaml
 import pathlib
+from enum import Enum
 
 
 class VolumeInfo:
@@ -12,11 +13,15 @@ class VolumeInfo:
         print('ADF Path', self.adf_path)
         print('Icon Path', self.icon_path)
 
+class ParamType(Enum):
+    FILE=1
+    FOLDER=2
 
 class GUIParam:
-    def __init__(self, id, val):
+    def __init__(self, id, val, ptype: ParamType):
         self._id = id
         self._param = val
+        self._ptype = ptype
 
     def get_id(self):
         return self._id
@@ -30,6 +35,12 @@ class GUIParam:
     def set(self, val):
         self._param = val
 
+    def get_type(self):
+        return self.get_type
+    
+    def set_type(self, ptype):
+        self._ptype = ptype
+
 
 class GUIConfiguration:
     def __init__(self, setup_filename):
@@ -37,25 +48,27 @@ class GUIConfiguration:
         self.yaml_file_path = pathlib.Path(self.setup_file_name)
         self.yaml_file = open(str(self.yaml_file_path), 'r')
 
-        self.param_keys = ["ambf_executable",
-                           "pupil_executable",
-                           "recording_script_executable",
-                           "recording_base_path",
-                           "launch_file",
-                           "footpedal_device"]
+        self._ambf_executable = None
+        self._pupil_capture_executable = None
+        self._recording_script = None
+        self._recording_base_path = None
+        self._launch_file = None
+        self._footpedal_device = None
+
+        self.param_keys = {"ambf_executable": ParamType.FILE,
+                           "pupil_capture_executable": ParamType.FILE,
+                           "recording_script_executable": ParamType.FILE,
+                           "recording_base_path": ParamType.FOLDER,
+                           "launch_file": ParamType.FILE,
+                           "footpedal_device": ParamType.FILE}
         self.params = {}
 
         self.yaml_data = yaml.safe_load(self.yaml_file)
 
-        for l in self.param_keys:
-            self.params[l] = GUIParam(l, pathlib.Path(self.yaml_data[l]).resolve())
+        for k, v in self.param_keys.items():
+            self.params[k] = GUIParam(k, pathlib.Path(self.yaml_data[k]).resolve(), v)
 
-        self.ambf_executable = self.params["ambf_executable"]
-        self.pupil_executable = self.params["pupil_executable"]
-        self.recording_script = self.params["recording_script_executable"]
-        self.recording_base_path = self.params['recording_base_path']
-        self.launch_file = self.params["launch_file"]
-        self.footpedal_device = self.params["footpedal_device"]
+        self._update_param_varialbes()
 
         volumes_data = self.yaml_data['volumes']
         self.volumes_info = []
@@ -67,12 +80,20 @@ class GUIConfiguration:
             new_volume_info = VolumeInfo(name, adf_path, icon_path)
             self.volumes_info.append(new_volume_info)
 
+    def _update_param_varialbes(self):
+        self._ambf_executable = self.params["ambf_executable"]
+        self._pupil_capture_executable = self.params["pupil_capture_executable"]
+        self._recording_script = self.params["recording_script_executable"]
+        self._recording_base_path = self.params['recording_base_path']
+        self._launch_file = self.params["launch_file"]
+        self._footpedal_device = self.params["footpedal_device"]
+
     def print_volumes_info(self):
         for v in self.volumes_info:
             print('-------')
             v.print_info()
 
-    def print(self):
+    def print_gui_params(self):
         print('Printing GUI Params:')
         for k,v in self.params.items():
             print('\t', k, v.get_as_str())
@@ -87,15 +108,9 @@ class GUIConfiguration:
 
     def reload(self):
         self.yaml_file = open(str(self.yaml_file_path), 'r')
-        for l in self.param_keys:
-            self.params[l] = GUIParam(l, pathlib.Path(self.yaml_data[l]).resolve())
-
-        self.ambf_executable = self.params["ambf_executable"]
-        self.pupil_executable = self.params["pupil_executable"]
-        self.recording_script = self.params["recording_script_executable"]
-        self.recording_base_path = self.params['recording_base_path']
-        self.launch_file = self.params["launch_file"]
-        self.footpedal_device = self.params["footpedal_device"]
+        for k, v in self.param_keys.items():
+            self.params[k] = GUIParam(k, pathlib.Path(self.yaml_data[k]).resolve(), v)
+        self._update_param_varialbes()
         self.yaml_file.close()
         # self.print()
 
@@ -103,9 +118,10 @@ class GUIConfiguration:
 def main():
     gs = GUIConfiguration('gui_setup.yaml')
     gs.print_volumes_info()
+    gs.print_gui_params()
 
 
-if __name__ == "__main__()":
+if __name__ == "__main__":
     main()
 
 

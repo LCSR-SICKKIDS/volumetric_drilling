@@ -1,38 +1,32 @@
-# ambf_executable_path: "/home/amunawa2/ambf/bin/lin-x86_64/ambf_simulator"
-ambf_executable: "../../../ambf/bin/lin-x86_64/ambf_simulator"
-pupil_executable: "pupil_capture"
-recording_script_executable: "../data_record.py"
-launch_file: "../../launch.yaml"
-recording_base_path: "../../../Volumetric Drilling Userstudy/"
+ambf_executable: /home/adnanmunawar/ambf/bin/lin-x86_64/ambf_simulator
 footpedal_device: /dev/input/js1
-
-volumes: [volume1, volume2, volume3, volume4, volume5]
+launch_file: ../../launch.yaml
+pupil_capture_executable: pupil_capture
+recording_base_path: ~/Volumetric Drilling Userstudy
+recording_script_executable: ../data_record.py
 volume1:
-  icon_path: ./assets/RT143.png
   adf_path: ../../ADF/volume_256_RT143.yaml
-  name: 'Anatomy a'
-
-volume1:
   icon_path: ./assets/RT143.png
-  adf_path: ../../ADF/volume_256_RT143.yaml
-  name: 'Anatomy a'
-
+  name: Anatomy a
 volume2:
-  icon_path: ./assets/RT138.png
   adf_path: ../../ADF/volume_256_RT138.yaml
-  name: 'Anatomy b'
-
+  icon_path: ./assets/RT138.png
+  name: Anatomy b
 volume3:
-  icon_path: ./assets/RT147.png
   adf_path: ../../ADF/volume_256_RT147.yaml
-  name: 'Anatomy c'
-
+  icon_path: ./assets/RT147.png
+  name: Anatomy c
 volume4:
-  icon_path: ./assets/LT143.png
   adf_path: ../../ADF/volume_256_LT143.yaml
-  name: 'Anatomy d'
-
+  icon_path: ./assets/LT143.png
+  name: Anatomy d
 volume5:
-  icon_path: ./assets/LT151.png
   adf_path: ../../ADF/volume_256_LT151.yaml
-  name: 'Anatomy e'
+  icon_path: ./assets/LT151.png
+  name: Anatomy e
+volumes:
+- volume1
+- volume2
+- volume3
+- volume4
+- volume5
