@@ -8,8 +8,19 @@ import sys
 from study_manager import StudyManager, RecordOptions
 from gui_setup import GUIConfiguration, GUIParam, ParamType
 import datetime
-from enum import Enum
+from pathlib import Path
 import json
+
+
+def get_resolved_path_as_str(path_str: str):
+    raw_path = Path(path_str)
+    resolved_path = None
+    if (raw_path.exists()):
+        resolved_path = raw_path.expanduser().resolve()
+    else:
+        resolved_path = raw_path
+    str_path = str(resolved_path)
+    return str_path
 
 
 class Ui(QWidget):
@@ -26,10 +37,11 @@ class Ui(QWidget):
         self._launch_file = self.gui_conf.params["launch_file"]
         self._footpedal_device = self.gui_conf.params["footpedal_device"]
 
-        self.study_manager = StudyManager(self._recording_script.get())
+        self.study_manager = StudyManager(get_resolved_path_as_str(self._recording_script.get()))
         self.active_volume_adf = ''
         self.active_volume_name = ''
         self.record_options = RecordOptions()
+        self.cnt = 0
 
         # Setup the grid layout for different volumes
         self.scroll_area = self.findChild(QScrollArea, 'scrollArea')
@@ -38,7 +50,6 @@ class Ui(QWidget):
         for i in range(len(self.gui_conf.volumes_info)):
             vinfo = self.gui_conf.volumes_info[i]
             radio_button = QRadioButton(vinfo.name)
-            min_height = 300
             # radio_button.setMinimumHeight(min_height)
             # radio_button.setGeometry(200, 150, 100, 40)
             radio_button.volume_name = vinfo.name
@@ -116,24 +127,23 @@ class Ui(QWidget):
         self.show()
 
     def connect_gui_param_to_dialog(self, gui_param: GUIParam):
-        exec_file_text_edit = self.findChild(QTextEdit, 'textEdit_' + gui_param.get_id())
-
-        exec_file_text_edit.textChanged.connect(
-            lambda: self.param_text_changed(exec_file_text_edit, gui_param))
+        param_text_edit_widget = self.findChild(QTextEdit, 'textEdit_' + gui_param.get_id())
         
-        exec_file_btn = self.findChild(QPushButton, 'pushButton_' + gui_param.get_id())
+        param_select_btn = self.findChild(QPushButton, 'pushButton_' + gui_param.get_id())
 
-        exec_file_btn.clicked.connect(
-            lambda: self.param_button_clicked(exec_file_text_edit, gui_param))
+        param_select_btn.clicked.connect(
+            lambda: self.param_button_clicked(param_text_edit_widget, gui_param))
         
-        exec_file_text_edit.setText(gui_param.get_as_str())
+        param_text_edit_widget.setText(gui_param.get())
 
-        return exec_file_text_edit
+        param_text_edit_widget.textChanged.connect(
+            lambda: self.param_text_changed(param_text_edit_widget, gui_param))
+
+        return param_text_edit_widget
     
     def param_text_changed(self, text_edit: QTextEdit, gui_param: GUIParam):
-        # print('Param Text Changed: ', gui_param.get(), ' New Value: ', text_edit.toPlainText())
         gui_param.set(text_edit.toPlainText())
-
+        self.cnt = self.cnt + 1
 
     def param_button_clicked(self, text_edit: QTextEdit, gui_param: GUIParam):
         valid = False
@@ -151,13 +161,13 @@ class Ui(QWidget):
             text_edit.setText(file_or_folder) 
 
     def save_configuration(self):
-        self.gui_conf.save()
+        self.gui_conf.save_params_to_file()
 
     def reload_configuration(self):
         print('Reloading Configuration')
-        self.gui_conf.reload()
+        self.gui_conf.load_params_from_file()
         for k, v in self.gui_param_objects.items():
-            v.setText(self.gui_conf.params[k].get_as_str())
+            v.setText(self.gui_conf.params[k].get())
 
     def pressed_start_simulation(self):
         launch_file_adf_indices = '0,7'
@@ -167,12 +177,18 @@ class Ui(QWidget):
             launch_file_adf_indices = launch_file_adf_indices + ',5'
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
-        args = ['--launch_file', str(self._launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
-                "--fp", str(self._footpedal_device.get())]
+
+        launch_file_resolved = get_resolved_path_as_str(self._launch_file.get())
+        footpedal_device_resolved = get_resolved_path_as_str(self._footpedal_device.get())
+        active_volume_adf_resolved = get_resolved_path_as_str(self.active_volume_adf)
+        ambf_executable_resolved_path = get_resolved_path_as_str(self._ambf_executable.get())
+
+        args = ['--launch_file', launch_file_resolved, '-l', launch_file_adf_indices, '-a', active_volume_adf_resolved,
+                "--fp", footpedal_device_resolved]
         # self.study_manager.start_simulation(args)
         print("LAUNCHING AMBF WITH ARGS: ", args)
         if self._ambf_process.state() != QProcess.Running:
-            self._ambf_process.start(str(self._ambf_executable.get()), args)
+            self._ambf_process.start(ambf_executable_resolved_path, args)
             self.button_start_simulation.setText('Close Simulation')
             self.button_start_simulation.setStyleSheet("background-color: RED")
         else:
@@ -185,8 +201,9 @@ class Ui(QWidget):
 
     def pressed_pupil_service(self):
         try:
-            print("Launching ", self._pupil_capture_executable.get())
-            self._pupil_process.start(str(self._pupil_capture_executable.get()))
+            pupil_capture_executable_resolved = get_resolved_path_as_str(self._pupil_capture_executable.get())
+            print("Launching ", pupil_capture_executable_resolved)
+            self._pupil_process.start(pupil_capture_executable_resolved)
         except Exception as e:
             self.print_info('ERROR! Cant launch Pupil Capture')
             print(e)
@@ -223,7 +240,7 @@ class Ui(QWidget):
 
     def get_record_options(self):
         record_options = RecordOptions()
-        base_path = str(self._recording_base_path.get())
+        base_path = get_resolved_path_as_str(self._recording_base_path.get())
         participant_name = '/' + self.text_participant_name.toPlainText().strip()
         date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record_options.path = base_path + participant_name + date_time

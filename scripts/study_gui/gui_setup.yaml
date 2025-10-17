@@ -1,4 +1,4 @@
-ambf_executable: /home/adnanmunawar/ambf/bin/lin-x86_64/ambf_simulator
+ambf_executable: ambf_simulator
 footpedal_device: /dev/input/js1
 launch_file: ../../launch.yaml
 pupil_capture_executable: pupil_capture
