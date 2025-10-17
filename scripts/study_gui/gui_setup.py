@@ -36,7 +36,7 @@ class GUIParam:
         self._param = val
 
     def get_type(self):
-        return self.get_type
+        return self._ptype
     
     def set_type(self, ptype):
         self._ptype = ptype
@@ -47,13 +47,6 @@ class GUIConfiguration:
         self.setup_file_name = setup_filename
         self.yaml_file_path = pathlib.Path(self.setup_file_name)
         self.yaml_file = open(str(self.yaml_file_path), 'r')
-
-        self._ambf_executable = None
-        self._pupil_capture_executable = None
-        self._recording_script = None
-        self._recording_base_path = None
-        self._launch_file = None
-        self._footpedal_device = None
 
         self.param_keys = {"ambf_executable": ParamType.FILE,
                            "pupil_capture_executable": ParamType.FILE,
@@ -68,8 +61,6 @@ class GUIConfiguration:
         for k, v in self.param_keys.items():
             self.params[k] = GUIParam(k, pathlib.Path(self.yaml_data[k]).resolve(), v)
 
-        self._update_param_varialbes()
-
         volumes_data = self.yaml_data['volumes']
         self.volumes_info = []
         for v in volumes_data:
@@ -79,14 +70,6 @@ class GUIConfiguration:
             # print('Parsing: ', v, ' ADF Path: ', adf_path, ' Icon Path: ', icon_path)
             new_volume_info = VolumeInfo(name, adf_path, icon_path)
             self.volumes_info.append(new_volume_info)
-
-    def _update_param_varialbes(self):
-        self._ambf_executable = self.params["ambf_executable"]
-        self._pupil_capture_executable = self.params["pupil_capture_executable"]
-        self._recording_script = self.params["recording_script_executable"]
-        self._recording_base_path = self.params['recording_base_path']
-        self._launch_file = self.params["launch_file"]
-        self._footpedal_device = self.params["footpedal_device"]
 
     def print_volumes_info(self):
         for v in self.volumes_info:
@@ -110,7 +93,6 @@ class GUIConfiguration:
         self.yaml_file = open(str(self.yaml_file_path), 'r')
         for k, v in self.param_keys.items():
             self.params[k] = GUIParam(k, pathlib.Path(self.yaml_data[k]).resolve(), v)
-        self._update_param_varialbes()
         self.yaml_file.close()
         # self.print()
 

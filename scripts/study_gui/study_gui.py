@@ -1,35 +1,43 @@
-from PyQt5 import QtWidgets, uic
+from PyQt5 import uic, QtWidgets
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QProcess
 from PyQt5.QtWidgets import QFormLayout, QGroupBox, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QTextEdit, QWidget, QScrollArea, QRadioButton, QLabel, QPlainTextEdit
+from PyQt5.QtWidgets import QMessageBox, QInputDialog
 import sys
 from study_manager import StudyManager, RecordOptions
-from gui_setup import GUIConfiguration, ParamType
+from gui_setup import GUIConfiguration, GUIParam, ParamType
 import datetime
 from enum import Enum
 import json
 
 
-class Ui(QtWidgets.QWidget):
+class Ui(QWidget):
     def __init__(self):
         super(Ui, self).__init__()
         uic.loadUi('layout.ui', self)
 
-        self.gui_configuration = GUIConfiguration('gui_setup.yaml')
-        self.study_manager = StudyManager(self.gui_configuration._ambf_executable.get(),
-                                          self.gui_configuration._pupil_capture_executable.get(),
-                                          self.gui_configuration._recording_script.get())
+        self.gui_conf = GUIConfiguration('gui_setup.yaml')
+
+        self._ambf_executable = self.gui_conf.params["ambf_executable"]
+        self._pupil_capture_executable = self.gui_conf.params["pupil_capture_executable"]
+        self._recording_script = self.gui_conf.params["recording_script_executable"]
+        self._recording_base_path = self.gui_conf.params['recording_base_path']
+        self._launch_file = self.gui_conf.params["launch_file"]
+        self._footpedal_device = self.gui_conf.params["footpedal_device"]
+
+        self.study_manager = StudyManager(self._recording_script.get())
         self.active_volume_adf = ''
         self.active_volume_name = ''
         self.record_options = RecordOptions()
 
         # Setup the grid layout for different volumes
-        self.scroll_area = self.findChild(QtWidgets.QScrollArea, 'scrollArea')
+        self.scroll_area = self.findChild(QScrollArea, 'scrollArea')
         formLayout = QFormLayout()
         groupBox = QGroupBox('Anatomies')
-        for i in range(len(self.gui_configuration.volumes_info)):
-            vinfo = self.gui_configuration.volumes_info[i]
-            radio_button = QtWidgets.QRadioButton(vinfo.name)
+        for i in range(len(self.gui_conf.volumes_info)):
+            vinfo = self.gui_conf.volumes_info[i]
+            radio_button = QRadioButton(vinfo.name)
             min_height = 300
             # radio_button.setMinimumHeight(min_height)
             # radio_button.setGeometry(200, 150, 100, 40)
@@ -39,7 +47,7 @@ class Ui(QtWidgets.QWidget):
             icon_path_str = str(vinfo.icon_path)
             print(icon_path_str)
             pixmap = QPixmap(icon_path_str)
-            label = QtWidgets.QLabel(self)
+            label = QLabel(self)
             label.resize(150, 350)
             # label.setMinimumHeight(min_height)
             label.setPixmap(pixmap.scaled(label.width(), label.height(), Qt.KeepAspectRatio))
@@ -50,50 +58,50 @@ class Ui(QtWidgets.QWidget):
         self.scroll_area.setWidget(groupBox)
         self.scroll_area.setWidgetResizable(True)
 
-        self.button_start_simulation = self.findChild(QtWidgets.QPushButton, 'button_start_simulation')
+        self.button_start_simulation = self.findChild(QPushButton, 'button_start_simulation')
         self.button_start_simulation.setStyleSheet("background-color: GREEN")
         self.button_start_simulation.clicked.connect(self.pressed_start_simulation)
 
-        self.button_launch_vr = self.findChild(QtWidgets.QPushButton, 'button_launch_vr')
+        self.button_launch_vr = self.findChild(QPushButton, 'button_launch_vr')
 
-        self.button_stream_stereo = self.findChild(QtWidgets.QPushButton, 'button_stream_stereo')
+        self.button_stream_stereo = self.findChild(QPushButton, 'button_stream_stereo')
 
-        self.button_stream_depth = self.findChild(QtWidgets.QPushButton, 'button_stream_depth')
+        self.button_stream_depth = self.findChild(QPushButton, 'button_stream_depth')
 
-        self.button_pupil_service = self.findChild(QtWidgets.QPushButton, 'button_pupil_capture')
+        self.button_pupil_service = self.findChild(QPushButton, 'button_pupil_capture')
         self.button_pupil_service.clicked.connect(self.pressed_pupil_service)
 
-        self.button_reset_drill = self.findChild(QtWidgets.QPushButton, 'button_reset_drill')
+        self.button_reset_drill = self.findChild(QPushButton, 'button_reset_drill')
         self.button_reset_drill.clicked.connect(self.study_manager.reset_drill)
 
-        self.button_reset_volume = self.findChild(QtWidgets.QPushButton, 'button_reset_volume')
+        self.button_reset_volume = self.findChild(QPushButton, 'button_reset_volume')
         self.button_reset_volume.clicked.connect(self.study_manager.reset_volume)
 
-        self.button_toggle_shadows = self.findChild(QtWidgets.QPushButton, 'button_toggle_shadows')
+        self.button_toggle_shadows = self.findChild(QPushButton, 'button_toggle_shadows')
         self.button_toggle_shadows.clicked.connect(self.study_manager.toggle_shadows)
 
-        self.button_toggle_vol_smooth = self.findChild(QtWidgets.QPushButton, 'button_toggle_vol_smooth')
+        self.button_toggle_vol_smooth = self.findChild(QPushButton, 'button_toggle_vol_smooth')
         self.button_toggle_vol_smooth.clicked.connect(self.study_manager.toggle_volume_smoothening)
 
-        self.button_record_study = self.findChild(QtWidgets.QPushButton, 'button_record_study')
+        self.button_record_study = self.findChild(QPushButton, 'button_record_study')
         self.button_record_study.clicked.connect(self.pressed_record_study)
         self.button_record_study.setStyleSheet("background-color: GREEN")
 
-        self.text_participant_name = self.findChild(QtWidgets.QTextEdit, 'textEdit_participant_name')
-        self.recording_button = self.findChild(QtWidgets.QPushButton, 'button_record_study')
+        self.text_participant_name = self.findChild(QTextEdit, 'textEdit_participant_name')
+        self.recording_button = self.findChild(QPushButton, 'button_record_study')
 
-        self.textEdit_info = self.findChild(QtWidgets.QPlainTextEdit, 'textEdit_info')
+        self.textEdit_info = self.findChild(QPlainTextEdit, 'textEdit_info')
 
-        self.textEdit_debug = self.findChild(QtWidgets.QPlainTextEdit, 'textEdit_debug')
+        self.textEdit_debug = self.findChild(QPlainTextEdit, 'textEdit_debug')
 
         self.gui_param_objects = {}
-        for k, v in self.gui_configuration.params.items():
-            self.gui_param_objects[k] = self.connect_gui_param_to_dialog(k, v.get_id(), v.get_type())
+        for k, v in self.gui_conf.params.items():
+            self.gui_param_objects[k] = self.connect_gui_param_to_dialog(v)
 
-        self.button_save_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_save_configuration')
+        self.button_save_configuration = self.findChild(QPushButton, 'pushButton_save_configuration')
         self.button_save_configuration.clicked.connect(self.save_configuration)
 
-        self.button_reload_configuration = self.findChild(QtWidgets.QPushButton, 'pushButton_reload_configuration')
+        self.button_reload_configuration = self.findChild(QPushButton, 'pushButton_reload_configuration')
         self.button_reload_configuration.clicked.connect(self.reload_configuration)
 
         self._recording_study = False
@@ -107,44 +115,49 @@ class Ui(QtWidgets.QWidget):
 
         self.show()
 
-    def connect_gui_param_to_dialog(self, name, param_id, dialog_type: ParamType):
-        exec_file_text_edit = self.findChild(QtWidgets.QTextEdit, 'textEdit_' + name)
-        exec_file_btn = self.findChild(QtWidgets.QPushButton, 'pushButton_' + name)
-        if dialog_type == ParamType.FILE:
-            exec_file_btn.clicked.connect(
-                lambda: self.file_dialog(exec_file_text_edit, param_id))
-        elif dialog_type == ParamType.FOLDER:
-            exec_file_btn.clicked.connect(
-                lambda: self.folder_dialog(exec_file_text_edit, param_id))
+    def connect_gui_param_to_dialog(self, gui_param: GUIParam):
+        exec_file_text_edit = self.findChild(QTextEdit, 'textEdit_' + gui_param.get_id())
 
-        exec_file_text_edit.setText(self.gui_configuration.params[name].get_as_str())
+        exec_file_text_edit.textChanged.connect(
+            lambda: self.param_text_changed(exec_file_text_edit, gui_param))
+        
+        exec_file_btn = self.findChild(QPushButton, 'pushButton_' + gui_param.get_id())
+
+        exec_file_btn.clicked.connect(
+            lambda: self.param_button_clicked(exec_file_text_edit, gui_param))
+        
+        exec_file_text_edit.setText(gui_param.get_as_str())
+
         return exec_file_text_edit
+    
+    def param_text_changed(self, text_edit: QTextEdit, gui_param: GUIParam):
+        # print('Param Text Changed: ', gui_param.get(), ' New Value: ', text_edit.toPlainText())
+        gui_param.set(text_edit.toPlainText())
 
-    def file_dialog(self, text_edit, param_id):
-        file, check = QFileDialog.getOpenFileName(None, "QFileDialog.getOpenFileName()",
-            "", "All Files (*);;Python Files (*.py);;Text Files (*.txt)")
-        if check:
-            print(file)
-            self.gui_configuration.params[param_id].set(file)
-            text_edit.setText(file)
 
-    def folder_dialog(self, text_edit, param_id):
-        folder = QFileDialog.getExistingDirectory(None, "QFileDialog.getExistingDirectory()",
-            "",)
-        print(folder)
-        self.gui_configuration.params[param_id].set(folder)
-        text_edit.setText(folder)
+    def param_button_clicked(self, text_edit: QTextEdit, gui_param: GUIParam):
+        valid = False
+        file_or_folder = None
+        if gui_param.get_type() == ParamType.FILE:
+            file_or_folder, valid = QFileDialog.getOpenFileName(None, gui_param.get_id(),
+                "", "All Files (*);;Python Files (*.py);;Text Files (*.txt)")
+        elif gui_param.get_type() == ParamType.FOLDER:
+            valid = True
+            file_or_folder = QFileDialog.getExistingDirectory(None, gui_param.get_id(),
+                "",)
+
+        if valid:
+            # gui_param.set(file_or_folder) # GUI Param should be automatically set with text changed event
+            text_edit.setText(file_or_folder) 
 
     def save_configuration(self):
-        for k, v in self.gui_param_objects.items():
-            self.gui_configuration.params[k].set(v.toPlainText())
-        self.gui_configuration.save()
+        self.gui_conf.save()
 
     def reload_configuration(self):
         print('Reloading Configuration')
-        self.gui_configuration.reload()
+        self.gui_conf.reload()
         for k, v in self.gui_param_objects.items():
-            v.setText(self.gui_configuration.params[k].get_as_str())
+            v.setText(self.gui_conf.params[k].get_as_str())
 
     def pressed_start_simulation(self):
         launch_file_adf_indices = '0,7'
@@ -154,12 +167,12 @@ class Ui(QtWidgets.QWidget):
             launch_file_adf_indices = launch_file_adf_indices + ',5'
         if self.button_launch_vr.isChecked():
             launch_file_adf_indices = launch_file_adf_indices + ',6'
-        args = ['--launch_file', str(self.gui_configuration._launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
-                "--fp", str(self.gui_configuration._footpedal_device.get())]
+        args = ['--launch_file', str(self._launch_file.get()), '-l', launch_file_adf_indices, '-a', self.active_volume_adf,
+                "--fp", str(self._footpedal_device.get())]
         # self.study_manager.start_simulation(args)
         print("LAUNCHING AMBF WITH ARGS: ", args)
         if self._ambf_process.state() != QProcess.Running:
-            self._ambf_process.start(str(self.gui_configuration._ambf_executable.get()), args)
+            self._ambf_process.start(str(self._ambf_executable.get()), args)
             self.button_start_simulation.setText('Close Simulation')
             self.button_start_simulation.setStyleSheet("background-color: RED")
         else:
@@ -172,8 +185,8 @@ class Ui(QtWidgets.QWidget):
 
     def pressed_pupil_service(self):
         try:
-            print("Launching ", self.gui_configuration._pupil_capture_executable.get())
-            self._pupil_process.start(str(self.gui_configuration._pupil_capture_executable.get()))
+            print("Launching ", self._pupil_capture_executable.get())
+            self._pupil_process.start(str(self._pupil_capture_executable.get()))
         except Exception as e:
             self.print_info('ERROR! Cant launch Pupil Capture')
             print(e)
@@ -196,13 +209,13 @@ class Ui(QtWidgets.QWidget):
 
         if ready and self._pupil_process.state() != QProcess.Running:
             self.print_info('WARNING! Pupil capture not initialized!')
-            dlg = QtWidgets.QMessageBox(self)
-            dlg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+            dlg = QMessageBox(self)
+            dlg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
             dlg.setText('Pupil capture not running. No pupil data will be recorded. OK?')
             button = dlg.exec()
-            if button == QtWidgets.QMessageBox.Ok:
+            if button == QMessageBox.Ok:
                 ready = ready & True
-            elif button == QtWidgets.QMessageBox.Cancel:
+            elif button == QMessageBox.Cancel:
                 ready = ready & False
 
         self.print_info('INFO! Ready to record ? ' + str(ready))
@@ -210,7 +223,7 @@ class Ui(QtWidgets.QWidget):
 
     def get_record_options(self):
         record_options = RecordOptions()
-        base_path = str(self.gui_configuration._recording_base_path.get())
+        base_path = str(self._recording_base_path.get())
         participant_name = '/' + self.text_participant_name.toPlainText().strip()
         date_time = '/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record_options.path = base_path + participant_name + date_time
@@ -224,7 +237,7 @@ class Ui(QtWidgets.QWidget):
         return record_options
 
     def save_metadata(self):
-        notes, ok = QtWidgets.QInputDialog.getMultiLineText(
+        notes, ok = QInputDialog.getMultiLineText(
             self, 'Input Dialog', 'Enter notes:')
 
         metadata = {

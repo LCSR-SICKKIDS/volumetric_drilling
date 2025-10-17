@@ -12,10 +12,8 @@ class RecordOptions:
 
 
 class StudyManager:
-    def __init__(self, ambf_executable_path, pupil_capture_executable_path, recording_script_path):
-        self.ambf_executable_path = str(ambf_executable_path)
-        self.pupil_capture_executable_path = str(pupil_capture_executable_path)
-        self.recording_script_path = str(recording_script_path)
+    def __init__(self, recording_script_filepath):
+        self.recording_script_filepath = str(recording_script_filepath)
         self.pupil_manager = PupilManager()
         self.ambf_handle = None
         self.pupil_service_handle = None
@@ -107,15 +105,6 @@ class StudyManager:
             proc = subprocess.Popen(cmd_str, shell=True)
             print("Running Command ", cmd_str)
 
-    def _launch_simulator(self, args):
-        print('Launch args: ', args)
-        args_list = []
-        args_list.append(self.ambf_executable_path)
-        for a in args:
-            args_list.append(a)
-        self.ambf_handle = None
-        self.ambf_handle = subprocess.Popen(args_list)
-
     def _get_ambf_main_window_handle(self):
         xdtool_str = 'xdotool search --class AMBF\ Simulator\ Window\ 1'
         xdtool_proc = subprocess.Popen(xdtool_str, shell=True, stdout=subprocess.PIPE)
@@ -123,10 +112,6 @@ class StudyManager:
         window_id_str = window_id.decode().replace('\n', '')
         # print("AMBF Main Window ID: ", window_id_str)
         return window_id_str
-
-    def _launch_pupil_service(self):
-        self.pupil_service_handle = None
-        self.pupil_service_handle = subprocess.Popen(self.pupil_capture_executable_path)
 
     def _launch_recording_script(self, path):
         print('Recording Path: ', path)
@@ -136,7 +121,7 @@ class StudyManager:
         else:
             python_interp = 'python'
         args_list.append(python_interp)
-        args_list.append(self.recording_script_path)
+        args_list.append(self.recording_script_filepath)
         args_list.append('--output_dir')
         args_list.append(path)
         self.recording_script_handle = None
