@@ -190,3 +190,14 @@ A python script (`scripts/data_record.py`) is provided to record data based on t
 NOTE: 
 - Source the ambf and vdrilling_msgs environment in terminal before running the script.
 - By default, data recording should be launched after the simulator. We perform sanity check on this to make sure topics subscribed are meaningful.
+
+A recording (`scripts/simulation_recorder.py`) / playback widget (`scripts/simulation_player.py`) is also provided to record and play back the drill pos and rpy for sample sessions. The prerequisite for this script
+is to install PIL. 
+
+NOTE: 
+- Run this recorder the same way as (`scripts/data_record.py`) - instructions above
+- Enter user name and data in the entries to specify how the file is stored
+- Recordings are saved in the folder (`scripts/Recorded_Sessions`) - a sample recording is included to test 
+the simulation player. 
+- User needs to toggle drill control mode between recording and playback (should be in Haptic device / keyboard for recording and External afComm for playback)
+ 
