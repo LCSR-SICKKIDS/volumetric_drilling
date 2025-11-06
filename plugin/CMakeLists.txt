@@ -83,7 +83,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${AMBF_LIBRARY_DIRS})
 add_definitions(${AMBF_DEFINITIONS})
 
-set (vol_plugin_prefix "plugin/volumetric_drilling")
+set (vol_plugin_prefix "volumetric_drilling")
 
 add_library(volumetric_drilling SHARED
     ${vol_plugin_prefix}/common.h
@@ -121,6 +121,6 @@ endif()
 #   add_dependencies(volumetric_drilling ${catkin_EXPORTED_TARGETS})
 # set_property(TARGET volumetric_drilling PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 
-add_library(camera_hmd plugin/camera_hmd/hmd.cpp plugin/camera_hmd/hmd.h)
+add_library(camera_hmd camera_hmd/hmd.cpp camera_hmd/hmd.h)
 target_link_libraries(camera_hmd ${AMBF_LIBRARIES})
 set_property(TARGET camera_hmd PROPERTY POSITION_INDEPENDENT_CODE TRUE)
