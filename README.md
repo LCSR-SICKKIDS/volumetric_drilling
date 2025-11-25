@@ -43,14 +43,13 @@ cd ~/ros_ambf_ws
 colcon build
 ```
 
-After a successfull build, remember to source the ROS workspace. Here is an [example](https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF#step-4-optional-but-recommended)
+After a successful build, remember to source the ROS workspace. Here is an [example](https://github.com/WPI-AIM/ambf/wiki/Installing-AMBF#step-4-optional-but-recommended)
  from AMBF on how to source the ROS workspace
 ## 3 Running FIVRS with an intuitive GUI
 Navigate to the scripts folder
 
 ```bash
-cd ~/ros_ambf_ws/src/volumetric_drilling/
-cd scripts/study_gui.py
+cd ~/ros_ambf_ws/src/volumetric_drilling/scripts
 python3 study_gui.py
 ```
 This should open up this GUI which should be self explanatory
@@ -106,7 +105,7 @@ cd ambf/bin/lin-x86_64/
 ./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,1,4
 ```
 #### Option 2
-You can add `5` to any of the above commands to load two cameras (one of each stereo eye). Each of these cameras publishes a its video. Launch example:
+You can add `5` to any of the above commands to load two cameras (one of each stereo eye). Each of these cameras publishes its video. Launch example:
 ```bash
 cd ambf/bin/lin-x86_64/
 ./ambf_simulator --launch_file <volumetric_plugin_path>/launch.yaml -l 0,1,5
@@ -171,9 +170,9 @@ Navigation using mouse shortcuts in AMBF is described here: https://github.com/W
 TODO
 
 ### 4.6 Data Recording
-A python script (`scripts/data_record.py`) is provided to record data based on the user's configuration. By default, the left and right stereo images, depth point cloud, segmentation mask,drill/camera poses, removed voxels and drill burr changes are recorded. The data is stored as a convenient and well-organized hdf5 file.
+A python script (`scripts/data_record.py`) is provided to record data based on the user's configuration. By default, the left and right stereo images, depth point cloud, segmentation mask, drill/camera poses, removed voxels and drill burr changes are recorded. The data is stored as a convenient and well-organized hdf5 file.
 **NOTE:** 
-- Source the ambf and vdrilling_msgs environment in terminal before running the script.
+- Make sure to source the ROS workspace
 - By default, data recording should be launched after the simulator. We perform sanity check on this to make sure topics subscribed are meaningful.
 
 ## 5 Citation
