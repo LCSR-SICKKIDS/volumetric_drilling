@@ -7,7 +7,7 @@ plugins: [
   {
     name: DRILLING_SIMULATOR,
     filename: libvolumetric_drilling.so,
-    path: build/
+    path: build/volumetric_drilling
   }
 ]
 multibody configs:
