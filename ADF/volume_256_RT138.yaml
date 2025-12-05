@@ -1,0 +1,26 @@
+# AMBF Version: (0.1)
+bodies: []
+joints: []
+volumes: [VOLUME mastoidectomy_volume_low]
+high resolution path: ./meshes/high_res/
+low resolution path: ./meshes/low_res/
+ignore inter-collision: true
+namespace: /ambf/env/
+
+VOLUME mastoidectomy_volume_low:
+  name: mastoidectomy_volume_low
+  location:
+    position: {x: -0.3, y: 0.0, z: 0.0}
+    orientation: {r: 1.57079, p: 1.4, y: 0}
+    # orientation: {r: 0.0, p: 3.14, y: 1.5}
+  scale: 1.0
+  dimensions: {x: 0.0492027, y: 0.0492027, z: 0.048485}
+  images:
+    path: ../resources/volumes/RT138_256
+    prefix: plane00
+    format: png
+    count: 512
+  shaders:
+    path: ./shaders/volume/
+    vertex: shader.vs
+    fragment: shader.fs

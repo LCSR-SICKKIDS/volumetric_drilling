@@ -65,11 +65,14 @@ def camera_config(params, args, name):
         fov = 2 * math.atan(sensor_height / 2 / focal)
         camera['field view angle'] = fov
 
-    camera['publish image resolution']['width'] = args.res[0]
-    camera['publish image resolution']['height'] = args.res[1]
-    camera['publish image interval'] = args.image_interval
-    if 'publish depth interval' in camera:
-        camera['publish depth interval'] = args.image_interval
+    try:
+        camera['publish image resolution']['width'] = args.res[0]
+        camera['publish image resolution']['height'] = args.res[1]
+        camera['publish image interval'] = args.image_interval
+        if 'publish depth interval' in camera:
+            camera['publish depth interval'] = args.image_interval
+    except:
+        print("Publish image resoluiton not set for camera ", camera['name'])
 
     return params
 
@@ -134,6 +137,10 @@ def sync_volumes(args):
             params[volume_name]['location']['position']['x'] = args.volume_location[0] / args.scale
             params[volume_name]['location']['position']['y'] = args.volume_location[1] / args.scale
             params[volume_name]['location']['position']['z'] = args.volume_location[2] / args.scale
+
+            params[volume_name]['dimensions']['x'] = args.dimensions[0] / args.scale
+            params[volume_name]['dimensions']['y'] = args.dimensions[1] / args.scale
+            params[volume_name]['dimensions']['z'] = args.dimensions[2] / args.scale
             f.close()
         with open(file, 'w') as f:
             yaml.dump(params, f)
@@ -168,13 +175,17 @@ if __name__ == '__main__':
                              'Files (ADF) that need to be synchronized')
 
     # world parameters
-    parser.add_argument('--scale', type=float, default=0.049664,
+    parser.add_argument('--scale', type=float, default=1.0,
                         help='Scale factor is the dimension of the volume in 1 axis'
                              'AMBF unit = Meter / scale')
 
     # volume parameters
     parser.add_argument('--volume_location', nargs='?', default=[-0.3, 0.0, 0.0], help='volume location (meters)')
 
+    # volume parameters
+    parser.add_argument('--dimensions', nargs='?', default=[0.0492027, 0.0492027, 0.048485],
+                        help='XYZ Dimensions of the volume. These are divided by the Scale factor above')
+    
     # stereo parameters
     parser.add_argument('--baseline', type=float, nargs='?', default=0.025, help='meters')
 
@@ -187,7 +198,7 @@ if __name__ == '__main__':
     parser.add_argument('--look_at', nargs='+', default=None,
                         help='outwards direction of camera (unit vector), positive z of pixel coordinate.\n'
                              'Default set to the location of the volume.')
-    parser.add_argument('--clipping_plane', nargs='+', default=[0.1, 50.0], help='[near, far], meters, for accuracy\n'
+    parser.add_argument('--clipping_plane', nargs='+', default=[0.001, 50.0], help='[near, far], meters, for accuracy\n'
                                                                                  'set far plane as far as possible')
     parser.add_argument('--res', nargs='+', default=[640, 480], help='image [width, height]')
     parser.add_argument('--image_interval', type=int, default=5, help='Publish every nth scene update')

@@ -3,8 +3,25 @@
 ~.old
 build/
 .idea/
-
-*.pyc
 .vscode
 
-resources/intermediate_volumes/
+*.pyc
+
+# macOS
+.DS_Store
+
+# EDT files
+*.edt
+*.ply
+
+
+*resources/volumes/
+hdf5_files
+*.hdf5
+*.avi
+*.bag
+*.old
+
+*.autosave
+
+*.blend1

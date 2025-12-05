@@ -3,12 +3,14 @@ uniform vec3 uMaxCorner;
 uniform vec3 uTextureScale;
 uniform vec3 uGradientDelta;
 uniform sampler3D uVolume;
+uniform sampler2DShadow shadowMap;
 uniform float uIsosurface;
 uniform float uResolution;
 
 varying vec4 vPosition;
 uniform bool uSmoothVolume;
 uniform int uSmoothingLevel;
+uniform int uEnableShadow;
 
 vec3 dx = vec3(uGradientDelta.x, 0.0, 0.0);
 vec3 dy = vec3(0.0, uGradientDelta.y, 0.0);
@@ -112,6 +114,8 @@ void main(void)
     vec4 sum = vec4(0.0);
     vec3 tc = gl_TexCoord[0].stp + t_entry * tc_step / t_step;
 
+    vec4 dpos = vPosition;
+
     for (float t = t_entry; t < 0.0; t += t_step, tc += tc_step)
     {
         // sample the volume for intensity (red channel)
@@ -150,6 +154,10 @@ void main(void)
             vec3 colour = shade(position, view, normal) * texture3D(uVolume, tcr).rgb / uIsosurface;
             sum = vec4(colour, 1.0);
 
+            vec3 lp = gl_LightSource[0].spotDirection;
+            float bias = max(0.01 * (1.0 - dot(normal, lp)), 0.001);
+            dpos.xyz = vPosition.xyz + (t - bias - dt * t_step) * raydir;
+
             // calculate fragment depth
             vec4 clip = gl_ModelViewProjectionMatrix * vec4(position, 1.0);
             gl_FragDepth = (gl_DepthRange.diff * clip.z / clip.w + gl_DepthRange.near + gl_DepthRange.far) * 0.5;
@@ -160,6 +168,16 @@ void main(void)
 
     // discard the fragment if no geometry was intersected
     if (sum.a <= 0.0) discard;
+    if (uEnableShadow == 1){
+      dpos = gl_ModelViewMatrix * dpos;
+      float s = dot(gl_EyePlaneS[1], dpos);
+      float t = dot(gl_EyePlaneT[1], dpos);
+      float r = dot(gl_EyePlaneR[1], dpos);
+      float q = dot(gl_EyePlaneQ[1], dpos);
+      vec4 depos = vec4(s, t, r, q);
+      vec4 shadow = shadow2DProj(shadowMap, depos);
+      sum.a = shadow.a;
+    }
+      gl_FragColor = sum;
 
-    gl_FragColor = sum;
 }
