@@ -111,12 +111,13 @@ private:
     rclcpp::Publisher<volumetric_drilling_msgs::msg::DrillSize>::SharedPtr m_drillSizePub;
     rclcpp::Publisher<volumetric_drilling_msgs::msg::VolumeInfo>::SharedPtr m_volumeInfoPub;
     rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr m_forcefeedbackPub;
+    rclcpp::Subscription<volumetric_drilling_msgs::msg::Index>::SharedPtr m_removeVoxelsSub;
+    
     volumetric_drilling_msgs::msg::Voxels m_voxel_msg;
     volumetric_drilling_msgs::msg::DrillSize m_drill_size_msg;
     volumetric_drilling_msgs::msg::VolumeInfo m_volume_info_msg;
     geometry_msgs::msg::WrenchStamped m_force_feedback_msg;
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr m_removeVoxelsSub;
-
+    
     #endif
 
     double m_voxelRemoving_idx[3];
