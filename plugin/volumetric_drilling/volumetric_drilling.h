@@ -48,6 +48,8 @@
 #include "wave_generator.h"
 #include "gaze_marker_controller.h"
 #include "drill_manager.h"
+#include <ctime>
+#include <sys/stat.h> // For mkdir
 
 using namespace std;
 using namespace ambf;
