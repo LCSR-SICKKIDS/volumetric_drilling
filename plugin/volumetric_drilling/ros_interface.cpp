@@ -71,7 +71,29 @@ void DrillingPublisher::init(string a_namespace, string a_plugin){
 
     ambf_ral::create_publisher<AMBF_RAL_MSG(geometry_msgs, WrenchStamped)>
       (m_forcefeedbackPub, m_rosNode, a_namespace + "/" + a_plugin + "/drill_force_feedback", 1, false);
+    
+    ambf_ral::create_subscriber<AMBF_RAL_MSG(volumetric_drilling_msgs, Index)>
+      (m_removeVoxelsSub, m_rosNode, a_namespace + "/" + a_plugin + "/voxels_removing", 1, &DrillingPublisher::voxelsCallback, this);
 }
+
+
+void DrillingPublisher::voxelsCallback(AMBF_RAL_MSG_PTR(volumetric_drilling_msgs, Index) msg){
+    m_voxelRemoving_idx[0] = msg.x;
+    m_voxelRemoving_idx[1] = msg.y;
+    m_voxelRemoving_idx[2] = msg.z;
+    m_removingVoxel = true;
+}
+
+
+bool DrillingPublisher::getRemoveVoxelsIdx(double* vector){
+    if (m_removingVoxel){
+        vector[0] = m_voxelRemoving_idx[0];
+        vector[1] = m_voxelRemoving_idx[1];
+        vector[2] = m_voxelRemoving_idx[2];
+    }
+    return m_removingVoxel;
+}
+
 
 void DrillingPublisher::publishDrillSize(int burrSize, double time){
     m_drill_size_msg.size.data = burrSize;
