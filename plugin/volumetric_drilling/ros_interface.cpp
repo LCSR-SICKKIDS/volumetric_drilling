@@ -50,9 +50,9 @@ DrillingPublisher::DrillingPublisher(string a_namespace, string a_plugin){
 
 DrillingPublisher::~DrillingPublisher(){
     #if AMBF_ROS1
-        m_voxelsRemovalPub.shutdown();
-        m_drillSizePub.shutdown();
-        m_volumeInfoPub.shutdown();
+        m_voxelsRemovalPub->shutdown();
+        m_drillSizePub->shutdown();
+        m_volumeInfoPub->shutdown();
     #elif AMBF_ROS2
         m_voxelsRemovalPub.reset();
         m_drillSizePub.reset();
@@ -78,7 +78,7 @@ void DrillingPublisher::publishDrillSize(int burrSize, double time){
 
     #if AMBF_ROS1
         m_drill_size_msg.header.stamp.fromSec(time);
-        m_drillSizePub.publish(m_drill_size_msg);
+        m_drillSizePub->publish(m_drill_size_msg);
     #elif AMBF_ROS2
         int32_t sec  = static_cast<int32_t>(time);
         uint32_t nsec = static_cast<uint32_t>((time - sec) * 1e9);
@@ -118,7 +118,7 @@ void DrillingPublisher::publishVolumeInfo(double time)
 {
     #if AMBF_ROS1
         m_volume_info_msg.header.stamp.fromSec(time);   
-        m_volumeInfoPub.publish(m_volume_info_msg);
+        m_volumeInfoPub->publish(m_volume_info_msg);
     #elif AMBF_ROS2
         int32_t sec  = static_cast<int32_t>(time);
         uint32_t nsec = static_cast<uint32_t>((time - sec) * 1e9);
@@ -155,7 +155,7 @@ void DrillingPublisher::publishVoxelMsg(double time)
 {    
     #if AMBF_ROS1
         m_voxel_msg.header.stamp.fromSec(time);
-        m_voxelsRemovalPub.publish(m_voxel_msg);
+        m_voxelsRemovalPub->publish(m_voxel_msg);
     #elif AMBF_ROS2
         int32_t sec  = static_cast<int32_t>(time);
         uint32_t nsec = static_cast<uint32_t>((time - sec) * 1e9);
@@ -177,7 +177,7 @@ void DrillingPublisher::publishForceFeedback(cVector3d& force, cVector3d& moment
 
     #if AMBF_ROS1
         m_force_feedback_msg.header.stamp.fromSec(time);
-        m_forcefeedbackPub.publish(m_force_feedback_msg);
+        m_forcefeedbackPub->publish(m_force_feedback_msg);
     #elif AMBF_ROS2
         int32_t sec  = static_cast<int32_t>(time);
         uint32_t nsec = static_cast<uint32_t>((time - sec) * 1e9);
