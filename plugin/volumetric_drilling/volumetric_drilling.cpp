@@ -234,6 +234,35 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     m_drillManager.update(dt);
 
+    // Need to spin for the subscriber
+    ambf_ral::spin_some(m_drillManager.m_drillingPub->m_rosNode);
+    // Remove volume based on rostopic command "remove_voxels"
+    double removingIdx[3];
+    if (m_drillManager.m_drillingPub->getRemoveVoxelsIdx(removingIdx)){
+        cerr << "[INFO] Manually removing voxel [" << removingIdx[0] << ", " << removingIdx[1] << ", " << removingIdx[2] << "]" << endl;
+        cVector3d idx3d(removingIdx[0], removingIdx[1], removingIdx[2]);
+        cColorb colorb;
+        m_voxelObj->m_texture->m_image->getVoxelColor(uint(idx3d.x()), uint(idx3d.y()), uint(idx3d.z()), colorb);
+
+        if (colorb != m_zeroColor){
+            cColorf colorf = colorb.getColorf();
+            m_drillManager.m_drillingPub->appendToVoxelMsg(idx3d, colorf);
+            
+            m_mutexVoxel.acquire();
+            m_voxelObj->m_texture->m_image->setVoxelColor(uint(idx3d.x()), uint(idx3d.y()), uint(idx3d.z()), m_zeroColor);
+            m_volumeUpdate.enclose(idx3d);
+            m_mutexVoxel.release();
+
+
+            //Publisher for voxels removed
+            m_drillManager.m_drillingPub->publishVoxelMsg(m_worldPtr->getCurrentTimeStamp());
+        }
+        else{
+            cerr << "[INFO] Voxel [" << removingIdx[0] << ", " << removingIdx[1] << ", " << removingIdx[2] << "] was already removed" << endl;
+        }
+        
+    } 
+    
     if (m_drillManager.m_toolCursorList[0]->isInContact(m_voxelObj) && m_drillManager.m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
 
