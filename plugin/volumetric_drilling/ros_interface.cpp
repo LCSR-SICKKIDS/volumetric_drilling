@@ -78,9 +78,9 @@ void DrillingPublisher::init(string a_namespace, string a_plugin){
 
 
 void DrillingPublisher::voxelsCallback(AMBF_RAL_MSG_PTR(volumetric_drilling_msgs, Index) msg){
-    m_voxelRemoving_idx[0] = msg.x;
-    m_voxelRemoving_idx[1] = msg.y;
-    m_voxelRemoving_idx[2] = msg.z;
+    m_voxelRemoving_idx[0] = msg->x;
+    m_voxelRemoving_idx[1] = msg->y;
+    m_voxelRemoving_idx[2] = msg->z;
     m_removingVoxel = true;
 }
 
