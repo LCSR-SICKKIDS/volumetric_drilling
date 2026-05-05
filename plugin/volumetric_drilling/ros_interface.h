@@ -91,7 +91,7 @@ public:
     void publishForceFeedback(cVector3d& force, cVector3d& moment, double time);
 
     void voxelsCallback(AMBF_RAL_MSG_PTR(volumetric_drilling_msgs, Index) msg);
-    bool getRemoveVoxelsIdx(double* vector);
+    bool getRemoveVoxelsIdx(cVector3d& vector);
 
 private:
     #if AMBF_ROS1
@@ -119,7 +119,7 @@ private:
     
     #endif
 
-    double m_voxelRemoving_idx[3];
+    cVector3d m_voxelRemoving_idx;
     bool m_removingVoxel = false;
 };
 

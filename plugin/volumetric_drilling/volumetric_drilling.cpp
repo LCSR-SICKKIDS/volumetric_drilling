@@ -237,10 +237,10 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
     // Need to spin for the subscriber
     ambf_ral::spin_some(m_drillManager.m_drillingPub->m_rosNode);
     // Remove volume based on rostopic command "remove_voxels"
-    double removingIdx[3];
+    cVector3d removingIdx;
     if (m_drillManager.m_drillingPub->getRemoveVoxelsIdx(removingIdx)){
-        cerr << "[INFO] Manually removing voxel [" << removingIdx[0] << ", " << removingIdx[1] << ", " << removingIdx[2] << "]" << endl;
-        cVector3d idx3d(removingIdx[0], removingIdx[1], removingIdx[2]);
+        cerr << "[INFO] Manually removing voxel [" << removingIdx.x() << ", " << removingIdx.y() << ", " << removingIdx.z() << "]" << endl;
+        cVector3d idx3d(removingIdx.x(), removingIdx.y(), removingIdx.z());
         cColorb colorb;
         m_voxelObj->m_texture->m_image->getVoxelColor(uint(idx3d.x()), uint(idx3d.y()), uint(idx3d.z()), colorb);
 
@@ -258,7 +258,7 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
             m_drillManager.m_drillingPub->publishVoxelMsg(m_worldPtr->getCurrentTimeStamp());
         }
         else{
-            cerr << "[INFO] Voxel [" << removingIdx[0] << ", " << removingIdx[1] << ", " << removingIdx[2] << "] was already removed" << endl;
+            cerr << "[INFO] Voxel [" << removingIdx.x() << ", " << removingIdx.y() << ", " << removingIdx.z() << "] was already removed" << endl;
         }
         
     } 
@@ -588,11 +588,20 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             char date[20];
             std::time_t t = std::time(nullptr);
             std::strftime(date, sizeof date, "%Y-%m-%d_%H%M%S", std::localtime(&t));
+
+            // Get current file path 
+            string file_path = __FILE__;
+            string current_filepath = file_path.substr(0, file_path.rfind("/"));
+
+            // Go back to directory up from the current file path
+            current_filepath = current_filepath.substr(0, current_filepath.rfind("/"));
+            current_filepath = current_filepath.substr(0, current_filepath.rfind("/"));
             
             mode_t mode = 0755; // Permissions: rwxr-xr-x (owner: read, write, execute; group, others: read, execute)
-            string dir_name = ("resources/intermediate_volumes/" + volumeName + "/" + date);
-            mkdir("resources/intermediate_volumes/", mode);
-            mkdir(("resources/intermediate_volumes/" + volumeName).c_str(), mode);
+            string dir_name = current_filepath + "/resources/intermediate_volumes/" + volumeName + "/" + date;
+            
+            mkdir((current_filepath + "/resources/intermediate_volumes/").c_str(), mode);
+            mkdir((current_filepath + "/resources/intermediate_volumes/" + volumeName).c_str(), mode);
             mkdir(dir_name.c_str(), mode);
 
             // Loop through each Z-slice and save it as a 2D image
@@ -613,7 +622,7 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
                 }
 
                 // Construct a filename for the slice (e.g., "slice_000.png")
-                std::string filename = dir_name + "/plane00" + std::to_string(z) + ".png";
+                std::string filename = dir_name + "/slice_00" + std::to_string(z) + ".png";
 
                 // Save the 2D image to a file
                 bool success = chai3d::cSaveFilePNG(imageSlice, filename);

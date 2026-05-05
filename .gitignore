@@ -16,6 +16,7 @@ build/
 
 
 *resources/volumes/
+resources/intermediate_volumes/
 hdf5_files
 *.hdf5
 *.avi
