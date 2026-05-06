@@ -47,6 +47,7 @@
 #include <afFramework.h>
 #include <ambf_server/ambf_ral_config.h>
 #include <ambf_server/RosComBase.h>
+#include <vector>
 
 #if AMBF_ROS1
 #include <ros/ros.h>
@@ -66,6 +67,7 @@
 #include "std_msgs/msg/color_rgba.hpp"
 #endif
 
+using namespace std;
 using namespace chai3d;
 
 class DrillingPublisher{
@@ -88,6 +90,9 @@ public:
 
     void publishForceFeedback(cVector3d& force, cVector3d& moment, double time);
 
+    void voxelsCallback(AMBF_RAL_MSG_PTR(volumetric_drilling_msgs, Index) msg);
+    bool getRemoveVoxelsIdx(cVector3d& vector);
+
 private:
     #if AMBF_ROS1
     std::shared_ptr<ros::Publisher> m_voxelsRemovalPub;
@@ -105,12 +110,17 @@ private:
     rclcpp::Publisher<volumetric_drilling_msgs::msg::DrillSize>::SharedPtr m_drillSizePub;
     rclcpp::Publisher<volumetric_drilling_msgs::msg::VolumeInfo>::SharedPtr m_volumeInfoPub;
     rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr m_forcefeedbackPub;
+    rclcpp::Subscription<volumetric_drilling_msgs::msg::Index>::SharedPtr m_removeVoxelsSub;
+    
     volumetric_drilling_msgs::msg::Voxels m_voxel_msg;
     volumetric_drilling_msgs::msg::DrillSize m_drill_size_msg;
     volumetric_drilling_msgs::msg::VolumeInfo m_volume_info_msg;
     geometry_msgs::msg::WrenchStamped m_force_feedback_msg;
-
+    
     #endif
+
+    cVector3d m_voxelRemoving_idx;
+    bool m_removingVoxel = false;
 };
 
 #endif //VOLUMETRIC_PLUGIN_COLLISION_PUBLISHER_H

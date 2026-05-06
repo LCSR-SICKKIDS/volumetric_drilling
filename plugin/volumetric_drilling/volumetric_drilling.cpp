@@ -234,6 +234,35 @@ void afVolmetricDrillingPlugin::physicsUpdate(double dt){
 
     m_drillManager.update(dt);
 
+    // Need to spin for the subscriber
+    ambf_ral::spin_some(m_drillManager.m_drillingPub->m_rosNode);
+    // Remove volume based on rostopic command "remove_voxels"
+    cVector3d removingIdx;
+    if (m_drillManager.m_drillingPub->getRemoveVoxelsIdx(removingIdx)){
+        cerr << "[INFO] Manually removing voxel [" << removingIdx.x() << ", " << removingIdx.y() << ", " << removingIdx.z() << "]" << endl;
+        cVector3d idx3d(removingIdx.x(), removingIdx.y(), removingIdx.z());
+        cColorb colorb;
+        m_voxelObj->m_texture->m_image->getVoxelColor(uint(idx3d.x()), uint(idx3d.y()), uint(idx3d.z()), colorb);
+
+        if (colorb != m_zeroColor){
+            cColorf colorf = colorb.getColorf();
+            m_drillManager.m_drillingPub->appendToVoxelMsg(idx3d, colorf);
+            
+            m_mutexVoxel.acquire();
+            m_voxelObj->m_texture->m_image->setVoxelColor(uint(idx3d.x()), uint(idx3d.y()), uint(idx3d.z()), m_zeroColor);
+            m_volumeUpdate.enclose(idx3d);
+            m_mutexVoxel.release();
+
+
+            //Publisher for voxels removed
+            m_drillManager.m_drillingPub->publishVoxelMsg(m_worldPtr->getCurrentTimeStamp());
+        }
+        else{
+            cerr << "[INFO] Voxel [" << removingIdx.x() << ", " << removingIdx.y() << ", " << removingIdx.z() << "] was already removed" << endl;
+        }
+        
+    } 
+    
     if (m_drillManager.m_toolCursorList[0]->isInContact(m_voxelObj) && m_drillManager.m_targetToolCursorIdx == 0 /*&& (userSwitches == 2)*/)
     {
 
@@ -547,6 +576,63 @@ void afVolmetricDrillingPlugin::keyboardUpdate(GLFWwindow *a_window, int a_key, 
             cerr << "INFO! RESETTING THE DRILL" << endl;
             m_drillManager.reset();
         }
+
+        else if (a_key == GLFW_KEY_L) {
+            chai3d::cImagePtr multiImage = m_voxelObj->m_texture->m_image;
+
+            // Get the dimensions of the volumetric data
+            int sizeX = multiImage->getWidth();
+            int sizeY = multiImage->getHeight();
+            int sizeZ = multiImage->getImageCount(); // Slices along Z;
+            string volumeName = m_volumeObject->getName();
+            char date[20];
+            std::time_t t = std::time(nullptr);
+            std::strftime(date, sizeof date, "%Y-%m-%d_%H%M%S", std::localtime(&t));
+
+            // Get current file path 
+            string file_path = __FILE__;
+            string current_filepath = file_path.substr(0, file_path.rfind("/"));
+
+            // Go back to directory up from the current file path
+            current_filepath = current_filepath.substr(0, current_filepath.rfind("/"));
+            current_filepath = current_filepath.substr(0, current_filepath.rfind("/"));
+            
+            mode_t mode = 0755; // Permissions: rwxr-xr-x (owner: read, write, execute; group, others: read, execute)
+            string dir_name = current_filepath + "/resources/intermediate_volumes/" + volumeName + "/" + date;
+            
+            mkdir((current_filepath + "/resources/intermediate_volumes/").c_str(), mode);
+            mkdir((current_filepath + "/resources/intermediate_volumes/" + volumeName).c_str(), mode);
+            mkdir(dir_name.c_str(), mode);
+
+            // Loop through each Z-slice and save it as a 2D image
+            for (int z = 0; z < sizeZ; z++){
+                // Create a new cImage to hold the 2D slice
+                chai3d::cImage* imageSlice = new chai3d::cImage();
+                imageSlice->allocate(sizeX, sizeY, GL_RGBA);
+
+                // Copy the voxel data for the current slice into the new 2D image
+                for (int y = 0; y < sizeY; y++){
+                    for (int x = 0; x < sizeX; x++){
+                        // Get the color of the voxel at (x, y, z)
+                        chai3d::cColorb color;
+                        multiImage->getVoxelColor(x, y, z, color);
+                        // Assign the color to the corresponding pixel in the slice image
+                        imageSlice->setPixelColor(x, y, color);
+                    }
+                }
+
+                // Construct a filename for the slice (e.g., "slice_000.png")
+                std::string filename = dir_name + "/slice_00" + std::to_string(z) + ".png";
+
+                // Save the 2D image to a file
+                bool success = chai3d::cSaveFilePNG(imageSlice, filename);
+
+                // Clean up the temporary image
+                delete imageSlice;
+            }
+            cout << "INFO! SAVED INTERMIDIATE VOLUME SLICES in " << dir_name << endl;
+        }
+
     }
     else if(a_mods == GLFW_MOD_ALT){
         // Toggle Volume Smoothing
